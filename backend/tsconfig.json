@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    // File Layout
+    "rootDir": "./",
+    "outDir": "./dist",
+
+    // Environment Settings
+    "target": "es2022",
+    "module": "commonjs",
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "lib": ["es2022"],
+    "types": ["node"],
+
+    // Other Outputs
+    "sourceMap": true,
+
+    // Recommended Options
+    "strict": true,
+    "skipLibCheck": true,
+    
+    // Tùy chọn nâng cao của bạn (có thể giữ lại nếu muốn code chặt chẽ)
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true
+  },
+  "include": ["src/**/*", "*.ts"],
+  "exclude": ["node_modules", "dist"]
+}

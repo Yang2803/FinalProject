@@ -1,0 +1,61 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  password  String?
+  role      String   @default("USER") // USER hoặc ADMIN
+
+  resetToken       String?   @unique
+  resetTokenExpiry DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime? @updatedAt
+}
+
+model Anime {
+  id          String    @id @default(uuid())
+  title       String
+  description String?
+  episodes    Episode[]
+}
+
+model Manga {
+  id          String    @id @default(uuid())
+  title       String
+  chapters    Chapter[]
+}
+
+model Episode {
+  id       String            @id @default(uuid())
+  title    String
+  animeId  String
+  anime    Anime             @relation(fields: [animeId], references: [id])
+  mappings TimelineMapping[]
+}
+
+model Chapter {
+  id       String            @id @default(uuid())
+  title    String
+  mangaId  String
+  manga    Manga             @relation(fields: [mangaId], references: [id])
+  mappings TimelineMapping[]
+}
+
+// Tính năng Anime-Manga Synchronization (Crowdsourcing)
+model TimelineMapping {
+  id        String   @id @default(uuid())
+  episodeId String
+  chapterId String
+  status    String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  
+  episode   Episode  @relation(fields: [episodeId], references: [id])
+  chapter   Chapter  @relation(fields: [chapterId], references: [id])
+}
