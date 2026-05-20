@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 
+
 const handler = NextAuth({
   providers: [
     GoogleProvider({
@@ -40,6 +41,7 @@ const handler = NextAuth({
       }
     })
   ],
+
   callbacks: {
     // Hàm này chạy ngay khi user đăng nhập thành công bằng bất kỳ hình thức nào
     async signIn({ user, account, profile }) {

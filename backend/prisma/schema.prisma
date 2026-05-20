@@ -29,8 +29,17 @@ model Anime {
 
 model Manga {
   id          String    @id @default(uuid())
-  title       String
-  chapters    Chapter[]
+  title       String    @unique // Thêm @unique để tìm truyện theo tên không bị trùng
+  description String?   @db.Text
+  author      String?  
+  coverImage  String?  
+  status      String    @default("ONGOING")
+  
+  // Mối quan hệ 1 Manga có nhiều Chapter
+  chapters    Chapter[] 
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
 model Episode {
@@ -42,11 +51,17 @@ model Episode {
 }
 
 model Chapter {
-  id       String            @id @default(uuid())
-  title    String
-  mangaId  String
-  manga    Manga             @relation(fields: [mangaId], references: [id])
-  mappings TimelineMapping[]
+  id          String   @id @default(uuid())
+  title       String   // Tên chương (VD: Chapter 1)
+  images      String[] // Lưu danh sách link ảnh Cloudinary dưới dạng mảng
+  
+  // Khóa ngoại liên kết với bảng Manga
+  mangaId     String
+  manga       Manga    @relation(fields: [mangaId], references: [id], onDelete: Cascade)
+
+  mappings    TimelineMapping[]
+
+  createdAt   DateTime @default(now())
 }
 
 // Tính năng Anime-Manga Synchronization (Crowdsourcing)

@@ -223,3 +223,122 @@ app.post("/api/auth/reset-password", async (req: Request, res: Response): Promis
     res.status(500).json({ message: "Lỗi server khi đặt lại mật khẩu." });
   }
 });
+
+
+
+
+// API: Thêm Manga mới (Chỉ dành cho ADMIN)
+app.post('/api/admin/manga', async (req: Request, res: Response): Promise<any> => {
+  try {
+    // 1. Nhận dữ liệu từ Frontend gửi lên, bao gồm cả userId để check quyền
+    const { title, description, author, coverImage, status, userId } = req.body;
+
+    if (!title || !userId) {
+      return res.status(400).json({ message: "Thiếu thông tin bắt buộc (Tiêu đề hoặc ID người dùng)!" });
+    }
+
+    // 2. Kiểm tra bảo mật: User này có tồn tại không và có phải ADMIN không?
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    
+    if (!user || user.role !== "ADMIN") {
+      return res.status(403).json({ message: "Từ chối truy cập! Chỉ Admin mới có quyền thực hiện hành động này." });
+    }
+
+    // 3. Nếu là ADMIN, tiến hành lưu Manga vào Database
+    const newManga = await prisma.manga.create({
+      data: {
+        title,
+        description,
+        author,
+        coverImage,
+        status,
+      },
+    });
+
+    res.status(201).json({ message: "Thêm Manga thành công!", manga: newManga });
+  } catch (error) {
+    console.error("Lỗi khi thêm Manga:", error);
+    res.status(500).json({ message: "Lỗi server khi thêm Manga." });
+  }
+});
+
+// API: Lấy danh sách toàn bộ Manga (Dành cho Admin)
+app.get('/api/admin/manga', async (req: Request, res: Response) => {
+  try {
+    const mangas = await prisma.manga.findMany({
+      orderBy: { createdAt: 'desc' } // Sắp xếp truyện mới nhất lên đầu
+    });
+    res.status(200).json(mangas);
+  } catch (error) {
+    console.error("Lỗi khi tải danh sách Manga:", error);
+    res.status(500).json({ message: "Lỗi server khi tải danh sách Manga" });
+  }
+});
+
+// API: Xử lý Upload Chapter mới kèm ảnh từ Frontend
+app.post('/api/manga', async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { mangaTitle, chapterTitle, images } = req.body;
+
+    if (!mangaTitle || !chapterTitle || !images || images.length === 0) {
+      return res.status(400).json({ message: "Thiếu thông tin hoặc chưa có ảnh!" });
+    }
+
+    // 1. Tìm truyện trong DB xem đã có chưa
+    let manga = await prisma.manga.findUnique({
+      where: { title: mangaTitle }
+    });
+
+    // 2. Nếu truyện chưa tồn tại, tự động tạo truyện mới
+    if (!manga) {
+      manga = await prisma.manga.create({
+        data: {
+          title: mangaTitle,
+          description: "Đang cập nhật...", // Thông tin phụ có thể sửa ở trang Admin sau
+        }
+      });
+    }
+
+    // 3. Tạo Chương mới và nhét toàn bộ link ảnh Cloudinary vào
+    const newChapter = await prisma.chapter.create({
+      data: {
+        title: chapterTitle,
+        images: images, // Prisma tự động hiểu và lưu mảng URL này
+        mangaId: manga.id
+      }
+    });
+
+    res.status(201).json({ 
+      message: "Lưu chương truyện thành công!", 
+      chapter: newChapter 
+    });
+
+  } catch (error) {
+    console.error("Lỗi khi lưu Chapter vào Database:", error);
+    res.status(500).json({ message: "Lỗi server khi lưu dữ liệu." });
+  }
+});
+
+// API: Thêm Chapter mới cho một Manga cụ thể
+app.post('/api/admin/chapter', async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { mangaId, title, images } = req.body;
+
+    if (!mangaId || !title || !images || images.length === 0) {
+      return res.status(400).json({ message: "Thiếu thông tin hoặc chưa có ảnh!" });
+    }
+
+    const newChapter = await prisma.chapter.create({
+      data: {
+        title: title,
+        images: images,
+        mangaId: mangaId // Nối chương này vào đúng Manga đã chọn
+      }
+    });
+
+    res.status(201).json({ message: "Đăng chương mới thành công!", chapter: newChapter });
+  } catch (error) {
+    console.error("Lỗi khi thêm Chapter:", error);
+    res.status(500).json({ message: "Lỗi server khi lưu chương truyện." });
+  }
+});
