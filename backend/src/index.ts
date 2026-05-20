@@ -226,7 +226,7 @@ app.post("/api/auth/reset-password", async (req: Request, res: Response): Promis
 
 
 
-
+// ================= API UPDLOAD MANGA =================
 // API: Thêm Manga mới (Chỉ dành cho ADMIN)
 app.post('/api/admin/manga', async (req: Request, res: Response): Promise<any> => {
   try {
@@ -340,5 +340,116 @@ app.post('/api/admin/chapter', async (req: Request, res: Response): Promise<any>
   } catch (error) {
     console.error("Lỗi khi thêm Chapter:", error);
     res.status(500).json({ message: "Lỗi server khi lưu chương truyện." });
+  }
+});
+
+// 1. API: Lấy chi tiết 1 Manga và tất cả các Chapter của nó
+app.get('/api/admin/manga/:id', async (req: Request, res: Response): Promise<any> => {
+  try {
+    const id = req.params.id as string;
+    const manga = await prisma.manga.findUnique({
+      where: { id },
+      include: {
+        chapters: {
+          orderBy: { createdAt: 'desc' } // Chương mới lên đầu
+        }
+      }
+    });
+
+    if (!manga) return res.status(404).json({ message: "Không tìm thấy bộ truyện này!" });
+    res.status(200).json(manga);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Lỗi server khi tải chi tiết truyện." });
+  }
+});
+
+// 2. API: Cập nhật thông tin truyện (SỬA)
+app.put('/api/admin/manga/:id', async (req: Request, res: Response): Promise<any> => {
+  try {
+    const id = req.params.id as string;
+    const { title, author, coverImage, status, description } = req.body;
+
+    const updatedManga = await prisma.manga.update({
+      where: { id },
+      data: { title, author, coverImage, status, description }
+    });
+
+    res.status(200).json({ message: "Cập nhật thông tin truyện thành công!", manga: updatedManga });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Lỗi server khi cập nhật truyện." });
+  }
+});
+
+// 3. API: Xóa truyện (XÓA)
+app.delete('/api/admin/manga/:id', async (req: Request, res: Response): Promise<any> => {
+  try {
+    const id = req.params.id as string;
+
+    // Vì schema đã cấu hình onDelete: Cascade nên khi xóa Manga, toàn bộ Chapter thuộc về nó sẽ tự động bị xóa sạch trong DB
+    await prisma.manga.delete({ where: { id } });
+
+    res.status(200).json({ message: "Đã xóa bộ truyện và toàn bộ chương liên quan thành công!" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Lỗi server khi xóa truyện." });
+  }
+});
+
+
+
+// ==========================================
+// API QUẢN LÝ CHƯƠNG TRUYỆN (CHAPTER)
+// ==========================================
+// API: Lấy chi tiết 1 Chapter (Dành cho Admin)
+app.get('/api/admin/chapter/:id', async (req: Request, res: Response): Promise<any> => {
+  try {
+    const id = req.params.id as string;
+    const chapter = await prisma.chapter.findUnique({ where: { id } });
+    if (!chapter) return res.status(404).json({ message: "Không tìm thấy chương truyện này!" });
+    res.status(200).json(chapter);
+  } catch (error) {
+    res.status(500).json({ message: "Lỗi server khi tải thông tin chương." });
+  }
+});
+// 1. API: sửa chương truyện (SỬA)
+app.put('/api/admin/chapter/:id', async (req: Request, res: Response): Promise<any> => {
+  try {
+    const id = req.params.id as string;
+    const { title, images } = req.body; // Nhận thêm biến images từ Frontend
+
+    if (!title) {
+      return res.status(400).json({ message: "Tên chương không được để trống!" });
+    }
+
+    const updatedChapter = await prisma.chapter.update({
+      where: { id },
+      data: { 
+        title,
+        ...(images && { images }) // Nếu frontend có gửi mảng ảnh mới thì cập nhật, không thì thôi
+      }
+    });
+
+    res.status(200).json({ message: "Cập nhật chương truyện thành công!", chapter: updatedChapter });
+  } catch (error) {
+    console.error("Lỗi khi sửa chương:", error);
+    res.status(500).json({ message: "Lỗi server khi cập nhật chương." });
+  }
+});
+
+// 2. API: Xóa chương truyện (XÓA)
+app.delete('/api/admin/chapter/:id', async (req: Request, res: Response): Promise<any> => {
+  try {
+    const id = req.params.id as string;
+    
+    await prisma.chapter.delete({
+      where: { id }
+    });
+
+    res.status(200).json({ message: "Đã xóa chương truyện thành công!" });
+  } catch (error) {
+    console.error("Lỗi khi xóa chương:", error);
+    res.status(500).json({ message: "Lỗi server khi xóa chương." });
   }
 });

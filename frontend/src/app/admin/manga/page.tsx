@@ -56,7 +56,11 @@ export default function AdminMangaList() {
             <tbody>
               {mangas.map((manga) => (
                 <tr key={manga.id} className="border-b border-gray-700 hover:bg-gray-750">
-                  <td className="p-4 font-medium">{manga.title}</td>
+                  <td className="p-4 font-medium">
+                      <Link href={`/admin/manga/${manga.id}`} className="text-blue-400 hover:text-blue-300 hover:underline transition font-semibold">
+                        {manga.title}
+                      </Link>
+                    </td>
                   <td className="p-4 text-gray-400">{manga.author || "Đang cập nhật"}</td>
                   <td className="p-4">
                     <span className={`px-2 py-1 rounded text-xs font-bold ${manga.status === "ONGOING" ? "bg-blue-900/50 text-blue-400" : "bg-green-900/50 text-green-400"}`}>
