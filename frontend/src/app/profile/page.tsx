@@ -3,13 +3,52 @@
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import Link from "next/link";
+import { useState, use } from "react";
+
+
+interface HistoryItem {
+  id: string;
+  updatedAt: string;
+  manga: {
+    id: string;
+    title: string;
+    coverImage: string | null;
+  };
+  chapter: {
+    id: string;
+    title: string;
+  };
+}
 
 export default function ProfilePage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const [mangaHistory, setMangaHistory] = useState<HistoryItem[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(true);
 
-  // (Tuỳ chọn) Nếu component đã render mà chưa có session, đẩy về trang login
-  // Tuy nhiên, việc này sẽ được xử lý triệt để hơn ở phần Middleware phía dưới.
+
+  useEffect(() => {
+    const fetchHistory = async () => {
+      if (!session?.user?.id) return;
+      try {
+        const res = await fetch(`http://localhost:5000/api/history/${session.user.id}`);
+        if (res.ok) {
+          const data = await res.json();
+          setMangaHistory(data.mangaHistory);
+        }
+      } catch (error) {
+        console.error("Lỗi lấy lịch sử:", error);
+      } finally {
+        setLoadingHistory(false);
+      }
+    };
+    
+    if (session?.user?.id) {
+      fetchHistory();
+    }
+  }, [session?.user?.id]);
+
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login");
@@ -18,67 +57,170 @@ export default function ProfilePage() {
 
   if (status === "loading") {
     return (
-      <div className="flex h-full items-center justify-center p-8">
-        <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+      <div className="flex h-screen items-center justify-center bg-[#0f0f11]">
+        <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin shadow-[0_0_15px_rgba(59,130,246,0.5)]"></div>
       </div>
     );
   }
 
-  // Nếu không có session, không render gì cả (tránh chớp giao diện trước khi redirect)
   if (!session?.user) return null;
 
+  // ==========================================
+  // SỬA LỖI PHÂN QUYỀN
+  // Lấy role từ session để hiển thị động thay vì gõ chết chữ USER
+  // ==========================================
+  const isAdmin = session.user.role === "ADMIN";
+  const roleText = isAdmin ? "Quản trị viên (ADMIN)" : "Thành viên (USER)";
+  const roleColor = isAdmin ? "text-red-400" : "text-blue-400";
+  const roleBadge = isAdmin ? "bg-red-500/20 border-red-500/50" : "bg-blue-500/20 border-blue-500/50";
+  const glowColor = isAdmin ? "bg-red-500" : "bg-blue-500";
+
   return (
-    <div className="max-w-4xl mx-auto p-8">
-      <h1 className="text-3xl font-bold mb-8 text-white">Hồ sơ cá nhân</h1>
+    <div className="min-h-screen bg-[#0f0f11] text-white font-sans pb-12">
+      
+      {/* 1. COVER BANNER: Nâng cấp thành phong cách Dark Aesthetic */}
+      <div className="relative h-64 md:h-80 w-full bg-gradient-to-br from-indigo-950 via-purple-950 to-black overflow-hidden">
+        {/* Layer ảnh pattern mờ ảo (Bạn có thể đổi link ảnh này thành hình Jujutsu Kaisen hoặc Bungou Stray Dogs để tăng độ "Otaku") */}
+        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1618336753974-aae8e04506aa?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center opacity-20 mix-blend-overlay"></div>
+        {/* Gradient sương mù hòa trộn với background */}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0f0f11] via-transparent to-transparent"></div>
+      </div>
 
-      <div className="bg-gray-800 rounded-2xl shadow-xl border border-gray-700 overflow-hidden">
-        {/* Header Banner */}
-<div className="h-32 bg-gradient-to-r from-blue-600 to-purple-600"></div>
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 md:px-8 relative z-10 -mt-24 md:-mt-32">
+        {/* Khối Glassmorphism (Kính mờ) */}
+        <div className="bg-gray-800/60 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-700/50 overflow-hidden">
+          
+          {/* HEADER: Avatar & Tên */}
+          <div className="p-6 md:p-10 flex flex-col md:flex-row items-center md:items-end gap-6 border-b border-gray-700/50 relative">
+            
+            {/* Avatar phát sáng */}
+            <div className="relative group shrink-0">
+              <div className={`absolute inset-0 rounded-full blur-xl opacity-50 group-hover:opacity-100 transition duration-500 ${glowColor}`}></div>
+              <img
+                src={session.user.image || "https://www.svgrepo.com/show/507442/user-circle.svg"}
+                alt="Avatar"
+                className="relative w-32 h-32 md:w-40 md:h-40 rounded-full object-cover border-4 border-[#1a1a24] bg-gray-900 shadow-xl z-10"
+              />
+            </div>
 
-{/* Avatar & Info */}
-<div className="px-8 pb-8">
-  {/* Chuyển sang dùng Flexbox và margin âm (-mt-12) kéo avatar lên thay vì absolute */}
-  <div className="flex flex-col sm:flex-row items-center sm:items-end -mt-12 space-y-4 sm:space-y-0 sm:space-x-6 relative z-10">
-    <img
-      src={session.user.image || "https://www.svgrepo.com/show/507442/user-circle.svg"}
-      alt="Avatar"
-      className="w-24 h-24 rounded-full object-cover border-4 border-gray-800 bg-gray-900 shadow-lg"
-    />
-    
-    {/* Bỏ mt-16 cũ, thêm margin-bottom nhẹ để chữ thẳng hàng với avatar ở giao diện desktop */}
-    <div className="text-center sm:text-left mb-2">
-      <h2 className="text-2xl font-bold text-white">
-        {session.user.name || "Người dùng ẩn danh"}
-      </h2>
-      <p className="text-gray-400 mt-1">{session.user.email}</p>
-    </div>
-  </div>
+            <div className="text-center md:text-left flex-1 mb-2">
+              <h1 className="text-3xl md:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400">
+                {session.user.name || "Kẻ lang thang bí ẩn"}
+              </h1>
+              <p className="text-gray-400 mt-1.5 font-medium text-sm md:text-base">{session.user.email}</p>
+            </div>
 
-  {/* Các section thông tin khác */}
-  <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-    <div className="bg-gray-900/50 p-6 rounded-xl border border-gray-700">
-      <h3 className="text-lg font-semibold text-gray-200 mb-4">Thông tin tài khoản</h3>
-      <ul className="space-y-3 text-sm text-gray-400">
-        <li className="flex justify-between">
-          <span>Trạng thái:</span>
-          <span className="text-green-400 font-medium">Đang hoạt động</span>
-        </li>
-        <li className="flex justify-between">
-          <span>Vai trò:</span>
-          <span className="text-blue-400 font-medium">Thành viên (USER)</span>
-        </li>
-      </ul>
-    </div>
+            {/* Huy hiệu Role nằm nổi bật ở góc */}
+            <div className={`mb-4 md:mb-3 px-5 py-2 rounded-full border ${roleBadge} shadow-lg backdrop-blur-md flex items-center gap-2`}>
+              <span className={`text-sm font-bold tracking-wider ${roleColor}`}>
+                {isAdmin ? "👑 " : "🌟 "}{roleText}
+              </span>
+            </div>
+          </div>
 
-    <div className="bg-gray-900/50 p-6 rounded-xl border border-gray-700">
-      <h3 className="text-lg font-semibold text-gray-200 mb-4">Hoạt động gần đây</h3>
-      <p className="text-sm text-gray-500 italic">
-        Chưa có dữ liệu lịch sử xem Anime hay đọc Manga.
-      </p>
-    </div>
-  </div>
-</div>
+          {/* THANH ĐIỀU HƯỚNG TỦ TRUYỆN / PHIM */}
+          <div className="bg-gray-900/40 p-6 md:px-10 flex flex-wrap gap-4 justify-center md:justify-start border-b border-gray-700/50">
+            <Link 
+              href="/profile/reading-list" 
+              className="group relative overflow-hidden flex items-center gap-3 bg-blue-600/10 hover:bg-blue-600 text-blue-400 hover:text-white border border-blue-600/30 font-bold py-3 px-6 rounded-xl transition-all duration-300"
+            >
+              <span className="text-xl group-hover:scale-125 transition-transform">📚</span> 
+              <span>Tủ Truyện Tranh</span>
+            </Link>
+            
+            <Link 
+              href="/profile/watching-list" 
+              className="group relative overflow-hidden flex items-center gap-3 bg-purple-600/10 hover:bg-purple-600 text-purple-400 hover:text-white border border-purple-600/30 font-bold py-3 px-6 rounded-xl transition-all duration-300"
+            >
+              <span className="text-xl group-hover:scale-125 transition-transform">🎬</span> 
+              <span>Kho Anime</span>
+            </Link>
+
+            {/* Nút đặc quyền: Chỉ Admin mới thấy nút nhảy nhanh sang trang Quản trị */}
+            {isAdmin && (
+              <Link 
+                href="/admin/manga" 
+                className="group md:ml-auto relative overflow-hidden flex items-center gap-3 bg-red-600/10 hover:bg-red-600 text-red-400 hover:text-white border border-red-600/30 font-bold py-3 px-6 rounded-xl transition-all duration-300"
+              >
+                <span className="text-xl group-hover:scale-125 transition-transform">⚙️</span> 
+                <span>Quản Trị Hệ Thống</span>
+              </Link>
+            )}
+          </div>
+
+          {/* KHOẢNG THÔNG TIN (INFO CARDS) */}
+          <div className="p-6 md:p-10 grid grid-cols-1 md:grid-cols-2 gap-8">
+            
+            {/* Card 1: Account Details */}
+            <div className="bg-gray-900/60 p-6 rounded-2xl border border-gray-700/50 hover:border-gray-500 transition duration-300 shadow-inner group">
+              <h3 className="text-lg font-bold text-gray-200 mb-6 flex items-center gap-2">
+                <span className="text-blue-500 text-xl group-hover:rotate-180 transition-transform duration-500">❖</span> Thông tin tài khoản
+              </h3>
+              <ul className="space-y-4 text-sm text-gray-400">
+                <li className="flex justify-between items-center bg-gray-800/50 p-3.5 rounded-lg border border-gray-700/30">
+                  <span className="font-medium">Trạng thái:</span>
+                  <span className="flex items-center gap-2 text-green-400 font-bold">
+                    <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_#22c55e]"></span>
+                    Đang hoạt động
+                  </span>
+                </li>
+                <li className="flex justify-between items-center bg-gray-800/50 p-3.5 rounded-lg border border-gray-700/30">
+                  <span className="font-medium">Cấp bậc:</span>
+                  <span className={`${roleColor} font-bold`}>{roleText}</span>
+                </li>
+              </ul>
+            </div>
+
+            {/* Card 2: Recent Activity */}
+            <div className="bg-gray-900/60 p-6 rounded-2xl border border-gray-700/50 hover:border-gray-500 transition duration-300 shadow-inner group">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-lg font-bold text-gray-200 flex items-center gap-2">
+                  <span className="text-purple-500 text-xl group-hover:animate-spin">⟳</span> Hoạt động gần đây
+                </h3>
+              </div>
+
+              {loadingHistory ? (
+                <div className="text-center text-gray-500 py-4">Đang tải lịch sử...</div>
+              ) : mangaHistory.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-32 text-center bg-gray-800/30 rounded-lg border border-gray-700/30 border-dashed">
+                  <span className="text-3xl mb-2 opacity-30 grayscale group-hover:grayscale-0 transition">📭</span>
+                  <p className="text-sm text-gray-500 italic">
+                    Chưa có dữ liệu lịch sử.<br/>Hãy bắt đầu cuộc hành trình ngay thôi!
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {mangaHistory.map((historyItem) => (
+                    <Link 
+                      key={historyItem.id} 
+                      href={`/manga/${historyItem.manga.id}/chapter/${historyItem.chapter.id}`}
+                      className="flex items-center gap-4 p-3 bg-gray-800/40 hover:bg-gray-700/50 rounded-xl border border-transparent hover:border-gray-600 transition-all"
+                    >
+                      {/* Bìa truyện mini */}
+                      <div className="w-12 h-16 shrink-0 bg-gray-800 rounded-md overflow-hidden">
+                        {historyItem.manga.coverImage ? (
+                          <img src={historyItem.manga.coverImage} alt={historyItem.manga.title} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full text-[8px] text-gray-500 flex items-center justify-center">No Img</div>
+                        )}
+                      </div>
+                      
+                      {/* Thông tin */}
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-bold text-sm text-gray-200 truncate group-hover:text-purple-400">{historyItem.manga.title}</h4>
+                        <p className="text-xs text-gray-400 mt-1 truncate">Đang đọc: <span className="text-blue-400">{historyItem.chapter.title}</span></p>
+                        <p className="text-[10px] text-gray-500 mt-1">
+                          {new Date(historyItem.updatedAt).toLocaleString("vi-VN", { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })}
+                        </p>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
-        </div>
-    );
+      </div>
+    </div>
+  );
 }

@@ -3,21 +3,25 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
+  provider = "postgresql"
 }
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  name      String?
-  password  String?
-  role      String   @default("USER") // USER hoặc ADMIN
+  id       String  @id @default(uuid())
+  email    String  @unique
+  name     String?
+  password String?
+  role     String  @default("USER") // USER hoặc ADMIN
 
   resetToken       String?   @unique
   resetTokenExpiry DateTime?
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime? @updatedAt
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime?      @updatedAt
+  ratings        Rating[]
+  comments       Comment[]
+  readingLists   ReadingList[]
+  mangaHistories MangaHistory[]
 }
 
 model Anime {
@@ -28,18 +32,22 @@ model Anime {
 }
 
 model Manga {
-  id          String    @id @default(uuid())
-  title       String    @unique // Thêm @unique để tìm truyện theo tên không bị trùng
-  description String?   @db.Text
-  author      String?  
-  coverImage  String?  
-  status      String    @default("ONGOING")
-  
-  // Mối quan hệ 1 Manga có nhiều Chapter
-  chapters    Chapter[] 
+  id          String  @id @default(uuid())
+  title       String  @unique // Thêm @unique để tìm truyện theo tên không bị trùng
+  description String? @db.Text
+  author      String?
+  coverImage  String?
+  status      String  @default("ONGOING")
 
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  // Mối quan hệ 1 Manga có nhiều Chapter
+  chapters Chapter[]
+
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  ratings        Rating[]
+  comments       Comment[]
+  readingLists   ReadingList[]
+  mangaHistories MangaHistory[]
 }
 
 model Episode {
@@ -51,26 +59,102 @@ model Episode {
 }
 
 model Chapter {
-  id          String   @id @default(uuid())
-  title       String   // Tên chương (VD: Chapter 1)
-  images      String[] // Lưu danh sách link ảnh Cloudinary dưới dạng mảng
-  
+  id     String   @id @default(uuid())
+  title  String // Tên chương (VD: Chapter 1)
+  images String[] // Lưu danh sách link ảnh Cloudinary dưới dạng mảng
+
   // Khóa ngoại liên kết với bảng Manga
-  mangaId     String
-  manga       Manga    @relation(fields: [mangaId], references: [id], onDelete: Cascade)
+  mangaId String
+  manga   Manga  @relation(fields: [mangaId], references: [id], onDelete: Cascade)
 
-  mappings    TimelineMapping[]
+  mappings TimelineMapping[]
 
-  createdAt   DateTime @default(now())
+  createdAt      DateTime       @default(now())
+  comments       Comment[]
+  mangaHistories MangaHistory[]
 }
 
 // Tính năng Anime-Manga Synchronization (Crowdsourcing)
 model TimelineMapping {
-  id        String   @id @default(uuid())
+  id        String @id @default(uuid())
   episodeId String
   chapterId String
-  status    String   @default("PENDING") // PENDING, APPROVED, REJECTED
-  
-  episode   Episode  @relation(fields: [episodeId], references: [id])
-  chapter   Chapter  @relation(fields: [chapterId], references: [id])
+  status    String @default("PENDING") // PENDING, APPROVED, REJECTED
+
+  episode Episode @relation(fields: [episodeId], references: [id])
+  chapter Chapter @relation(fields: [chapterId], references: [id])
+}
+
+// Bảng lưu điểm đánh giá truyện
+model Rating {
+  id    String @id @default(uuid())
+  score Int // Điểm từ 1 đến 5
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  mangaId String
+  manga   Manga  @relation(fields: [mangaId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  // Đảm bảo 1 user chỉ được đánh giá 1 truyện 1 lần duy nhất
+  @@unique([userId, mangaId])
+}
+
+// Bảng lưu bình luận (Dùng chung cho cả Manga và Chapter)
+model Comment {
+  id      String @id @default(uuid())
+  content String @db.Text
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Có thể null: Nếu comment cho truyện thì mangaId có giá trị, chapterId = null
+  mangaId String?
+  manga   Manga?  @relation(fields: [mangaId], references: [id], onDelete: Cascade)
+
+  // Có thể null: Nếu comment cho chapter thì chapterId có giá trị, mangaId = null
+  chapterId String?
+  chapter   Chapter? @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+model ReadingList {
+  id String @id @default(uuid())
+
+  // Liên kết với bảng User
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Liên kết với bảng Manga
+  mangaId String
+  manga   Manga  @relation(fields: [mangaId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  // Ràng buộc: Một người dùng chỉ được thêm một bộ truyện vào danh sách một lần duy nhất
+  @@unique([userId, mangaId])
+}
+
+// Bảng lưu lịch sử đọc Truyện
+model MangaHistory {
+  id String @id @default(uuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  mangaId String
+  manga   Manga  @relation(fields: [mangaId], references: [id], onDelete: Cascade)
+
+  // Lưu lại đúng cái Chapter mà user đang đọc dở
+  chapterId String
+  chapter   Chapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+  // updatedAt rất quan trọng để sắp xếp lịch sử từ mới nhất đến cũ nhất
+  updatedAt DateTime @default(now()) @updatedAt
+
+  // Đảm bảo 1 user chỉ có 1 bản ghi lịch sử cho 1 bộ truyện (ghi đè khi đọc chap mới)
+  @@unique([userId, mangaId])
 }
