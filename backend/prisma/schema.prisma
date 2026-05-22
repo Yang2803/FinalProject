@@ -27,8 +27,10 @@ model User {
 model Anime {
   id          String    @id @default(uuid())
   title       String
-  description String?
+  description String?   @db.Text
+  coverImage  String?
   episodes    Episode[]
+  createdAt   DateTime  @default(now())
 }
 
 model Manga {
@@ -51,11 +53,22 @@ model Manga {
 }
 
 model Episode {
-  id       String            @id @default(uuid())
-  title    String
-  animeId  String
-  anime    Anime             @relation(fields: [animeId], references: [id])
-  mappings TimelineMapping[]
+  id               String            @id @default(uuid())
+  title            String // Ví dụ: "Tập 01", "Tập 02"
+  videoUrl         String // Đường dẫn video từ Cloudinary
+  animeId          String
+  anime            Anime             @relation(fields: [animeId], references: [id], onDelete: Cascade)
+  subtitles        Subtitle[] // Một tập phim có thể có nhiều phụ đề (Việt, Anh, Nhật...)
+  createdAt        DateTime          @default(now())
+  timelineMappings TimelineMapping[]
+}
+
+model Subtitle {
+  id        String  @id @default(uuid())
+  label     String // Nhãn hiển thị, ví dụ: "Tiếng Việt", "English"
+  url       String // Đường dẫn file .srt hoặc .ass từ Cloudinary
+  episodeId String
+  episode   Episode @relation(fields: [episodeId], references: [id], onDelete: Cascade)
 }
 
 model Chapter {

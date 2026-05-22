@@ -1,5 +1,4 @@
 import express, { Request, Response } from 'express';
-import cors from 'cors';
 import dotenv from 'dotenv';
 import bcrypt from 'bcryptjs';
 import nodemailer from "nodemailer";
@@ -7,6 +6,11 @@ import crypto from "crypto";
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
+import cors from "cors";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+
+
 
 dotenv.config();
 
@@ -18,6 +22,7 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 app.use(cors());
+app.use(cors({ origin: "*", methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"] }));
 app.use(express.json());
 
 // ================= API AUTH =================
@@ -744,6 +749,242 @@ app.get('/api/history/:userId', async (req: Request, res: Response): Promise<any
   }
 });
 
+
+// ==========================================
+// API QUẢN LÝ ANIME & EPISODE (ADMIN)
+// ==========================================
+
+// 1. Lấy danh sách rút gọn của Anime để đưa vào ô chọn (Dropdown Select)
+app.get('/api/admin/anime/list-select', async (req: Request, res: Response) => {
+  try {
+    const animes = await prisma.anime.findMany({
+      select: { id: true, title: true },
+      orderBy: { title: 'asc' }
+    });
+    res.status(200).json(animes);
+  } catch (error) {
+    res.status(500).json({ message: "Lỗi tải danh sách phim." });
+  }
+});
+
+// 2. API: Tạo tập phim mới kèm theo mảng phụ đề tương ứng
+app.post('/api/admin/episode', async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { animeId, title, videoUrl, subtitles } = req.body;
+
+    if (!animeId || !title || !videoUrl) {
+      return res.status(400).json({ message: "Vui lòng điền đủ thông tin bắt buộc!" });
+    }
+
+    // Tiến hành lưu thông tin tập phim và các phụ đề vào DB bằng cơ chế lồng dữ liệu (create Many)
+    const newEpisode = await prisma.episode.create({
+      data: {
+        animeId,
+        title,
+        videoUrl,
+        subtitles: {
+          create: subtitles // Mảng object chứa { label, url } gửi từ Frontend lên
+        }
+      },
+      include: { subtitles: true }
+    });
+
+    res.status(201).json({ message: "Đăng tập phim mới thành công!", episode: newEpisode });
+  } catch (error) {
+    console.error("Lỗi đăng tập phim:", error);
+    res.status(500).json({ message: "Lỗi server khi lưu tập phim." });
+  }
+});
+
+// API: Đăng bộ Anime mới
+app.post('/api/admin/anime', async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { title, description, coverImage, author, status } = req.body;
+
+    if (!title) {
+      return res.status(400).json({ message: "Tên phim không được để trống!" });
+    }
+
+    const newAnime = await prisma.anime.create({
+      data: {
+        title,
+        description,
+        coverImage,
+        // Nếu bạn đã thêm author và status vào schema.prisma thì bổ sung vào đây
+        // author, 
+        // status 
+      }
+    });
+
+    res.status(201).json({ message: "Thêm bộ Anime mới thành công!", anime: newAnime });
+  } catch (error) {
+    console.error("Lỗi khi thêm Anime:", error);
+    res.status(500).json({ message: "Lỗi server khi thêm phim mới." });
+  }
+});
+
+// 3. API: Lấy danh sách toàn bộ Anime cho trang Quản trị
+app.get('/api/admin/anime', async (req: Request, res: Response) => {
+  try {
+    const animes = await prisma.anime.findMany({
+      orderBy: { createdAt: 'desc' }, // Phim mới thêm lên đầu
+      include: {
+        _count: {
+          select: { episodes: true } // Đếm số lượng tập phim để hiển thị cho Admin dễ quản lý
+        }
+      }
+    });
+    res.status(200).json(animes);
+  } catch (error) {
+    res.status(500).json({ message: "Lỗi server khi tải danh sách Anime." });
+  }
+});
+
+// 4. API: Xóa bộ Anime (Sẽ tự động xóa luôn các Episode và Subtitle bên trong nhờ onDelete: Cascade)
+app.delete('/api/admin/anime/:id', async (req: Request, res: Response): Promise<any> => {
+  try {
+    const id = req.params.id as string;
+    await prisma.anime.delete({
+      where: { id }
+    });
+    res.status(200).json({ message: "Đã xóa bộ phim thành công!" });
+  } catch (error) {
+    console.error("Lỗi xóa Anime:", error);
+    res.status(500).json({ message: "Lỗi server khi xóa phim." });
+  }
+});
+
+
+// Khởi tạo Client kết nối với Cloudflare R2
+const s3Client = new S3Client({
+  region: "auto",
+  endpoint: process.env.R2_ENDPOINT as string,
+  credentials: {
+    accessKeyId: process.env.R2_ACCESS_KEY_ID as string,
+    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY as string,
+  },
+  forcePathStyle: true,
+
+  requestChecksumCalculation: "WHEN_REQUIRED",
+  responseChecksumValidation: "WHEN_REQUIRED",
+});
+
+// API Cấp link Upload (Presigned URL)
+app.post('/api/admin/get-upload-url', async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { fileName, fileType } = req.body;
+    
+    // Tạo một tên file unique tránh trùng lặp khi up lên R2
+    const uniqueFileName = `${Date.now()}-${fileName.replace(/\s+/g, '-')}`;
+
+    const command = new PutObjectCommand({
+      Bucket: process.env.R2_BUCKET_NAME as string,
+      Key: uniqueFileName,
+      //ContentType: fileType, // Khai báo chuẩn loại file (video/mp4, text/vtt...)
+    });
+
+    // Tạo link upload có thời hạn 15 phút (900 giây)
+    const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 900 });
+    
+    // Link public để lát nữa lưu vào Database
+    const publicUrl = `${process.env.R2_PUBLIC_DOMAIN}/${uniqueFileName}`;
+
+    res.status(200).json({ uploadUrl, publicUrl });
+  } catch (error) {
+    console.error("Lỗi tạo Presigned URL:", error);
+    res.status(500).json({ message: "Lỗi tạo link upload Cloudflare R2." });
+  }
+});
+
+// 1. [NÂNG CẤP] API: Lấy chi tiết 1 bộ Anime kèm danh sách tập phim đã đăng
+app.get('/api/admin/anime/:id', async (req: Request, res: Response): Promise<any> => {
+  try {
+    const animeId = req.params.id as string;
+    
+    const anime = await prisma.anime.findUnique({
+      where: { id: animeId },
+      include: {
+        episodes: {
+          orderBy: { createdAt: 'asc' } // Sắp xếp tập phim từ cũ đến mới (Tập 1, 2, 3...)
+        }
+      }
+    });
+    
+    if (!anime) return res.status(404).json({ message: "Không tìm thấy bộ Anime yêu cầu" });
+    res.status(200).json(anime);
+  } catch (error) {
+    res.status(500).json({ message: "Lỗi tải thông tin phim." });
+  }
+});
+
+// 2. [THÊM MỚI] API: Chỉnh sửa thông tin phim (Sửa Tên, Mô tả, Ảnh bìa)
+app.put('/api/admin/anime/:id', async (req: Request, res: Response): Promise<any> => {
+  try {
+    const animeId = req.params.id as string;
+    const { title, description, coverImage } = req.body;
+
+    if (!title) return res.status(400).json({ message: "Tên phim không được để trống!" });
+
+    const updatedAnime = await prisma.anime.update({
+      where: { id: animeId },
+      data: { title, description, coverImage }
+    });
+
+    res.status(200).json({ message: "Cập nhật bộ Anime thành công!", anime: updatedAnime });
+  } catch (error) {
+    console.error("Lỗi cập nhật Anime:", error);
+    res.status(500).json({ message: "Lỗi server khi cập nhật phim." });
+  }
+});
+
+// 1. API: Xóa tập phim
+app.delete('/api/admin/episode/:id', async (req: Request, res: Response): Promise<any> => {
+  try {
+    const episodeId = req.params.id as string;
+    await prisma.episode.delete({
+      where: { id: episodeId }
+    });
+    res.status(200).json({ message: "Xóa tập phim thành công!" });
+  } catch (error) {
+    console.error("Lỗi xóa tập phim:", error);
+    res.status(500).json({ message: "Lỗi server khi xóa tập phim." });
+  }
+});
+
+// 2. API: Lấy chi tiết 1 tập phim (Dùng cho trang Edit)
+app.get('/api/admin/episode-detail/:id', async (req: Request, res: Response): Promise<any> => {
+  try {
+    const episodeId = req.params.id as string;
+    const episode = await prisma.episode.findUnique({
+      where: { id: episodeId }
+    });
+    if (!episode) return res.status(404).json({ message: "Không tìm thấy tập phim" });
+    res.status(200).json(episode);
+  } catch (error) {
+    res.status(500).json({ message: "Lỗi tải thông tin tập phim." });
+  }
+});
+
+// 3. API: Cập nhật tập phim (Đổi tên hoặc Đổi link video)
+app.put('/api/admin/episode/:id', async (req: Request, res: Response): Promise<any> => {
+  try {
+    const episodeId = req.params.id as string;
+    const { title, videoUrl } = req.body;
+
+    const updatedEpisode = await prisma.episode.update({
+      where: { id: episodeId },
+      data: {
+        title,
+        ...(videoUrl && { videoUrl }) // Nếu có videoUrl mới gửi lên thì mới update trường này
+      }
+    });
+
+    res.status(200).json({ message: "Cập nhật tập phim thành công!", episode: updatedEpisode });
+  } catch (error) {
+    console.error("Lỗi cập nhật tập phim:", error);
+    res.status(500).json({ message: "Lỗi server khi cập nhật tập phim." });
+  }
+});
 
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
