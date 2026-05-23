@@ -573,42 +573,60 @@ app.get('/api/rating/:mangaId', async (req: Request, res: Response): Promise<any
   }
 });
 
-// 2. Đăng Comment mới
+// ==========================================
+// API BÌNH LUẬN DÙNG CHUNG (MANGA, CHAPTER, ANIME, EPISODE)
+// ==========================================
+
+// 1. LẤY DANH SÁCH BÌNH LUẬN
+app.get('/api/comments', async (req: Request, res: Response) => {
+  try {
+    const { mangaId, chapterId, animeId, episodeId } = req.query;
+
+    // Tự động xây dựng bộ lọc dựa trên URL Frontend gửi lên
+    const whereClause: any = {};
+    if (mangaId) whereClause.mangaId = mangaId as string;
+    if (chapterId) whereClause.chapterId = chapterId as string;
+    if (animeId) whereClause.animeId = animeId as string;
+    if (episodeId) whereClause.episodeId = episodeId as string;
+
+    const comments = await prisma.comment.findMany({
+      where: whereClause,
+      include: { user: { select: { name: true, email: true } } },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.status(200).json(comments);
+  } catch (error) {
+    res.status(500).json({ message: "Lỗi tải bình luận" });
+  }
+});
+
+// 2. GỬI BÌNH LUẬN MỚI
 app.post('/api/comments', async (req: Request, res: Response): Promise<any> => {
   try {
-    const { userId, content, mangaId, chapterId } = req.body;
-    if (!userId || !content || (!mangaId && !chapterId)) {
-      return res.status(400).json({ message: "Dữ liệu không hợp lệ!" });
+    // Nhận tất cả các loại ID có thể có
+    const { userId, content, mangaId, chapterId, animeId, episodeId } = req.body;
+
+    // Kiểm tra: Phải có ít nhất 1 trong 4 loại ID này thì mới hợp lệ
+    if (!userId || !content || (!mangaId && !chapterId && !animeId && !episodeId)) {
+      return res.status(400).json({ message: "Thiếu dữ liệu bắt buộc" });
     }
 
     const newComment = await prisma.comment.create({
-      data: { userId, content, mangaId, chapterId },
-      include: { user: { select: { name: true, email: true } } } // Trả về kèm tên người comment
+      data: {
+        userId,
+        content,
+        mangaId,
+        chapterId,
+        animeId,
+        episodeId
+      },
+      include: { user: { select: { name: true, email: true } } }
     });
 
     res.status(201).json(newComment);
   } catch (error) {
-    res.status(500).json({ message: "Lỗi khi đăng bình luận." });
-  }
-});
-
-// 3. Lấy danh sách Comment (Lọc theo mangaId hoặc chapterId)
-app.get('/api/comments', async (req: Request, res: Response): Promise<any> => {
-  try {
-    const { mangaId, chapterId } = req.query;
-    
-    const comments = await prisma.comment.findMany({
-      where: {
-        ...(mangaId ? { mangaId: String(mangaId) } : {}),
-        ...(chapterId ? { chapterId: String(chapterId) } : {})
-      },
-      include: { user: { select: { name: true, email: true } } },
-      orderBy: { createdAt: 'desc' } // Comment mới nhất lên đầu
-    });
-
-    res.status(200).json(comments);
-  } catch (error) {
-    res.status(500).json({ message: "Lỗi tải bình luận." });
+    console.error(error);
+    res.status(500).json({ message: "Lỗi đăng bình luận" });
   }
 });
 
@@ -741,8 +759,18 @@ app.get('/api/history/:userId', async (req: Request, res: Response): Promise<any
       take: 5 // Chỉ lấy 5 hoạt động gần nhất cho gọn Profile
     });
 
+    const animeHistory = await prisma.animeHistory.findMany({
+      where: { userId },
+      include: {
+        anime: { select: { id: true, title: true, coverImage: true } },
+        episode: { select: { id: true, title: true } }
+      },
+      orderBy: { updatedAt: 'desc' },
+      take: 5 
+    });
+
     // Sau này làm Anime, bạn có thể gọi thêm animeHistory và gộp 2 mảng lại tại đây
-    res.status(200).json({ mangaHistory });
+    res.status(200).json({ mangaHistory, animeHistory });
   } catch (error) {
     console.error("Lỗi lấy lịch sử:", error);
     res.status(500).json({ message: "Lỗi server" });
@@ -956,7 +984,8 @@ app.get('/api/admin/episode-detail/:id', async (req: Request, res: Response): Pr
   try {
     const episodeId = req.params.id as string;
     const episode = await prisma.episode.findUnique({
-      where: { id: episodeId }
+      where: { id: episodeId },
+      include: { subtitles: true }
     });
     if (!episode) return res.status(404).json({ message: "Không tìm thấy tập phim" });
     res.status(200).json(episode);
@@ -969,7 +998,7 @@ app.get('/api/admin/episode-detail/:id', async (req: Request, res: Response): Pr
 app.put('/api/admin/episode/:id', async (req: Request, res: Response): Promise<any> => {
   try {
     const episodeId = req.params.id as string;
-    const { title, videoUrl } = req.body;
+    const { title, videoUrl, newSubtitles } = req.body;
 
     const updatedEpisode = await prisma.episode.update({
       where: { id: episodeId },
@@ -979,10 +1008,243 @@ app.put('/api/admin/episode/:id', async (req: Request, res: Response): Promise<a
       }
     });
 
+    // 2. Xử lý phụ đề: Nếu Frontend có gửi mảng phụ đề mới lên -> Thay thế toàn bộ
+    if (newSubtitles && newSubtitles.length > 0) {
+      // Xóa sạch phụ đề cũ của tập này
+      await prisma.subtitle.deleteMany({
+        where: { episodeId: episodeId }
+      });
+      // Tạo các phụ đề mới
+      await prisma.subtitle.createMany({
+        data: newSubtitles.map((sub: any) => ({
+          label: sub.label,
+          url: sub.url,
+          episodeId: episodeId
+        }))
+      });
+    }
+
     res.status(200).json({ message: "Cập nhật tập phim thành công!", episode: updatedEpisode });
   } catch (error) {
     console.error("Lỗi cập nhật tập phim:", error);
     res.status(500).json({ message: "Lỗi server khi cập nhật tập phim." });
+  }
+});
+
+
+// ==========================================
+// API AINME DÀNH CHO USER (PUBLIC)
+// ==========================================
+
+// 1. Lấy danh sách tất cả Anime (Mới nhất lên đầu)
+app.get('/api/anime', async (req: Request, res: Response) => {
+  try {
+    const animes = await prisma.anime.findMany({
+      orderBy: { createdAt: 'desc' },
+      include: {
+        _count: { select: { episodes: true } }
+      }
+    });
+    res.status(200).json(animes);
+  } catch (error) {
+    res.status(500).json({ message: "Lỗi tải danh sách phim." });
+  }
+});
+
+// 2. Lấy chi tiết 1 bộ Anime kèm toàn bộ Tập phim và Phụ đề
+app.get('/api/anime/:id', async (req: Request, res: Response): Promise<any> => {
+  try {
+    const animeId = req.params.id as string;
+    const anime = await prisma.anime.findUnique({
+      where: { id: animeId },
+      include: {
+        episodes: {
+          orderBy: { createdAt: 'asc' }, // Sắp xếp Tập 1, Tập 2...
+          include: { subtitles: true }   // Lấy luôn phụ đề để xem
+        }
+      }
+    });
+    
+    if (!anime) return res.status(404).json({ message: "Không tìm thấy bộ phim" });
+    res.status(200).json(anime);
+  } catch (error) {
+    res.status(500).json({ message: "Lỗi tải thông tin phim." });
+  }
+});
+
+// ==========================================
+// API ANIME RATING & COMMENT
+// ==========================================
+
+// ==========================================
+// API RATING ANIME (ĐÁNH GIÁ SAO)
+// ==========================================
+
+// 1. POST: Gửi hoặc Cập nhật đánh giá (Upsert)
+app.post('/api/rating/anime', async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { userId, animeId, score } = req.body;
+    if (!userId || !animeId || !score) return res.status(400).json({ message: "Thiếu dữ liệu" });
+
+    // Dùng lệnh upsert: Có rồi thì update điểm mới, chưa có thì tạo mới
+    const rating = await prisma.animeRating.upsert({
+      where: {
+        userId_animeId: { userId, animeId } // Nhờ có @@unique trong schema mới dùng được dòng này
+      },
+      update: { score },
+      create: { userId, animeId, score }
+    });
+
+    res.status(200).json({ message: "Đánh giá thành công", rating });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Lỗi lưu đánh giá" });
+  }
+});
+
+// 2. GET: Lấy điểm trung bình và điểm của User hiện tại
+app.get('/api/rating/anime/:id', async (req: Request, res: Response) => {
+  try {
+    const animeId = req.params.id as string;
+    const userId = req.query.userId as string | undefined;
+
+    // Tính toán điểm trung bình và tổng số lượt đánh giá tự động bằng Prisma
+    const aggregations = await prisma.animeRating.aggregate({
+      _avg: { score: true },
+      _count: { score: true },
+      where: { animeId }
+    });
+
+    let userScore = 0;
+    // Nếu Frontend có gửi kèm userId, tìm xem user này đã chấm mấy điểm để tô màu vàng
+    if (userId) {
+      const userRating = await prisma.animeRating.findUnique({
+        where: { userId_animeId: { userId, animeId } }
+      });
+      if (userRating) userScore = userRating.score;
+    }
+
+    res.status(200).json({
+      average: aggregations._avg.score ? Number(aggregations._avg.score.toFixed(1)) : 0,
+      count: aggregations._count.score,
+      userScore
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Lỗi tải thông tin đánh giá" });
+  }
+});
+
+// ==========================================
+// API WATCHLIST (DANH SÁCH XEM ANIME)
+// ==========================================
+
+// 1. POST: Bật/Tắt danh sách xem (Toggle)
+app.post('/api/watchlist/toggle', async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { userId, animeId } = req.body;
+    if (!userId || !animeId) return res.status(400).json({ message: "Thiếu dữ liệu" });
+
+    // Kiểm tra xem phim đã có trong danh sách của user này chưa
+    const existingItem = await prisma.watchList.findUnique({
+      where: { userId_animeId: { userId, animeId } }
+    });
+
+    if (existingItem) {
+      // Nếu có rồi -> Bấm là Xóa
+      await prisma.watchList.delete({ where: { id: existingItem.id } });
+      res.status(200).json({ isInList: false, message: "Đã xóa khỏi danh sách xem" });
+    } else {
+      // Nếu chưa có -> Bấm là Thêm
+      await prisma.watchList.create({ data: { userId, animeId } });
+      res.status(200).json({ isInList: true, message: "Đã thêm vào danh sách xem" });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Lỗi thao tác danh sách xem" });
+  }
+});
+
+// 2. GET: Kiểm tra trạng thái hiện tại (Đã thêm hay chưa)
+app.get('/api/watchlist/status', async (req: Request, res: Response): Promise<any> => {
+  try {
+    const userId = req.query.userId as string;
+    const animeId = req.query.animeId as string;
+
+    if (!userId || !animeId) return res.status(400).json({ message: "Thiếu dữ liệu" });
+
+    const existingItem = await prisma.watchList.findUnique({
+      where: { userId_animeId: { userId, animeId } }
+    });
+
+    // Trả về true nếu tìm thấy, false nếu không tìm thấy
+    res.status(200).json({ isInList: !!existingItem });
+  } catch (error) {
+    res.status(500).json({ message: "Lỗi kiểm tra trạng thái" });
+  }
+});
+
+// 3. GET: Lấy toàn bộ danh sách xem của 1 User
+app.get('/api/watchlist/:userId', async (req: Request, res: Response): Promise<any> => {
+  try {
+    const userId = req.params.userId as string;
+    if (!userId) return res.status(400).json({ message: "Thiếu ID người dùng" });
+
+    const watchlists = await prisma.watchList.findMany({
+      where: { userId: userId },
+      include: {
+        anime: {
+          include: {
+            _count: { select: { episodes: true } } // Lấy luôn tổng số tập phim để hiển thị
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' } // Phim lưu mới nhất sẽ lên đầu
+    });
+
+    res.status(200).json(watchlists);
+  } catch (error) {
+    console.error("Lỗi lấy danh sách xem:", error);
+    res.status(500).json({ message: "Lỗi máy chủ khi tải danh sách" });
+  }
+});
+
+// API Lấy lịch sử Anime
+
+
+// 4. POST: Lưu hoặc cập nhật lịch sử xem Anime
+app.post('/api/history/anime', async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { userId, animeId, episodeId } = req.body;
+
+    if (!userId || !animeId || !episodeId) {
+      return res.status(400).json({ message: "Thiếu thông tin (userId, animeId, episodeId)" });
+    }
+
+    const savedHistory = await prisma.animeHistory.upsert({
+      where: {
+        // Tìm lịch sử dựa trên cặp userId và animeId
+        userId_animeId: {
+          userId: userId,
+          animeId: animeId,
+        }
+      },
+      update: {
+        // Đã xem phim này rồi -> Cập nhật lại tập phim mới nhất đang xem
+        episodeId: episodeId
+        // (Trường updatedAt sẽ được Prisma tự động cập nhật thời gian mới nhất)
+      },
+      create: {
+        // Chưa xem phim này bao giờ -> Tạo dòng lịch sử mới
+        userId,
+        animeId,
+        episodeId
+      }
+    });
+
+    res.status(200).json({ message: "Đã lưu lịch sử xem", history: savedHistory });
+  } catch (error) {
+    console.error("Lỗi lưu lịch sử Anime:", error);
+    res.status(500).json({ message: "Lỗi máy chủ khi lưu lịch sử" });
   }
 });
 

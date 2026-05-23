@@ -95,10 +95,10 @@ export default function AdminAnimeListPage() {
           </div>
           <div className="flex gap-4 mt-4 md:mt-0">
             <Link 
-              href="/profile" 
+              href="/admin" 
               className="px-6 py-2.5 bg-gray-700 hover:bg-gray-600 rounded-lg font-bold transition text-gray-200"
             >
-              Về Profile
+              Về Dashboard
             </Link>
             <Link 
               href="/admin/anime/upload" 

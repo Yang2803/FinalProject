@@ -10,17 +10,17 @@ interface Comment {
   user: { name: string | null; email: string };
 }
 
-// Component này nhận vào 2 props: loại (manga/chapter) và ID tương ứng
-export default function CommentSection({ targetType, targetId }: { targetType: "manga" | "chapter", targetId: string }) {
+// 1. Đã thêm "anime" và "episode" vào danh sách cho phép của targetType
+export default function CommentSection({ targetType, targetId }: { targetType: "manga" | "chapter" | "anime" | "episode", targetId: string }) {
   const { data: session } = useSession();
   const [comments, setComments] = useState<Comment[]>([]);
   const [content, setContent] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    // Gọi API lấy comment dựa trên loại target
+    // 2. Logic gọi API được tối ưu để tự động sinh ra query (VD: animeId=..., mangaId=...)
     const fetchComments = async () => {
-      const query = targetType === "manga" ? `mangaId=${targetId}` : `chapterId=${targetId}`;
+      const query = `${targetType}Id=${targetId}`; 
       const res = await fetch(`http://localhost:5000/api/comments?${query}`);
       if (res.ok) {
         const data = await res.json();
@@ -37,10 +37,11 @@ export default function CommentSection({ targetType, targetId }: { targetType: "
 
     setIsSubmitting(true);
     try {
+      // 3. Sử dụng tính năng Dynamic Key của ES6 để tự động gán đúng ID
       const payload = {
         userId: session.user.id,
         content,
-        ...(targetType === "manga" ? { mangaId: targetId } : { chapterId: targetId })
+        [`${targetType}Id`]: targetId 
       };
 
       const res = await fetch("http://localhost:5000/api/comments", {
@@ -53,9 +54,11 @@ export default function CommentSection({ targetType, targetId }: { targetType: "
         const newComment = await res.json();
         setComments([newComment, ...comments]); // Đẩy comment mới lên đầu danh sách
         setContent(""); // Xóa trắng ô nhập
+      } else {
+        alert("Lỗi khi đăng bình luận!");
       }
     } catch (error) {
-      alert("Lỗi đăng bình luận!");
+      alert("Lỗi kết nối mạng!");
     } finally {
       setIsSubmitting(false);
     }
@@ -92,21 +95,25 @@ export default function CommentSection({ targetType, targetId }: { targetType: "
 
       {/* Danh sách bình luận */}
       <div className="space-y-4">
-        {comments.map((cmt) => (
-          <div key={cmt.id} className="flex gap-4 p-4 bg-gray-900/50 rounded-lg">
-            <div className="w-10 h-10 bg-blue-600 rounded-full flex justify-center items-center font-bold text-lg shrink-0">
-              {/* Lấy chữ cái đầu của Tên hoặc Email làm Avatar */}
-              {(cmt.user.name || cmt.user.email).charAt(0).toUpperCase()}
-            </div>
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="font-bold text-gray-200">{cmt.user.name || cmt.user.email.split('@')[0]}</span>
-                <span className="text-xs text-gray-500">{new Date(cmt.createdAt).toLocaleString("vi-VN")}</span>
+        {comments.length === 0 ? (
+           <p className="text-gray-500 italic text-center py-4">Chưa có bình luận nào. Hãy là người đầu tiên!</p>
+        ) : (
+          comments.map((cmt) => (
+            <div key={cmt.id} className="flex gap-4 p-4 bg-gray-900/50 rounded-lg">
+              <div className="w-10 h-10 bg-blue-600 rounded-full flex justify-center items-center font-bold text-lg shrink-0">
+                {/* Lấy chữ cái đầu của Tên hoặc Email làm Avatar */}
+                {(cmt.user.name || cmt.user.email).charAt(0).toUpperCase()}
               </div>
-              <p className="text-gray-300 text-sm whitespace-pre-wrap">{cmt.content}</p>
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="font-bold text-gray-200">{cmt.user.name || cmt.user.email.split('@')[0]}</span>
+                  <span className="text-xs text-gray-500">{new Date(cmt.createdAt).toLocaleString("vi-VN")}</span>
+                </div>
+                <p className="text-gray-300 text-sm whitespace-pre-wrap">{cmt.content}</p>
+              </div>
             </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
     </div>
   );

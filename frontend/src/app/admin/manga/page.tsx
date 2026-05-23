@@ -33,11 +33,29 @@ export default function AdminMangaList() {
 
   return (
     <div className="p-8 text-white min-h-screen">
-      <div className="flex justify-between items-center mb-6 border-b border-gray-700 pb-4">
-        <h1 className="text-3xl font-bold text-blue-400">Danh sách Manga</h1>
-        <Link href="/admin/manga/upload" className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md transition">
-          + Thêm Truyện Mới
-        </Link>
+      {/* THANH HEADER */}
+      <div className="flex flex-col md:flex-row justify-between items-center mb-6 border-b border-gray-700 pb-4">
+        
+        {/* Bên trái: Tiêu đề */}
+        <h1 className="text-3xl font-bold text-blue-400 mb-4 md:mb-0">Danh sách Manga</h1>
+        
+        {/* Bên phải: Cụm nút điều hướng */}
+        <div className="flex gap-4">
+          <Link 
+            href="/admin" 
+            className="px-6 py-2.5 bg-gray-700 hover:bg-gray-600 rounded-lg font-bold transition text-gray-200 flex items-center justify-center text-sm"
+          >
+            Về Dashboard
+          </Link>
+
+          <Link 
+            href="/admin/manga/upload" 
+            className="px-6 py-2.5 bg-green-600 hover:bg-green-500 rounded-lg font-bold shadow-lg shadow-green-600/30 transition text-white flex items-center justify-center text-sm"
+          >
+            + Thêm Truyện Mới
+          </Link>
+        </div>
+
       </div>
 
       {loading ? (

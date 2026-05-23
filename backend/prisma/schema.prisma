@@ -22,15 +22,22 @@ model User {
   comments       Comment[]
   readingLists   ReadingList[]
   mangaHistories MangaHistory[]
+  animeRatings   AnimeRating[]
+  watchLists     WatchList[]
+  animeHistories AnimeHistory[]
 }
 
 model Anime {
-  id          String    @id @default(uuid())
-  title       String
-  description String?   @db.Text
-  coverImage  String?
-  episodes    Episode[]
-  createdAt   DateTime  @default(now())
+  id             String         @id @default(uuid())
+  title          String
+  description    String?        @db.Text
+  coverImage     String?
+  episodes       Episode[]
+  createdAt      DateTime       @default(now())
+  ratings        AnimeRating[]
+  watchListedBy  WatchList[]
+  comments       Comment[]
+  animeHistories AnimeHistory[]
 }
 
 model Manga {
@@ -61,6 +68,8 @@ model Episode {
   subtitles        Subtitle[] // Một tập phim có thể có nhiều phụ đề (Việt, Anh, Nhật...)
   createdAt        DateTime          @default(now())
   timelineMappings TimelineMapping[]
+  comments         Comment[]
+  animeHistories   AnimeHistory[]
 }
 
 model Subtitle {
@@ -117,21 +126,24 @@ model Rating {
 
 // Bảng lưu bình luận (Dùng chung cho cả Manga và Chapter)
 model Comment {
-  id      String @id @default(uuid())
-  content String @db.Text
+  id        String   @id @default(uuid())
+  content   String   @db.Text
+  createdAt DateTime @default(now())
 
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // Có thể null: Nếu comment cho truyện thì mangaId có giá trị, chapterId = null
-  mangaId String?
-  manga   Manga?  @relation(fields: [mangaId], references: [id], onDelete: Cascade)
-
-  // Có thể null: Nếu comment cho chapter thì chapterId có giá trị, mangaId = null
+  // -- DÀNH CHO MANGA (Đã có sẵn, bạn giữ nguyên) --
+  mangaId   String?
+  manga     Manga?   @relation(fields: [mangaId], references: [id], onDelete: Cascade)
   chapterId String?
   chapter   Chapter? @relation(fields: [chapterId], references: [id], onDelete: Cascade)
 
-  createdAt DateTime @default(now())
+  // -- DÀNH CHO ANIME (Bạn THÊM phần này vào) --
+  animeId   String?
+  anime     Anime?   @relation(fields: [animeId], references: [id], onDelete: Cascade)
+  episodeId String?
+  episode   Episode? @relation(fields: [episodeId], references: [id], onDelete: Cascade)
 }
 
 model ReadingList {
@@ -170,4 +182,49 @@ model MangaHistory {
 
   // Đảm bảo 1 user chỉ có 1 bản ghi lịch sử cho 1 bộ truyện (ghi đè khi đọc chap mới)
   @@unique([userId, mangaId])
+}
+
+// Bảng lưu điểm Đánh giá Sao của Anime
+model AnimeRating {
+  id        String   @id @default(uuid())
+  score     Int // Điểm từ 1 đến 5
+  createdAt DateTime @default(now())
+
+  userId  String
+  animeId String
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  anime Anime @relation(fields: [animeId], references: [id], onDelete: Cascade)
+
+  // RẤT QUAN TRỌNG: Đảm bảo 1 user chỉ được đánh giá 1 lần cho 1 bộ phim
+  @@unique([userId, animeId])
+}
+
+// Bảng lưu Danh sách xem (Watchlist)
+model WatchList {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  userId  String
+  animeId String
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  anime Anime @relation(fields: [animeId], references: [id], onDelete: Cascade)
+
+  // Đảm bảo không bị thêm trùng 1 phim nhiều lần vào danh sách
+  @@unique([userId, animeId])
+}
+
+model AnimeHistory {
+  id        String   @id @default(uuid())
+  updatedAt DateTime @default(now()) @updatedAt
+  userId    String
+  animeId   String
+  episodeId String
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  anime   Anime   @relation(fields: [animeId], references: [id], onDelete: Cascade)
+  episode Episode @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, animeId]) // Đảm bảo mỗi tập phim chỉ ghi nhận 1 lần cập nhật
 }

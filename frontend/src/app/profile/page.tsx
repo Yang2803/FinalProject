@@ -2,31 +2,35 @@
 
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useState, use } from "react";
 
-
-interface HistoryItem {
+// Định nghĩa kiểu dữ liệu cho từng loại
+interface MangaHistoryItem {
   id: string;
   updatedAt: string;
-  manga: {
-    id: string;
-    title: string;
-    coverImage: string | null;
-  };
-  chapter: {
-    id: string;
-    title: string;
-  };
+  manga: { id: string; title: string; coverImage: string | null };
+  chapter: { id: string; title: string };
 }
+
+interface AnimeHistoryItem {
+  id: string;
+  updatedAt: string;
+  anime: { id: string; title: string; coverImage: string | null };
+  episode: { id: string; title: string };
+}
+
+// Tạo kiểu hợp nhất (Union) để TypeScript hiểu "item" có thể là 1 trong 2
+type HistoryUnion = 
+  | (MangaHistoryItem & { type: 'manga' }) 
+  | (AnimeHistoryItem & { type: 'anime' });
 
 export default function ProfilePage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [mangaHistory, setMangaHistory] = useState<HistoryItem[]>([]);
+  const [mangaHistory, setMangaHistory] = useState<MangaHistoryItem[]>([]);
+  const [animeHistory, setAnimeHistory] = useState<AnimeHistoryItem[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
-
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -35,7 +39,9 @@ export default function ProfilePage() {
         const res = await fetch(`http://localhost:5000/api/history/${session.user.id}`);
         if (res.ok) {
           const data = await res.json();
-          setMangaHistory(data.mangaHistory);
+          // Đảm bảo dữ liệu luôn là mảng để tránh lỗi undefined
+          setMangaHistory(data.mangaHistory || []);
+          setAnimeHistory(data.animeHistory || []);
         }
       } catch (error) {
         console.error("Lỗi lấy lịch sử:", error);
@@ -66,8 +72,8 @@ export default function ProfilePage() {
   if (!session?.user) return null;
 
   // ==========================================
-  // SỬA LỖI PHÂN QUYỀN
-  // Lấy role từ session để hiển thị động thay vì gõ chết chữ USER
+  // XỬ LÝ LỖI PHÂN QUYỀN
+  // Lấy role từ session để hiển thị động
   // ==========================================
   const isAdmin = session.user.role === "ADMIN";
   const roleText = isAdmin ? "Quản trị viên (ADMIN)" : "Thành viên (USER)";
@@ -75,12 +81,20 @@ export default function ProfilePage() {
   const roleBadge = isAdmin ? "bg-red-500/20 border-red-500/50" : "bg-blue-500/20 border-blue-500/50";
   const glowColor = isAdmin ? "bg-red-500" : "bg-blue-500";
 
+  // ==========================================
+  // XỬ LÝ DỮ LIỆU LỊCH SỬ GỘP (MANGA + ANIME)
+  // ==========================================
+  const combinedHistory: HistoryUnion[] = [
+    ...(mangaHistory || []).map((item) => ({ ...item, type: "manga" as const })),
+    ...(animeHistory || []).map((item) => ({ ...item, type: "anime" as const })),
+  ].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+
   return (
     <div className="min-h-screen bg-[#0f0f11] text-white font-sans pb-12">
       
       {/* 1. COVER BANNER: Nâng cấp thành phong cách Dark Aesthetic */}
       <div className="relative h-64 md:h-80 w-full bg-gradient-to-br from-indigo-950 via-purple-950 to-black overflow-hidden">
-        {/* Layer ảnh pattern mờ ảo (Bạn có thể đổi link ảnh này thành hình Jujutsu Kaisen hoặc Bungou Stray Dogs để tăng độ "Otaku") */}
+        {/* Layer ảnh pattern mờ ảo */}
         <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1618336753974-aae8e04506aa?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center opacity-20 mix-blend-overlay"></div>
         {/* Gradient sương mù hòa trộn với background */}
         <div className="absolute inset-0 bg-gradient-to-t from-[#0f0f11] via-transparent to-transparent"></div>
@@ -139,7 +153,7 @@ export default function ProfilePage() {
             {/* Nút đặc quyền: Chỉ Admin mới thấy nút nhảy nhanh sang trang Quản trị */}
             {isAdmin && (
               <Link 
-                href="/admin/manga" 
+                href="/admin" 
                 className="group md:ml-auto relative overflow-hidden flex items-center gap-3 bg-red-600/10 hover:bg-red-600 text-red-400 hover:text-white border border-red-600/30 font-bold py-3 px-6 rounded-xl transition-all duration-300"
               >
                 <span className="text-xl group-hover:scale-125 transition-transform">⚙️</span> 
@@ -181,7 +195,7 @@ export default function ProfilePage() {
 
               {loadingHistory ? (
                 <div className="text-center text-gray-500 py-4">Đang tải lịch sử...</div>
-              ) : mangaHistory.length === 0 ? (
+              ) : combinedHistory.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-32 text-center bg-gray-800/30 rounded-lg border border-gray-700/30 border-dashed">
                   <span className="text-3xl mb-2 opacity-30 grayscale group-hover:grayscale-0 transition">📭</span>
                   <p className="text-sm text-gray-500 italic">
@@ -190,34 +204,60 @@ export default function ProfilePage() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {mangaHistory.map((historyItem) => (
-                    <Link 
-                      key={historyItem.id} 
-                      href={`/manga/${historyItem.manga.id}/chapter/${historyItem.chapter.id}`}
-                      className="flex items-center gap-4 p-3 bg-gray-800/40 hover:bg-gray-700/50 rounded-xl border border-transparent hover:border-gray-600 transition-all"
-                    >
-                      {/* Bìa truyện mini */}
-                      <div className="w-12 h-16 shrink-0 bg-gray-800 rounded-md overflow-hidden">
-                        {historyItem.manga.coverImage ? (
-                          <img src={historyItem.manga.coverImage} alt={historyItem.manga.title} className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full text-[8px] text-gray-500 flex items-center justify-center">No Img</div>
-                        )}
-                      </div>
-                      
-                      {/* Thông tin */}
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-bold text-sm text-gray-200 truncate group-hover:text-purple-400">{historyItem.manga.title}</h4>
-                        <p className="text-xs text-gray-400 mt-1 truncate">Đang đọc: <span className="text-blue-400">{historyItem.chapter.title}</span></p>
-                        <p className="text-[10px] text-gray-500 mt-1">
-                          {new Date(historyItem.updatedAt).toLocaleString("vi-VN", { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })}
-                        </p>
-                      </div>
-                    </Link>
-                  ))}
+                  {combinedHistory.map((item) => {
+                    // Phân loại logic hiển thị dựa trên type
+                    const isManga = item.type === "manga";
+                    const linkUrl = isManga 
+                      ? `/manga/${item.manga.id}/chapter/${item.chapter.id}` 
+                      : `/anime/${item.anime.id}/watch/${item.episode.id}`;
+                    const coverImg = isManga ? item.manga.coverImage : item.anime.coverImage;
+                    const mainTitle = isManga ? item.manga.title : item.anime.title;
+                    const subTitle = isManga 
+                      ? <><span className="text-blue-400">Đang đọc:</span> {item.chapter.title}</>
+                      : <><span className="text-purple-400">Đang xem:</span> {item.episode.title}</>;
+
+                    return (
+                      <Link 
+                        key={`${item.type}-${item.id}`} 
+                        href={linkUrl}
+                        className="flex items-center gap-4 p-3 bg-gray-800/40 hover:bg-gray-700/50 rounded-xl border border-transparent hover:border-gray-600 transition-all"
+                      >
+                        {/* Bìa mini */}
+                        <div className="w-12 h-16 shrink-0 bg-gray-800 rounded-md overflow-hidden relative">
+                          {/* Tag nhỏ hiển thị Manga hay Anime */}
+                          <div className={`absolute top-0 left-0 text-[8px] font-bold px-1 py-0.5 rounded-br-md z-10 text-white ${isManga ? 'bg-blue-600' : 'bg-purple-600'}`}>
+                            {isManga ? 'MANGA' : 'ANIME'}
+                          </div>
+                          
+                          {coverImg ? (
+                            <img src={coverImg} alt={mainTitle} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full text-[8px] text-gray-500 flex items-center justify-center">No Img</div>
+                          )}
+                        </div>
+                        
+                        {/* Thông tin */}
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-bold text-sm text-gray-200 truncate group-hover:text-purple-400">
+                            {mainTitle}
+                          </h4>
+                          <p className="text-xs text-gray-400 mt-1 truncate">
+                            {subTitle}
+                          </p>
+                          <p className="text-[10px] text-gray-500 mt-1">
+                            {new Date(item.updatedAt).toLocaleString("vi-VN", { 
+                              hour: '2-digit', minute: '2-digit', 
+                              day: '2-digit', month: '2-digit', year: 'numeric' 
+                            })}
+                          </p>
+                        </div>
+                      </Link>
+                    );
+                  })}
                 </div>
               )}
             </div>
+
           </div>
         </div>
       </div>

@@ -3,50 +3,162 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
+// Khai báo kiểu dữ liệu cho Manga
 interface Manga {
   id: string;
   title: string;
-  coverImage: string;
+  coverImage: string | null;
+}
+
+// Khai báo kiểu dữ liệu cho Anime
+interface Anime {
+  id: string;
+  title: string;
+  coverImage: string | null;
+  _count: {
+    episodes: number;
+  };
 }
 
 export default function Home() {
   const [recentMangas, setRecentMangas] = useState<Manga[]>([]);
+  const [recentAnimes, setRecentAnimes] = useState<Anime[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Gọi API lấy truyện, có thể viết thêm logic slice(0, 10) để chỉ lấy 10 truyện mới nhất
-    fetch("http://localhost:5000/api/manga")
-      .then(res => res.json())
-      .then(data => setRecentMangas(data.slice(0, 10))) 
-      .catch(err => console.error(err));
+    const fetchHomepageData = async () => {
+      try {
+        // Dùng Promise.all để gọi 2 API song song, giúp trang tải nhanh gấp đôi
+        const [mangaRes, animeRes] = await Promise.all([
+          fetch("http://localhost:5000/api/manga"),
+          fetch("http://localhost:5000/api/anime")
+        ]);
+
+        if (mangaRes.ok) {
+          const mangaData = await mangaRes.json();
+          setRecentMangas(mangaData.slice(0, 10)); // Chỉ lấy 10 truyện mới nhất
+        }
+
+        if (animeRes.ok) {
+          const animeData = await animeRes.json();
+          setRecentAnimes(animeData.slice(0, 10)); // Chỉ lấy 10 phim mới nhất
+        }
+      } catch (err) {
+        console.error("Lỗi khi tải dữ liệu trang chủ:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchHomepageData();
   }, []);
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-900">
+        <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-900 text-white p-8">
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         
-        {/* Banner hoặc Hero Section của bạn ở đây */}
-        <div className="bg-gray-800 rounded-2xl p-10 mb-12 text-center shadow-2xl">
-          <h1 className="text-4xl font-black mb-4">Welcome to the Smart Anime Platform</h1>
-          <p className="text-gray-400 mb-6">Discover the amazing world of Anime and Manga.</p>
+        {/* HERO SECTION */}
+        <div className="bg-gray-800 rounded-2xl p-10 mb-12 text-center shadow-2xl relative overflow-hidden border border-gray-700">
+          {/* Hiệu ứng nền trang trí mờ */}
+          <div className="absolute top-[-50%] left-[-10%] w-64 h-64 bg-blue-600/20 blur-3xl rounded-full"></div>
+          <div className="absolute bottom-[-50%] right-[-10%] w-64 h-64 bg-purple-600/20 blur-3xl rounded-full"></div>
+          
+          <div className="relative z-10">
+            <h1 className="text-4xl md:text-5xl font-black mb-4 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">
+              Welcome to Smart Anime Platform
+            </h1>
+            <p className="text-gray-400 text-lg mb-6 max-w-2xl mx-auto">
+              Nền tảng khám phá và tận hưởng thế giới Anime & Manga đỉnh cao. Cập nhật nhanh nhất, trải nghiệm mượt mà nhất.
+            </p>
+          </div>
         </div>
 
-        {/* Section: Manga Mới Cập Nhật */}
-        <div className="flex justify-between items-end mb-6">
-          <h2 className="text-2xl font-bold border-l-4 border-blue-500 pl-3">Manga Mới Cập Nhật</h2>
-          <Link href="/manga" className="text-sm text-blue-400 hover:underline">Xem tất cả &rarr;</Link>
-        </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
-          {recentMangas.map((manga) => (
-            <Link key={manga.id} href={`/manga/${manga.id}`} className="group">
-              <div className="bg-gray-800 rounded-lg overflow-hidden shadow-lg transition-transform group-hover:-translate-y-2">
-                <div className="aspect-[2/3] w-full bg-gray-700">
-                  {manga.coverImage && <img src={manga.coverImage} alt={manga.title} className="w-full h-full object-cover" />}
-                </div>
-                <div className="p-3"><h3 className="font-bold text-sm truncate group-hover:text-blue-400">{manga.title}</h3></div>
-              </div>
+        {/* =========================================
+            SECTION: ANIME MỚI CẬP NHẬT
+        ========================================== */}
+        <div className="mb-12">
+          <div className="flex justify-between items-end mb-6">
+            <h2 className="text-2xl font-bold border-l-4 border-blue-500 pl-3">Anime Mới Cập Nhật</h2>
+            <Link href="/anime" className="text-sm text-blue-400 hover:text-blue-300 hover:underline transition">
+              Xem tất cả &rarr;
             </Link>
-          ))}
+          </div>
+
+          {recentAnimes.length === 0 ? (
+            <p className="text-gray-500 italic">Chưa có Anime nào được cập nhật.</p>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
+              {recentAnimes.map((anime) => (
+                <Link key={anime.id} href={`/anime/${anime.id}`} className="group">
+                  <div className="bg-gray-800 rounded-xl overflow-hidden shadow-lg border border-gray-800 hover:border-blue-500 transition-all duration-300">
+                    <div className="relative aspect-[2/3] w-full bg-gray-900 overflow-hidden">
+                      {anime.coverImage ? (
+                        <img src={anime.coverImage} alt={anime.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-gray-600">Trống</div>
+                      )}
+                      
+                      {/* Overlay mờ khi hover */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                      
+                      {/* Badge Số Tập */}
+                      <div className="absolute top-2 left-2 bg-blue-600/90 backdrop-blur-sm text-white font-bold text-xs px-2 py-1 rounded">
+                        {anime._count?.episodes || 0} Tập
+                      </div>
+                    </div>
+                    <div className="p-4">
+                      <h3 className="font-bold text-gray-200 truncate group-hover:text-blue-400 transition">{anime.title}</h3>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* =========================================
+            SECTION: MANGA MỚI CẬP NHẬT
+        ========================================== */}
+        <div>
+          <div className="flex justify-between items-end mb-6">
+            <h2 className="text-2xl font-bold border-l-4 border-green-500 pl-3">Manga Mới Cập Nhật</h2>
+            <Link href="/manga" className="text-sm text-green-400 hover:text-green-300 hover:underline transition">
+              Xem tất cả &rarr;
+            </Link>
+          </div>
+
+          {recentMangas.length === 0 ? (
+            <p className="text-gray-500 italic">Chưa có Manga nào được cập nhật.</p>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
+              {recentMangas.map((manga) => (
+                <Link key={manga.id} href={`/manga/${manga.id}`} className="group">
+                  <div className="bg-gray-800 rounded-xl overflow-hidden shadow-lg border border-gray-800 hover:border-green-500 transition-all duration-300">
+                    <div className="relative aspect-[2/3] w-full bg-gray-900 overflow-hidden">
+                      {manga.coverImage ? (
+                        <img src={manga.coverImage} alt={manga.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-gray-600">Trống</div>
+                      )}
+                      {/* Overlay mờ khi hover */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    </div>
+                    <div className="p-4">
+                      <h3 className="font-bold text-gray-200 truncate group-hover:text-green-400 transition">{manga.title}</h3>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
 
       </div>
