@@ -499,7 +499,7 @@ app.get('/api/chapter/:chapterId', async (req: Request, res: Response): Promise<
   try {
     const chapterId = req.params.chapterId as string;
     
-    // Tìm chương truyện, lấy kèm theo thông tin của Manga chứa nó (để hiển thị tên truyện lên thanh Navbar)
+    // 1. GIỮ NGUYÊN LOGIC CŨ: Tìm chương truyện và lấy kèm thông tin Manga
     const chapter = await prisma.chapter.findUnique({
       where: { id: chapterId },
       include: {
@@ -511,7 +511,31 @@ app.get('/api/chapter/:chapterId', async (req: Request, res: Response): Promise<
 
     if (!chapter) return res.status(404).json({ message: "Không tìm thấy chương truyện này!" });
     
-    res.status(200).json(chapter);
+    // ==========================================
+    // 2. PHẦN BỔ SUNG: Tìm ID của chương trước và chương sau
+    // ==========================================
+    
+    // Lấy toàn bộ danh sách chương của bộ truyện này, sắp xếp theo thời gian tạo
+    const allChapters = await prisma.chapter.findMany({
+      where: { mangaId: chapter.mangaId },
+      orderBy: { createdAt: 'asc' }, // Xếp từ cũ đến mới
+      select: { id: true } // Chỉ lấy đúng ID ra để tính toán cho nhẹ Database
+    });
+
+    // Tìm vị trí (index) của chương hiện tại trong mảng
+    const currentIndex = allChapters.findIndex(c => c.id === chapterId);
+
+    // Lấy ID của chap trước và sau dựa trên index (nếu nằm ở rìa thì gán null)
+   const prevChapterId = currentIndex > 0 ? allChapters[currentIndex - 1]?.id ?? null : null;
+   const nextChapterId = currentIndex < allChapters.length - 1 ? allChapters[currentIndex + 1]?.id ?? null : null;
+   
+    // 3. Trả về cục data y hệt lúc trước, nhưng nhét thêm 2 biến mới vào
+    res.status(200).json({
+      ...chapter,
+      prevChapterId,
+      nextChapterId
+    });
+    
   } catch (error) {
     res.status(500).json({ message: "Lỗi server khi tải nội dung chương truyện." });
   }

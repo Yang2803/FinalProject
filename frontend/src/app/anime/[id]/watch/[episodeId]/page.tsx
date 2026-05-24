@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
-import { useSession } from "next-auth/react"; // 1. Import thêm useSession
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 import CommentSection from "@/components/CommentSection";
 
@@ -24,26 +24,27 @@ interface Episode {
 
 export default function WatchEpisodePage() {
   const params = useParams();
-  const animeId = params.id as string || params.animeId as string; // Fix an toàn cho params
+  const animeId = params.id as string || params.animeId as string;
   const episodeId = params.episodeId as string;
   
-  // Lấy thông tin user đang đăng nhập
   const { data: session } = useSession();
 
   // --- STATE CỦA VIDEO ---
   const [animeTitle, setAnimeTitle] = useState("");
   const [episode, setEpisode] = useState<Episode | null>(null);
+  
+  // 1. BỔ SUNG STATE LƯU TOÀN BỘ DANH SÁCH TẬP PHIM
+  const [allEpisodes, setAllEpisodes] = useState<Episode[]>([]); 
+  
   const [loading, setLoading] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  // Hàm xử lý Tua video (+10 hoặc -10)
   const skipTime = (seconds: number) => {
     if (videoRef.current) {
       videoRef.current.currentTime += seconds;
     }
   };
 
-  // Bắt sự kiện bàn phím để tua bằng phím Mũi tên Trái/Phải
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (document.activeElement?.tagName === "INPUT" || document.activeElement?.tagName === "TEXTAREA") return;
@@ -55,7 +56,6 @@ export default function WatchEpisodePage() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  // Gọi API lấy dữ liệu Phim
   useEffect(() => {
     const fetchVideoData = async () => {
       try {
@@ -63,6 +63,10 @@ export default function WatchEpisodePage() {
         if (resAnime.ok) {
           const data = await resAnime.json();
           setAnimeTitle(data.title);
+          
+          // 2. LƯU MẢNG EPISODES VÀO STATE
+          setAllEpisodes(data.episodes); 
+          
           const currentEp = data.episodes.find((ep: Episode) => ep.id === episodeId);
           setEpisode(currentEp || null);
         }
@@ -78,14 +82,9 @@ export default function WatchEpisodePage() {
     }
   }, [animeId, episodeId]);
 
-  // ==========================================
-  // GỌI API LƯU LỊCH SỬ XEM PHIM NGẦM
-  // ==========================================
   useEffect(() => {
     const saveHistory = async () => {
-      // Nếu chưa đăng nhập hoặc thiếu param thì không lưu
       if (!session?.user?.id || !animeId || !episodeId) return;
-      
       try {
         await fetch("http://localhost:5000/api/history/anime", {
           method: "POST",
@@ -103,9 +102,7 @@ export default function WatchEpisodePage() {
 
     saveHistory();
   }, [session?.user?.id, animeId, episodeId]);
-  // ==========================================
 
-  // Các lệnh return chặn (BẮT BUỘC ĐẶT DƯỚI CÙNG CÁC HOOKS)
   if (loading) return <div className="text-white text-center mt-20">Đang tải video...</div>;
   if (!episode) return <div className="text-white text-center mt-20">Không tìm thấy tập phim!</div>;
 
@@ -143,7 +140,6 @@ export default function WatchEpisodePage() {
 
           {/* LỚP PHỦ CHỨA 2 NÚT TUA */}
           <div className="absolute inset-0 flex items-center justify-center gap-32 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
-            
             <button 
               onClick={() => skipTime(-10)}
               className="pointer-events-auto bg-black/60 hover:bg-blue-600 text-white p-4 rounded-full backdrop-blur-sm transition-transform hover:scale-110 flex flex-col items-center justify-center w-16 h-16 shadow-lg border border-gray-700"
@@ -161,7 +157,6 @@ export default function WatchEpisodePage() {
               <span className="text-xl font-black mb-1">↻</span>
               <span className="text-[10px] font-bold">+10s</span>
             </button>
-            
           </div>
         </div>
         
@@ -173,8 +168,51 @@ export default function WatchEpisodePage() {
           </p>
         </div>
 
+        {/* =========================================
+            3. KHU VỰC DANH SÁCH TẬP PHIM BỔ SUNG
+        ========================================== */}
+        <div className="mt-8 bg-gray-900 rounded-xl p-6 md:p-8 shadow-xl border border-gray-800">
+          <h3 className="text-xl font-bold text-white mb-6 border-l-4 border-blue-500 pl-3">
+            Chọn tập phim
+          </h3>
+          
+          {allEpisodes.length === 0 ? (
+            <div className="text-center py-10 text-gray-500 italic">
+              Đang tải danh sách tập phim...
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              {allEpisodes.map((ep, index) => {
+                // Kiểm tra xem đây có phải là tập phim đang phát không
+                const isActive = ep.id === episodeId; 
+                
+                return (
+                  <Link 
+                    key={ep.id} 
+                    href={`/anime/${animeId}/watch/${ep.id}`}
+                    className={`text-center py-4 rounded-xl transition-all font-semibold shadow-md group flex flex-col items-center justify-center h-full border ${
+                      isActive 
+                        ? "bg-blue-600 border-blue-400 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]" // Nổi bật tập đang xem
+                        : "bg-gray-800 hover:bg-gray-700 border-gray-700 hover:border-gray-500" // Cấu hình tập bình thường
+                    }`}
+                  >
+                    <span className={`${isActive ? "text-blue-200" : "text-gray-400 group-hover:text-white"} text-xs block mb-1`}>
+                      Tập {index + 1}
+                    </span>
+                    <span className={`${isActive ? "text-white" : "text-gray-200"} truncate w-full px-2 text-sm`}>
+                      {ep.title}
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         {/* NHÚNG COMPONENT BÌNH LUẬN */}
-        <CommentSection targetType="episode" targetId={episodeId} />
+        <div className="mt-8">
+          <CommentSection targetType="episode" targetId={episodeId} />
+        </div>
 
       </div>
     </div>
