@@ -126,8 +126,8 @@ export default function UserAnimeDetailPage({ params }: { params: Promise<{ id: 
     }
   };
 
-  if (loading) return <div className="min-h-screen bg-[#0f0f11] text-white flex justify-center items-center">Đang tải...</div>;
-  if (!anime) return <div className="min-h-screen bg-[#0f0f11] text-white flex justify-center items-center">Không tìm thấy phim!</div>;
+  if (loading) return <div className="min-h-screen bg-[#0f0f11] text-white flex justify-center items-center">Loading...</div>;
+  if (!anime) return <div className="min-h-screen bg-[#0f0f11] text-white flex justify-center items-center">Anime not found!</div>;
 
   return (
     <div className="min-h-screen bg-[#0f0f11] text-white">
@@ -140,7 +140,7 @@ export default function UserAnimeDetailPage({ params }: { params: Promise<{ id: 
       </div>
 
       <div className="max-w-6xl mx-auto px-4 md:px-6 -mt-32 relative z-20 pb-12">
-        <Link href="/anime" className="text-gray-400 hover:text-white mb-6 inline-block font-medium drop-shadow-md">&larr; Quay lại danh sách</Link>
+        <Link href="/anime" className="text-gray-400 hover:text-white mb-6 inline-block font-medium drop-shadow-md">&larr; Return to anime list</Link>
 
         {/* KHU VỰC THÔNG TIN PHIM */}
         <div className="bg-gray-800 rounded-2xl p-6 md:p-8 flex flex-col md:flex-row gap-8 shadow-2xl mb-10 border border-gray-700">
@@ -151,7 +151,7 @@ export default function UserAnimeDetailPage({ params }: { params: Promise<{ id: 
               <img src={anime.coverImage} alt={anime.title} className="w-full rounded-xl shadow-2xl border-4 border-gray-900" />
             ) : (
               <div className="w-full aspect-[2/3] rounded-xl shadow-2xl border-4 border-gray-900 bg-gray-900 flex items-center justify-center text-gray-500 font-medium">
-                Không có ảnh
+                No image available
               </div>
             )}
           </div>
@@ -165,11 +165,11 @@ export default function UserAnimeDetailPage({ params }: { params: Promise<{ id: 
               <div className="flex items-end gap-2">
                 <span className="text-3xl font-black text-yellow-400 leading-none">{avgRating > 0 ? avgRating : "-"}</span>
                 <span className="text-gray-400 text-sm font-medium pb-1">
-                  / 5 <span className="text-gray-500 text-xs ml-1">({ratingCount} lượt đánh giá)</span>
+                  / 5 <span className="text-gray-500 text-xs ml-1">({ratingCount} ratings)</span>
                 </span>
               </div>
               <div className="flex items-center gap-1 mt-1">
-                <span className="text-xs text-gray-400 mr-2 uppercase tracking-wider font-bold">Đánh giá:</span>
+                <span className="text-xs text-gray-400 mr-2 uppercase tracking-wider font-bold">Rating:</span>
                 {[1, 2, 3, 4, 5].map((star) => (
                   <button 
                     key={star} 
@@ -184,17 +184,17 @@ export default function UserAnimeDetailPage({ params }: { params: Promise<{ id: 
 
             <div className="flex gap-2 mb-6">
               <span className="px-3 py-1 bg-blue-900/50 text-blue-300 text-xs font-bold rounded-full border border-blue-700/50">
-                {anime.status || "Đang phát sóng"}
+                {anime.status || "Currently Airing"}
               </span>
               <span className="px-3 py-1 bg-gray-700 text-gray-300 text-xs font-bold rounded-full">
-                {anime.episodes.length} Tập
+                {anime.episodes.length} Episodes
               </span>
             </div>
 
             <div className="bg-gray-900/50 p-4 rounded-xl flex-1 border border-gray-800">
-              <h3 className="font-bold text-gray-300 mb-2">Tóm tắt nội dung:</h3>
+              <h3 className="font-bold text-gray-300 mb-2">Summary:</h3>
               <p className="text-gray-400 text-sm leading-relaxed whitespace-pre-wrap">
-                {anime.description || "Chưa có thông tin mô tả."}
+                {anime.description || "No description available."}
               </p>
             </div>
 
@@ -205,7 +205,7 @@ export default function UserAnimeDetailPage({ params }: { params: Promise<{ id: 
                   href={`/anime/${animeId}/watch/${anime.episodes[0].id}`}
                   className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-full shadow-lg shadow-blue-600/30 transition-all inline-block"
                 >
-                  ▶ Xem Tập 1
+                  ▶ Watch Episode 1
                 </Link>
 
                 {/* Nút Thêm vào danh sách xem */}
@@ -221,9 +221,9 @@ export default function UserAnimeDetailPage({ params }: { params: Promise<{ id: 
                   {isToggling ? (
                     <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
                   ) : isInWatchList ? (
-                    <>✓ Đang Theo Dõi</>
+                    <>✓ Currently Following</>
                   ) : (
-                    <>+ Danh Sách Xem</>
+                    <>+ Add to Watch List</>
                   )}
                 </button>
               </div>
@@ -233,11 +233,11 @@ export default function UserAnimeDetailPage({ params }: { params: Promise<{ id: 
 
         {/* KHU VỰC DANH SÁCH TẬP PHIM */}
         <div className="bg-gray-800 rounded-xl p-6 md:p-8 shadow-xl mb-10 border border-gray-700">
-          <h2 className="text-2xl font-bold mb-6 border-b border-gray-700 pb-4 text-white">Danh sách tập phim</h2>
+          <h2 className="text-2xl font-bold mb-6 border-b border-gray-700 pb-4 text-white">Episode List</h2>
           
           {anime.episodes.length === 0 ? (
             <div className="text-center py-10 text-gray-500 italic">
-              Phim đang được cập nhật, vui lòng quay lại sau!
+              The anime is currently being updated, please check back later!
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
@@ -247,7 +247,7 @@ export default function UserAnimeDetailPage({ params }: { params: Promise<{ id: 
                   href={`/anime/${animeId}/watch/${ep.id}`}
                   className="bg-gray-900 hover:bg-blue-600 border border-gray-700 hover:border-blue-500 text-center py-4 rounded-xl transition-all font-semibold shadow-md group flex flex-col items-center justify-center h-full"
                 >
-                  <span className="text-gray-400 group-hover:text-white text-xs block mb-1">Tập {index + 1}</span>
+                  <span className="text-gray-400 group-hover:text-white text-xs block mb-1">Episode {index + 1}</span>
                   <span className="text-gray-200 truncate w-full px-2 text-sm">{ep.title}</span>
                 </Link>
               ))}

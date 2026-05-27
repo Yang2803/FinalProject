@@ -133,20 +133,20 @@ export default function EditEpisodePage() {
     }
   };
 
-  if (loadingData) return <div className="text-white text-center mt-20">Đang tải dữ liệu...</div>;
+  if (loadingData) return <div className="text-white text-center mt-20">Loading data...</div>;
 
   return (
     <div className="min-h-screen bg-[#0f0f11] text-white p-8">
       <div className="max-w-2xl mx-auto bg-gray-800 p-8 rounded-2xl shadow-xl border border-gray-700">
         <div className="flex justify-between items-center mb-6 border-b border-gray-700 pb-4">
-          <h1 className="text-2xl font-black text-blue-400">Chỉnh Sửa Tập Phim</h1>
-          <Link href={`/admin/anime/${animeId}`} className="text-sm text-gray-400 hover:text-white transition">&larr; Trở về</Link>
+          <h1 className="text-2xl font-black text-blue-400">Edit Episode</h1>
+          <Link href={`/admin/anime/${animeId}`} className="text-sm text-gray-400 hover:text-white transition">&larr; Back to Anime</Link>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Tên tập */}
           <div>
-            <label className="block text-sm font-semibold text-gray-300 mb-2">Tên tập phim</label>
+            <label className="block text-sm font-semibold text-gray-300 mb-2">Episode Name</label>
             <input
               type="text"
               required
@@ -159,7 +159,7 @@ export default function EditEpisodePage() {
           {/* Thay video */}
           <div className="bg-gray-900/50 p-4 rounded-xl border border-gray-700 border-dashed">
             <label className="block text-sm font-semibold text-yellow-400 mb-2">
-              🎬 Up lại Video khác (Bỏ qua nếu giữ nguyên video cũ)
+              🎬 Re-upload Video (Skip if keeping the same video)
             </label>
             <input
               type="file"
@@ -176,7 +176,7 @@ export default function EditEpisodePage() {
             
             {/* Hiển thị phụ đề cũ */}
             <div className="mb-4">
-              <label className="block text-sm font-semibold text-gray-300 mb-2">Phụ đề hiện tại đang có:</label>
+              <label className="block text-sm font-semibold text-gray-300 mb-2">Subtitles are currently available:</label>
               {oldSubtitles.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
                   {oldSubtitles.map(sub => (
@@ -184,7 +184,7 @@ export default function EditEpisodePage() {
                   ))}
                 </div>
               ) : (
-                <span className="text-xs text-gray-500 italic">Tập phim này chưa có phụ đề.</span>
+                <span className="text-xs text-gray-500 italic">This episode does not have any subtitles available.</span>
               )}
             </div>
 
@@ -192,18 +192,18 @@ export default function EditEpisodePage() {
             <div className="bg-gray-900/50 p-4 rounded-xl border border-gray-700 border-dashed mt-4">
               <div className="flex justify-between items-center mb-4">
                 <label className="block text-sm font-semibold text-yellow-400">
-                  📝 Thay thế toàn bộ phụ đề (Bỏ qua nếu giữ nguyên)
+                  📝 Replace all subtitles (Skip if keeping the same)
                 </label>
                 <button
                   type="button"
                   onClick={addSubtitleField}
                   className="bg-gray-700 hover:bg-gray-600 text-xs font-bold px-3 py-1.5 rounded-lg transition text-blue-400"
                 >
-                  + Thêm file
+                  + Add file
                 </button>
               </div>
 
-              {subtitleInputs.length > 0 && <p className="text-xs text-red-400 mb-3 italic">Lưu ý: Up phụ đề mới sẽ xóa toàn bộ phụ đề cũ.</p>}
+              {subtitleInputs.length > 0 && <p className="text-xs text-red-400 mb-3 italic">Note: Uploading new subtitles will delete all old subtitles.</p>}
 
               <div className="space-y-3">
                 {subtitleInputs.map((sub) => (
@@ -238,7 +238,7 @@ export default function EditEpisodePage() {
             disabled={isSubmitting}
             className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition disabled:opacity-50"
           >
-            {isSubmitting ? "Đang xử lý & Lưu..." : "Lưu Thay Đổi"}
+            {isSubmitting ? "Processing & Saving..." : "Save Changes"}
           </button>
         </form>
       </div>

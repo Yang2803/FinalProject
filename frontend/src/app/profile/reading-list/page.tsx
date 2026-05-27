@@ -51,7 +51,7 @@ export default function ReadingListPage() {
   // 3. Hàm xử lý: Xóa nhanh truyện khỏi danh sách
   const handleRemove = async (mangaId: string, e: React.MouseEvent) => {
     e.preventDefault(); // Quan trọng: Chặn sự kiện click thẻ <Link> lan tỏa
-    const confirmDelete = confirm("Bạn có chắc chắn muốn bỏ truyện này khỏi danh sách đọc?");
+    const confirmDelete = confirm("Are you sure you want to remove this manga from reading list?");
     if (!confirmDelete) return;
 
     try {
@@ -67,7 +67,7 @@ export default function ReadingListPage() {
         setMangas(mangas.filter(manga => manga.id !== mangaId));
       }
     } catch (error) {
-      alert("Lỗi khi xóa khỏi danh sách!");
+      alert("Error deleting from list!");
     }
   };
 
@@ -88,7 +88,7 @@ export default function ReadingListPage() {
         {/* Header với nút quay lại */}
         <div className="flex items-center gap-4 mb-8 border-b border-gray-700 pb-6">
           <Link href="/profile" className="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg transition text-gray-300">
-            &larr; Hồ sơ
+            &larr; Profile
           </Link>
           <h1 className="text-3xl font-bold text-blue-400">📚 My Reading List</h1>
         </div>
@@ -96,9 +96,9 @@ export default function ReadingListPage() {
         {/* Khu vực hiển thị danh sách truyện */}
         {mangas.length === 0 ? (
           <div className="bg-gray-800 rounded-xl p-12 text-center shadow-lg border border-gray-700">
-            <p className="text-gray-400 mb-4 text-lg">Danh sách đọc của bạn đang trống.</p>
+            <p className="text-gray-400 mb-4 text-lg">Your reading list is currently empty.</p>
             <Link href="/manga" className="inline-block bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-bold transition">
-              Khám phá truyện ngay
+              Discover Manga
             </Link>
           </div>
         ) : (
@@ -111,7 +111,7 @@ export default function ReadingListPage() {
                   <button 
                     onClick={(e) => handleRemove(manga.id, e)}
                     className="absolute top-2 left-2 z-20 bg-red-600/80 hover:bg-red-600 text-white w-8 h-8 rounded-full flex justify-center items-center font-bold opacity-0 group-hover:opacity-100 transition-opacity"
-                    title="Bỏ khỏi danh sách"
+                    title="Remove from list"
                   >
                     X
                   </button>

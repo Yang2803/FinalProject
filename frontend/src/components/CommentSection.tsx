@@ -32,7 +32,7 @@ export default function CommentSection({ targetType, targetId }: { targetType: "
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!session) return alert("Vui lòng đăng nhập để bình luận!");
+    if (!session) return alert("Please log in to comment!");
     if (!content.trim()) return;
 
     setIsSubmitting(true);
@@ -55,10 +55,10 @@ export default function CommentSection({ targetType, targetId }: { targetType: "
         setComments([newComment, ...comments]); // Đẩy comment mới lên đầu danh sách
         setContent(""); // Xóa trắng ô nhập
       } else {
-        alert("Lỗi khi đăng bình luận!");
+        alert("Error submitting comment!");
       }
     } catch (error) {
-      alert("Lỗi kết nối mạng!");
+      alert("Network error!");
     } finally {
       setIsSubmitting(false);
     }
@@ -67,7 +67,7 @@ export default function CommentSection({ targetType, targetId }: { targetType: "
   return (
     <div className="bg-gray-800 rounded-xl p-6 shadow-xl mt-8">
       <h3 className="text-xl font-bold mb-4 border-b border-gray-700 pb-2 text-blue-400">
-        Bình luận ({comments.length})
+        Comments ({comments.length})
       </h3>
 
       {/* Form đăng bình luận */}
@@ -77,26 +77,26 @@ export default function CommentSection({ targetType, targetId }: { targetType: "
             rows={3}
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            placeholder="Bạn nghĩ gì về nội dung này?"
+            placeholder="You think about this content?"
             className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white focus:outline-none focus:border-blue-500 resize-none"
             required
           />
           <div className="flex justify-end mt-2">
             <button type="submit" disabled={isSubmitting} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-bold transition disabled:opacity-50">
-              {isSubmitting ? "Đang gửi..." : "Gửi bình luận"}
+              {isSubmitting ? "Submitting..." : "Submit Comment"}
             </button>
           </div>
         </form>
       ) : (
         <div className="mb-8 p-4 bg-gray-900 border border-gray-700 rounded-lg text-center text-gray-400">
-          Vui lòng <a href="/login" className="text-blue-400 hover:underline">đăng nhập</a> để tham gia bình luận.
+          Please <a href="/login" className="text-blue-400 hover:underline">log in</a> to participate in the discussion.
         </div>
       )}
 
       {/* Danh sách bình luận */}
       <div className="space-y-4">
         {comments.length === 0 ? (
-           <p className="text-gray-500 italic text-center py-4">Chưa có bình luận nào. Hãy là người đầu tiên!</p>
+           <p className="text-gray-500 italic text-center py-4">No comments yet. Be the first!</p>
         ) : (
           comments.map((cmt) => (
             <div key={cmt.id} className="flex gap-4 p-4 bg-gray-900/50 rounded-lg">

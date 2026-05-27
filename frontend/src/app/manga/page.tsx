@@ -34,10 +34,10 @@ export default function PublicMangaList() {
   return (
     <div className="min-h-screen bg-gray-900 text-white p-8">
       <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8 border-l-4 border-blue-500 pl-4">Kho Truyện Tranh</h1>
+        <h1 className="text-3xl font-bold mb-8 border-l-4 border-blue-500 pl-4">Explore Manga</h1>
         
         {loading ? (
-          <p className="text-center text-gray-400">Đang tải danh sách truyện...</p>
+          <p className="text-center text-gray-400">Loading manga list...</p>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
             {mangas.map((manga) => (

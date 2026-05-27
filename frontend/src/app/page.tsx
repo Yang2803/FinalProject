@@ -76,7 +76,7 @@ export default function Home() {
               Welcome to Smart Anime Platform
             </h1>
             <p className="text-gray-400 text-lg mb-6 max-w-2xl mx-auto">
-              Nền tảng khám phá và tận hưởng thế giới Anime & Manga đỉnh cao. Cập nhật nhanh nhất, trải nghiệm mượt mà nhất.
+              The ultimate platform for exploring and enjoying the world of Anime & Manga. Fastest updates, smoothest experience.
             </p>
           </div>
         </div>
@@ -86,14 +86,14 @@ export default function Home() {
         ========================================== */}
         <div className="mb-12">
           <div className="flex justify-between items-end mb-6">
-            <h2 className="text-2xl font-bold border-l-4 border-blue-500 pl-3">Anime Mới Cập Nhật</h2>
+            <h2 className="text-2xl font-bold border-l-4 border-blue-500 pl-3">New Anime Updates</h2>
             <Link href="/anime" className="text-sm text-blue-400 hover:text-blue-300 hover:underline transition">
-              Xem tất cả &rarr;
+              View All &rarr;
             </Link>
           </div>
 
           {recentAnimes.length === 0 ? (
-            <p className="text-gray-500 italic">Chưa có Anime nào được cập nhật.</p>
+            <p className="text-gray-500 italic">No new anime updates available.</p>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
               {recentAnimes.map((anime) => (
@@ -111,7 +111,7 @@ export default function Home() {
                       
                       {/* Badge Số Tập */}
                       <div className="absolute top-2 left-2 bg-blue-600/90 backdrop-blur-sm text-white font-bold text-xs px-2 py-1 rounded">
-                        {anime._count?.episodes || 0} Tập
+                        {anime._count?.episodes || 0} Episodes
                       </div>
                     </div>
                     <div className="p-4">
@@ -129,14 +129,14 @@ export default function Home() {
         ========================================== */}
         <div>
           <div className="flex justify-between items-end mb-6">
-            <h2 className="text-2xl font-bold border-l-4 border-green-500 pl-3">Manga Mới Cập Nhật</h2>
+            <h2 className="text-2xl font-bold border-l-4 border-green-500 pl-3">New Manga Updates</h2>
             <Link href="/manga" className="text-sm text-green-400 hover:text-green-300 hover:underline transition">
-              Xem tất cả &rarr;
+              View All &rarr;
             </Link>
           </div>
 
           {recentMangas.length === 0 ? (
-            <p className="text-gray-500 italic">Chưa có Manga nào được cập nhật.</p>
+            <p className="text-gray-500 italic">No new manga updates available.</p>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
               {recentMangas.map((manga) => (

@@ -90,21 +90,21 @@ export default function AdminAnimeListPage() {
         {/* THANH ĐIỀU HƯỚNG & TIÊU ĐỀ */}
         <div className="flex flex-col md:flex-row justify-between items-center mb-8 bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-700">
           <div>
-            <h1 className="text-3xl font-black text-blue-400 mb-2">Quản lý Kho Anime</h1>
-            <p className="text-gray-400 text-sm">Hệ thống đang có <span className="font-bold text-white">{animes.length}</span> bộ phim</p>
+            <h1 className="text-3xl font-black text-blue-400 mb-2">Anime Inventory Management</h1>
+            <p className="text-gray-400 text-sm">System currently has <span className="font-bold text-white">{animes.length}</span> anime titles</p>
           </div>
           <div className="flex gap-4 mt-4 md:mt-0">
             <Link 
               href="/admin" 
               className="px-6 py-2.5 bg-gray-700 hover:bg-gray-600 rounded-lg font-bold transition text-gray-200"
             >
-              Về Dashboard
+              Return Dashboard
             </Link>
             <Link 
               href="/admin/anime/upload" 
               className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 rounded-lg font-bold shadow-lg shadow-blue-600/30 transition text-white"
             >
-              + Thêm Phim Mới
+              + Add New Anime
             </Link>
           </div>
         </div>
@@ -127,7 +127,7 @@ export default function AdminAnimeListPage() {
                   
                   {/* Badge số lượng tập */}
                   <div className="absolute top-2 left-2 bg-black/80 backdrop-blur text-blue-400 font-bold text-xs px-2 py-1 rounded">
-                    {anime._count.episodes} Tập
+                    {anime._count.episodes} Episodes
                   </div>
                   
                   {/* ĐÃ XÓA PHẦN OVERLAY HOVER Ở ĐÂY */}

@@ -147,15 +147,15 @@ export default function PublicMangaDetails({ params }: { params: Promise<{ id: s
     }
   };
 
-  if (loading) return <div className="min-h-screen bg-gray-900 text-white flex justify-center items-center">Đang tải...</div>;
-  if (!manga) return <div className="min-h-screen bg-gray-900 text-white flex justify-center items-center">Truyện không tồn tại!</div>;
+  if (loading) return <div className="min-h-screen bg-gray-900 text-white flex justify-center items-center">Loading...</div>;
+  if (!manga) return <div className="min-h-screen bg-gray-900 text-white flex justify-center items-center">Manga not found!</div>;
 
   return (
     <div className="min-h-screen bg-gray-900 text-white py-10 px-4">
       <div className="max-w-5xl mx-auto">
         
         {/* Breadcrumb quay lại */}
-        <Link href="/manga" className="text-gray-400 hover:text-white mb-6 inline-block">&larr; Quay lại danh sách</Link>
+        <Link href="/manga" className="text-gray-400 hover:text-white mb-6 inline-block">&larr; Return to manga list</Link>
 
         {/* KHU VỰC THÔNG TIN TRUYỆN */}
         <div className="bg-gray-800 rounded-xl p-6 md:p-8 flex flex-col md:flex-row gap-8 shadow-2xl mb-10">
@@ -169,7 +169,7 @@ export default function PublicMangaDetails({ params }: { params: Promise<{ id: s
           {/* Chi tiết */}
           <div className="flex-1 flex flex-col">
             <h1 className="text-3xl md:text-4xl font-black mb-2 text-blue-400">{manga.title}</h1>
-            <p className="text-gray-400 mb-4 font-medium">Tác giả: <span className="text-white">{manga.author || "Đang cập nhật"}</span></p>
+            <p className="text-gray-400 mb-4 font-medium">Author: <span className="text-white">{manga.author || "Updating..."}</span></p>
             {/* Hệ thống Rating 5 sao có Thống kê */}
             <div className="flex flex-col gap-2 mb-6 bg-gray-900/40 p-4 rounded-xl border border-gray-700/50 w-fit">
               
@@ -177,13 +177,13 @@ export default function PublicMangaDetails({ params }: { params: Promise<{ id: s
               <div className="flex items-end gap-2">
                 <span className="text-3xl font-black text-yellow-400 leading-none">{avgRating > 0 ? avgRating : "-"}</span>
                 <span className="text-gray-400 text-sm font-medium pb-1">
-                  / 5 <span className="text-gray-500 text-xs ml-1">({ratingCount} lượt đánh giá)</span>
+                  / 5 <span className="text-gray-500 text-xs ml-1">({ratingCount} Ratings)</span>
                 </span>
               </div>
 
               {/* Phần cho user bấm sao */}
               <div className="flex items-center gap-1 mt-1">
-                <span className="text-xs text-gray-400 mr-2 uppercase tracking-wider font-bold">Đánh giá:</span>
+                <span className="text-xs text-gray-400 mr-2 uppercase tracking-wider font-bold">Rating:</span>
                 {[1, 2, 3, 4, 5].map((star) => (
                   <button 
                     key={star} 
@@ -200,14 +200,14 @@ export default function PublicMangaDetails({ params }: { params: Promise<{ id: s
                 {manga.status}
               </span>
               <span className="px-3 py-1 bg-gray-700 text-gray-300 text-xs font-bold rounded-full">
-                {manga.chapters.length} Chương
+                {manga.chapters.length} Chapters
               </span>
             </div>
 
             <div className="bg-gray-900/50 p-4 rounded-lg flex-1">
-              <h3 className="font-bold text-gray-300 mb-2">Tóm tắt nội dung:</h3>
+              <h3 className="font-bold text-gray-300 mb-2">Summary:</h3>
               <p className="text-gray-400 text-sm leading-relaxed whitespace-pre-wrap">
-                {manga.description || "Chưa có mô tả cho bộ truyện này."}
+                {manga.description || "No description available for this manga."}
               </p>
             </div>
             
@@ -218,7 +218,7 @@ export default function PublicMangaDetails({ params }: { params: Promise<{ id: s
                   href={`/manga/${manga.id}/chapter/${manga.chapters[manga.chapters.length - 1].id}`}
                   className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-full shadow-lg shadow-blue-600/30 transition-all inline-block"
                 >
-                  Đọc Từ Đầu
+                  Read From Beginning
                 </Link>
 
                 {/* NÚT THÊM VÀO DANH SÁCH ĐỌC MỚI BỔ SUNG */}
@@ -234,9 +234,9 @@ export default function PublicMangaDetails({ params }: { params: Promise<{ id: s
                   {isToggling ? (
                     <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
                   ) : isInReadingList ? (
-                    <>✓ Đang Theo Dõi</>
+                    <>✓ Currently Following</>
                   ) : (
-                    <>+ Danh Sách Đọc</>
+                    <>+ Add to Reading List</>
                   )}
                 </button>
               </div>
@@ -246,7 +246,7 @@ export default function PublicMangaDetails({ params }: { params: Promise<{ id: s
 
         {/* KHU VỰC DANH SÁCH CHƯƠNG */}
         <div className="bg-gray-800 rounded-xl p-6 md:p-8 shadow-xl">
-          <h2 className="text-2xl font-bold mb-6 border-b border-gray-700 pb-4">Danh sách Chương</h2>
+          <h2 className="text-2xl font-bold mb-6 border-b border-gray-700 pb-4">Chapter List</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {manga.chapters.map((chap) => (
@@ -263,7 +263,7 @@ export default function PublicMangaDetails({ params }: { params: Promise<{ id: s
 
           {manga.chapters.length === 0 && (
             <div className="text-center py-10 text-gray-500">
-              Truyện chưa được cập nhật chương nào. Cùng chờ đón nhé!
+              Manga has not been updated with any chapters yet. Please check back later!
             </div>
           )}
         </div>

@@ -45,7 +45,7 @@ export default function ProfileWatchingListPage() {
           setWatchList(data);
         }
       } catch (error) {
-        console.error("Lỗi khi tải Watchlist:", error);
+        console.error("Error loading Watchlist:", error);
       } finally {
         setLoading(false);
       }
@@ -58,7 +58,7 @@ export default function ProfileWatchingListPage() {
 
   const handleRemove = async (animeId: string, e: React.MouseEvent) => {
     e.preventDefault(); 
-    if (!confirm("Bạn muốn xóa phim này khỏi danh sách xem?")) return;
+    if (!confirm("Are you sure you want to remove this anime from your watchlist?")) return;
 
     try {
       const res = await fetch("http://localhost:5000/api/watchlist/toggle", {
@@ -71,7 +71,7 @@ export default function ProfileWatchingListPage() {
         setWatchList(prevList => prevList.filter(item => item.anime.id !== animeId));
       }
     } catch (error) {
-      alert("Có lỗi xảy ra khi xóa.");
+      alert("An error occurred while removing the anime.");
     }
   };
 
@@ -91,21 +91,21 @@ export default function ProfileWatchingListPage() {
         
         {/* Nút quay lại trang Profile tổng */}
         <Link href="/profile" className="text-gray-400 hover:text-white mb-6 inline-block font-medium drop-shadow-md">
-          &larr; Quay lại Profile
+          &larr; Return Profile
         </Link>
 
         {/* HEADER CỦA TRANG */}
         <div className="flex items-end justify-between mb-10 border-b border-gray-800 pb-6">
           <div>
             <h1 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500 mb-2">
-              Danh Sách Đang Xem
+              My Watching List
             </h1>
             <p className="text-gray-400 text-sm">
-              Bạn đang theo dõi <span className="font-bold text-white">{watchList.length}</span> bộ Anime
+              You are currently watching <span className="font-bold text-white">{watchList.length}</span> anime
             </p>
           </div>
           <Link href="/anime" className="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg transition shadow-lg shadow-blue-900/20 text-sm">
-            + Tìm thêm phim
+            + Find More Anime
           </Link>
         </div>
 
@@ -113,10 +113,10 @@ export default function ProfileWatchingListPage() {
         {watchList.length === 0 ? (
           <div className="text-center bg-gray-900 border border-gray-800 rounded-2xl p-16">
             <div className="text-6xl mb-4">🎬</div>
-            <h3 className="text-2xl font-bold text-gray-300 mb-2">Danh sách trống</h3>
-            <p className="text-gray-500 max-w-md mx-auto mb-6">Bạn chưa lưu bộ Anime nào. Hãy khám phá kho phim và bấm nút Thêm vào danh sách xem để bắt đầu nhé!</p>
+            <h3 className="text-2xl font-bold text-gray-300 mb-2">Empty List</h3>
+            <p className="text-gray-500 max-w-md mx-auto mb-6">You have not added any anime to your watchlist yet. Explore our collection and click Add to Watchlist to get started!</p>
             <Link href="/anime" className="text-blue-400 hover:text-blue-300 font-bold hover:underline">
-              Khám phá ngay &rarr;
+              Discover now &rarr;
             </Link>
           </div>
         ) : (
@@ -140,7 +140,7 @@ export default function ProfileWatchingListPage() {
                     <button 
                       onClick={(e) => handleRemove(item.anime.id, e)}
                       className="absolute top-2 right-2 bg-red-600/90 hover:bg-red-500 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 shadow-lg"
-                      title="Xóa khỏi danh sách"
+                      title="Remove from list"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -153,7 +153,7 @@ export default function ProfileWatchingListPage() {
                       {item.anime.title}
                     </h3>
                     <p className="text-[10px] text-gray-500 italic">
-                      Lưu ngày: {new Date(item.createdAt).toLocaleDateString('vi-VN')}
+                      Added on: {new Date(item.createdAt).toLocaleDateString('vi-VN')}
                     </p>
                   </div>
                   

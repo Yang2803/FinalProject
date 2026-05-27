@@ -15,10 +15,10 @@ export default function Sidebar() {
 
   // Danh sách các menu chức năng dựa theo các mô-đun cốt lõi của dự án
   const menuItems = [
-    { name: "Trang chủ", href: "/", icon: "🏠" },
-    { name: "Xem Anime", href: "/anime", icon: "🎬" },
-    { name: "Đọc Manga", href: "/manga", icon: "📚" },
-    { name: "Trợ lý AI Search", href: "/ai-search", icon: "🤖" },
+    { name: "Home", href: "/", icon: "🏠" },
+    { name: "Explore Anime", href: "/anime", icon: "🎬" },
+    { name: "Explore Manga", href: "/manga", icon: "📚" },
+    { name: "AI Search Assistant", href: "/ai-search", icon: "🤖" },
   ];
 
   return (
@@ -90,20 +90,20 @@ export default function Sidebar() {
         onClick={() => signOut({ callbackUrl: "/login" })}
         className="w-full py-2 px-4 bg-red-500/10 hover:bg-red-600 text-red-400 hover:text-white border border-red-500/20 hover:border-transparent text-sm font-medium rounded-xl transition-all duration-200 cursor-pointer"
       >
-        Đăng xuất
+        Sign Out
       </button>
     </div>
   ) : (
     /* TRẠNG THÁI: CHƯA ĐĂNG NHẬP */
     <div className="py-2 space-y-2">
       <p className="text-xs text-gray-400 text-center mb-3">
-        Đăng nhập để trải nghiệm đầy đủ tính năng đám mây
+        Sign in to experience all cloud features
       </p>
       <Link
         href="/login"
         className="block w-full py-2.5 text-center text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-lg shadow-blue-600/10 transition-all duration-200"
       >
-        Đăng nhập / Đăng ký
+        Sign In / Sign Up
       </Link>
     </div>
   )}

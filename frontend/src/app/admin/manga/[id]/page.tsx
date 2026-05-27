@@ -43,7 +43,7 @@ export default function AdminMangaDetails({ params }: { params: Promise<{ id: st
     const fetchMangaDetails = async () => {
       try {
         const res = await fetch(`http://localhost:5000/api/admin/manga/${mangaId}`);
-        if (!res.ok) throw new Error("Không thể tải thông tin truyện");
+        if (!res.ok) throw new Error("Unable to load manga information");
         
         const data: MangaData = await res.json();
         setTitle(data.title);
@@ -53,7 +53,7 @@ export default function AdminMangaDetails({ params }: { params: Promise<{ id: st
         setDescription(data.description || "");
         setChapters(data.chapters || []);
       } catch (err) {
-        setError("Lỗi kết nối hoặc bộ truyện không tồn tại.");
+        setError("Connection error or manga does not exist.");
       } finally {
         setLoading(false);
       }
@@ -83,7 +83,7 @@ export default function AdminMangaDetails({ params }: { params: Promise<{ id: st
         setError(data.message);
       }
     } catch (err) {
-      setError("Lỗi kết nối server Backend!");
+      setError("Backend server connection error!");
     } finally {
       setIsSaving(false);
     }
@@ -91,7 +91,7 @@ export default function AdminMangaDetails({ params }: { params: Promise<{ id: st
 
   // Hàm xử lý XÓA truyện
   const handleDelete = async () => {
-    const confirmDelete = confirm(`Bạn có chắc chắn muốn XÓA HOÀN TOÀN bộ truyện "${title}" cùng toàn bộ các chương truyện đã đăng không? Hành động này không thể hoàn tác!`);
+    const confirmDelete = confirm(`Are you sure you want to DELETE the entire manga "${title}" along with all its chapters? This action cannot be undone!`);
     if (!confirmDelete) return;
 
     try {
@@ -106,13 +106,13 @@ export default function AdminMangaDetails({ params }: { params: Promise<{ id: st
         alert(data.message);
       }
     } catch (err) {
-      alert("Lỗi kết nối khi xóa truyện!");
+      alert("Connection error when deleting a manga!");
     }
   };
   
   // Hàm xử lý XÓA CHƯƠNG
   const handleDeleteChapter = async (chapterId: string, chapterTitle: string) => {
-    const confirmDelete = confirm(`Bạn có chắc muốn xóa "${chapterTitle}" không?`);
+    const confirmDelete = confirm(`Are you sure you want to delete "${chapterTitle}"?`);
     if (!confirmDelete) return;
 
     try {
@@ -129,11 +129,11 @@ export default function AdminMangaDetails({ params }: { params: Promise<{ id: st
         alert(data.message);
       }
     } catch (err) {
-      alert("Lỗi kết nối khi xóa chương!");
+      alert("Connection error when deleting a chapter!");
     }
   };
 
-  if (loading) return <div className="p-8 text-white text-center">Đang tải dữ liệu bộ truyện...</div>;
+  if (loading) return <div className="p-8 text-white text-center">Processing data loading...</div>;
 
   return (
     <div className="p-8 text-white min-h-screen max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -141,12 +141,12 @@ export default function AdminMangaDetails({ params }: { params: Promise<{ id: st
       {/* CỘT TRÁI: FORM XEM VÀ SỬA THÔNG TIN TRUYỆN */}
       <div className="lg:col-span-2 bg-gray-800 p-6 rounded-xl shadow-lg h-fit">
         <div className="flex justify-between items-center mb-6 border-b border-gray-700 pb-4">
-          <h1 className="text-2xl font-bold text-blue-400">Thông tin chi tiết</h1>
+          <h1 className="text-2xl font-bold text-blue-400">Detailed information</h1>
           <button 
             onClick={handleDelete}
             className="bg-red-600 hover:bg-red-700 text-white text-sm px-4 py-2 rounded-md font-bold transition"
           >
-            Xóa Bộ Truyện
+            Delete Manga
           </button>
         </div>
 
@@ -155,39 +155,39 @@ export default function AdminMangaDetails({ params }: { params: Promise<{ id: st
 
         <form onSubmit={handleUpdate} className="space-y-4">
           <div>
-            <label className="block text-sm text-gray-400 mb-1">Tên truyện</label>
+            <label className="block text-sm text-gray-400 mb-1">Manga name</label>
             <input type="text" required value={title} onChange={(e) => setTitle(e.target.value)} className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg outline-none focus:border-blue-500"/>
           </div>
 
           <div>
-            <label className="block text-sm text-gray-400 mb-1">Tác giả</label>
+            <label className="block text-sm text-gray-400 mb-1">Author</label>
             <input type="text" value={author} onChange={(e) => setAuthor(e.target.value)} className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg outline-none focus:border-blue-500"/>
           </div>
 
           <div>
-            <label className="block text-sm text-gray-400 mb-1">Link ảnh bìa (URL)</label>
+            <label className="block text-sm text-gray-400 mb-1">Cover Image Link (URL)</label>
             <input type="text" value={coverImage} onChange={(e) => setCoverImage(e.target.value)} className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg outline-none focus:border-blue-500"/>
           </div>
 
           <div>
-            <label className="block text-sm text-gray-400 mb-1">Trạng thái phát hành</label>
+            <label className="block text-sm text-gray-400 mb-1">Release Status</label>
             <select value={mangaStatus} onChange={(e) => setMangaStatus(e.target.value)} className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg outline-none focus:border-blue-500">
-              <option value="ONGOING">Đang tiến hành (Ongoing)</option>
-              <option value="COMPLETED">Đã hoàn thành (Completed)</option>
+              <option value="ONGOING">Ongoing</option>
+              <option value="COMPLETED">Completed</option>
             </select>
           </div>
 
           <div>
-            <label className="block text-sm text-gray-400 mb-1">Tóm tắt nội dung</label>
+            <label className="block text-sm text-gray-400 mb-1">Description</label>
             <textarea rows={5} value={description} onChange={(e) => setDescription(e.target.value)} className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg outline-none focus:border-blue-500 resize-none"></textarea>
           </div>
 
           <div className="flex space-x-4 pt-2">
             <button type="submit" disabled={isSaving} className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition disabled:bg-gray-600">
-              {isSaving ? "Đang lưu biến động..." : "Lưu Thay Đổi"}
+              {isSaving ? "Processing changes..." : "Save Changes"}
             </button>
             <Link href="/admin/manga" className="px-6 py-2.5 bg-gray-700 hover:bg-gray-600 text-center rounded-lg transition">
-              Quay Lại
+              Back
             </Link>
           </div>
         </form>
@@ -212,20 +212,20 @@ export default function AdminMangaDetails({ params }: { params: Promise<{ id: st
                   href={`/admin/manga/${mangaId}/chapter/${chap.id}/edit`}
                   className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1.5 rounded transition"
                 >
-                  Sửa
+                  Edit
                 </Link>
                 
                 <button 
                   onClick={() => handleDeleteChapter(chap.id, chap.title)}
                   className="bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-1.5 rounded transition"
                 >
-                  Xóa
+                  Delete
                 </button>
               </div>
             </div>
           ))}
           {chapters.length === 0 && (
-            <p className="text-sm text-gray-500 text-center py-6">Bộ truyện này chưa được đăng chương nào.</p>
+            <p className="text-sm text-gray-500 text-center py-6">No chapters have been published yet for this manga.</p>
           )}
         </div>
     </div>

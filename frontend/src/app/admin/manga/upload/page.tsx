@@ -29,7 +29,7 @@ export default function UploadMangaPage() {
   }, [session, status, router]);
 
   if (status === "loading" || !session || session.user.role !== "ADMIN") {
-    return <div className="flex h-screen items-center justify-center bg-gray-900 text-white">Đang xác thực quyền...</div>;
+    return <div className="flex h-screen items-center justify-center bg-gray-900 text-white">Authorization in progress...</div>;
   }
 
   // Hàm bắt sự kiện khi admin chọn file
@@ -54,7 +54,7 @@ export default function UploadMangaPage() {
         const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
 
         if (!cloudName || !uploadPreset) {
-          throw new Error("Thiếu cấu hình Cloudinary!");
+          throw new Error("Missing Cloudinary configuration!");
         }
 
         const formData = new FormData();
@@ -69,7 +69,7 @@ export default function UploadMangaPage() {
         const cloudinaryData = await cloudinaryRes.json();
         
         if (!cloudinaryRes.ok) {
-          throw new Error(cloudinaryData.error?.message || "Lỗi upload ảnh bìa lên Cloudinary");
+          throw new Error(cloudinaryData.error?.message || "Error uploading cover image to Cloudinary");
         }
         
         // Lấy link URL an toàn từ Cloudinary
@@ -104,7 +104,7 @@ export default function UploadMangaPage() {
         setError(data.message);
       }
     } catch (err) {
-      setError("Lỗi kết nối đến Server!");
+      setError("Error connecting to the server!");
     } finally {
       setLoading(false);
     }
@@ -114,12 +114,12 @@ export default function UploadMangaPage() {
     <div className="min-h-screen bg-gray-900 text-white p-8">
       <div className="max-w-2xl mx-auto bg-gray-800 p-8 rounded-xl shadow-lg">
         <div className="flex justify-between items-center mb-6 border-b border-gray-700 pb-4">
-          <h1 className="text-3xl font-bold text-blue-400">Thêm Manga mới</h1>
+          <h1 className="text-3xl font-bold text-blue-400">Add New Manga</h1>
           <Link 
             href="/admin/manga" 
             className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-sm text-white font-medium rounded-md transition"
           >
-            &larr; Quay lại danh sách
+            &larr; Back to List
           </Link>
         </div>
         
@@ -128,18 +128,18 @@ export default function UploadMangaPage() {
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Tên truyện (*)</label>
-            <input type="text" required placeholder="VD: Bungou Stray Dogs" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full px-4 py-2 bg-gray-700 rounded-md focus:ring focus:ring-blue-500 outline-none" />
+            <label className="block text-sm font-medium text-gray-300 mb-1">Title (*)</label>
+            <input type="text" required placeholder="e.g., Bungou Stray Dogs" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full px-4 py-2 bg-gray-700 rounded-md focus:ring focus:ring-blue-500 outline-none" />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Tác giả</label>
-            <input type="text" placeholder="VD: Asagiri Kafka" value={author} onChange={(e) => setAuthor(e.target.value)} className="w-full px-4 py-2 bg-gray-700 rounded-md focus:ring focus:ring-blue-500 outline-none" />
+            <label className="block text-sm font-medium text-gray-300 mb-1">Author</label>
+            <input type="text" placeholder="e.g., Asagiri Kafka" value={author} onChange={(e) => setAuthor(e.target.value)} className="w-full px-4 py-2 bg-gray-700 rounded-md focus:ring focus:ring-blue-500 outline-none" />
           </div>
 
           {/* 4. ĐỔI GIAO DIỆN SANG DẠNG CHỌN FILE */}
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Tải ảnh bìa lên</label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Upload Cover Image</label>
             <input
               id="cover-upload"
               type="file"
@@ -147,26 +147,26 @@ export default function UploadMangaPage() {
               onChange={handleFileChange}
               className="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700"
             />
-            {coverFile && <p className="text-xs text-green-400 mt-2">Đã chọn file: {coverFile.name}</p>}
+            {coverFile && <p className="text-xs text-green-400 mt-2">Selected file: {coverFile.name}</p>}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Tóm tắt nội dung</label>
-            <textarea rows={4} placeholder="Nhập mô tả truyện..." value={description} onChange={(e) => setDescription(e.target.value)} className="w-full px-4 py-2 bg-gray-700 rounded-md focus:ring focus:ring-blue-500 outline-none resize-none"></textarea>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Content Summary</label>
+            <textarea rows={4} placeholder="Enter manga description..." value={description} onChange={(e) => setDescription(e.target.value)} className="w-full px-4 py-2 bg-gray-700 rounded-md focus:ring focus:ring-blue-500 outline-none resize-none"></textarea>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Trạng thái</label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Status</label>
             <select value={mangaStatus} onChange={(e) => setMangaStatus(e.target.value)} className="w-full px-4 py-2 bg-gray-700 rounded-md focus:ring focus:ring-blue-500 outline-none">
-              <option value="ONGOING">Đang tiến hành (Ongoing)</option>
-              <option value="COMPLETED">Đã hoàn thành (Completed)</option>
+              <option value="ONGOING">Ongoing</option>
+              <option value="COMPLETED">Completed</option>
             </select>
           </div>
 
           <button type="submit" disabled={loading} className="w-full py-3 mt-4 bg-blue-600 text-white font-bold rounded-md hover:bg-blue-700 transition disabled:bg-gray-600 flex justify-center items-center">
             {loading ? (
               <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-            ) : "Đăng Manga Lên Hệ Thống"}
+            ) : "Upload Manga"}
           </button>
         </form>
       </div>

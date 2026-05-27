@@ -65,13 +65,13 @@ function SortablePreviewItem(props: { item: PreviewItem; index: number; onRemove
           onRemove(item.id);
         }}
         className="absolute top-1 right-1 bg-red-600 hover:bg-red-700 text-white w-6 h-6 rounded-full flex justify-center items-center font-bold text-xs shadow-md transition z-20 cursor-pointer"
-        title="Xóa ảnh này"
+        title="Delete this image"
       >
         X
       </button>
 
       <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-xs text-center py-1 z-10 pointer-events-none">
-        Trang {index + 1}
+        Page {index + 1}
       </div>
     </div>
   );
@@ -138,13 +138,13 @@ export default function UploadChapterPage({ params }: { params: Promise<{ id: st
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (imageItems.length === 0) return alert("Vui lòng chọn ít nhất 1 ảnh cho chương truyện!");
+    if (imageItems.length === 0) return alert("Please select at least 1 image for the chapter!");
     setIsUploading(true);
 
     try {
       const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
       const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
-      if (!cloudName || !uploadPreset) throw new Error("Thiếu cấu hình Cloudinary!");
+      if (!cloudName || !uploadPreset) throw new Error("Cloudinary configuration is missing!");
 
       // 4. CHỈ LẤY PHẦN 'file' TRONG OBJECT ĐỂ UPLOAD LÊN CLOUDINARY THEO ĐÚNG THỨ TỰ
       const imageUrls = await Promise.all(
@@ -158,7 +158,7 @@ export default function UploadChapterPage({ params }: { params: Promise<{ id: st
             body: formData,
           });
           const data = await res.json();
-          if (!res.ok) throw new Error(data.error?.message || "Lỗi upload ảnh");
+          if (!res.ok) throw new Error(data.error?.message || "Error uploading image");
           return data.secure_url;
         })
       );
@@ -172,14 +172,14 @@ export default function UploadChapterPage({ params }: { params: Promise<{ id: st
       const backendData = await backendRes.json();
       if (!backendRes.ok) throw new Error(backendData.message);
 
-      alert("Đăng chương truyện thành công!");
+      alert("Chapter uploaded successfully!");
       router.push(`/admin/manga/${mangaId}`);
       
     } catch (error) {
       if (error instanceof Error) {
-        alert(`Lỗi: ${error.message}`);
+        alert(`Error: ${error.message}`);
       } else {
-        alert("Đã xảy ra lỗi không xác định!");
+        alert("An undefined error occurred!");
       }
     } finally {
       setIsUploading(false);
@@ -190,27 +190,27 @@ export default function UploadChapterPage({ params }: { params: Promise<{ id: st
     <div className="p-8 min-h-screen text-white">
       <div className="max-w-4xl mx-auto bg-gray-800 p-8 rounded-xl shadow-lg">
         <div className="flex justify-between items-center mb-6 border-b border-gray-700 pb-4">
-          <h1 className="text-3xl font-bold text-blue-400">Tải lên Chương mới</h1>
+          <h1 className="text-3xl font-bold text-blue-400">Upload New Chapter</h1>
           <Link href={`/admin/manga/${mangaId}`} className="text-gray-400 hover:text-white transition">
-            &larr; Quay lại
+            &larr; Back to Manga
           </Link>
         </div>
         
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Tên chương (*)</label>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Chapter Title (*)</label>
             <input
               type="text"
               required
               value={chapterTitle}
               onChange={(e) => setChapterTitle(e.target.value)}
               className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:border-blue-500"
-              placeholder="Ví dụ: Chapter 101"
+              placeholder="e.g., Chapter 101"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Chọn ảnh trang truyện (Có thể chọn nhiều lần)</label>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Select Chapter Pages (You can select multiple)</label>
             <input
               type="file"
               multiple
@@ -224,7 +224,7 @@ export default function UploadChapterPage({ params }: { params: Promise<{ id: st
           {imageItems.length > 0 && (
             <div className="border-t border-gray-700 pt-6">
               <label className="block text-sm font-medium text-gray-300 mb-2 hover:text-blue-400 transition cursor-default">
-                Xem trước & Sắp xếp ({imageItems.length} ảnh) - <span className="text-xs text-gray-500 font-normal">Kéo để đổi thứ tự</span>
+                Preview & Arrange ({imageItems.length} images) - <span className="text-xs text-gray-500 font-normal">Drag to reorder</span>
               </label>
               
               <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -249,7 +249,7 @@ export default function UploadChapterPage({ params }: { params: Promise<{ id: st
             disabled={isUploading}
             className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center mt-6"
           >
-            {isUploading ? "Đang xử lý tải ảnh lên..." : "Hoàn Tất Tải Lên"}
+            {isUploading ? "Processing image upload..." : "Complete Upload"}
           </button>
         </form>
       </div>

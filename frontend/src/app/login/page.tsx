@@ -33,7 +33,7 @@ export default function LoginPage() {
   return (
     <div className="flex h-screen items-center justify-center bg-gray-900">
       <div className="w-full max-w-md p-8 space-y-6 bg-gray-800 rounded-xl shadow-lg text-white">
-        <h2 className="text-3xl font-bold text-center">Đăng nhập</h2>
+        <h2 className="text-3xl font-bold text-center">Sign In</h2>
         {error && <p className="text-red-500 text-center">{error}</p>}
         
         {/* Form đăng nhập bằng Email/Password */}
@@ -49,7 +49,7 @@ export default function LoginPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium">Mật khẩu</label>
+            <label className="block text-sm font-medium">Password</label>
             
             <input
               type="password"
@@ -60,14 +60,14 @@ export default function LoginPage() {
             />
           </div>
           <button type="submit" className="w-full py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 transition">
-            Đăng nhập
+            Sign In
           </button>
-          <Link href="/forgot-password" className="text-xs text-blue-400 hover:underline">Quên mật khẩu?</Link>
+          <Link href="/forgot-password" className="text-xs text-blue-400 hover:underline">Forgot Password?</Link>
         </form>
 
         <div className="relative flex py-4 items-center">
           <div className="flex-grow border-t border-gray-600"></div>
-          <span className="flex-shrink-0 mx-4 text-gray-400 text-sm">Hoặc đăng nhập bằng</span>
+          <span className="flex-shrink-0 mx-4 text-gray-400 text-sm">Or sign in with</span>
           <div className="flex-grow border-t border-gray-600"></div>
         </div>
 
@@ -78,12 +78,12 @@ export default function LoginPage() {
             className="w-full py-2 flex items-center justify-center space-x-2 bg-white text-gray-900 font-medium rounded-md hover:bg-gray-200 transition"
           >
             <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="w-5 h-5" />
-            <span>Tiếp tục với Google</span>
+            <span>Continue with Google</span>
           </button>
         </div>
 
         <p className="text-sm text-center text-gray-400">
-          Chưa có tài khoản? <Link href="/register" className="text-blue-400 hover:underline">Đăng ký ngay</Link>
+          Do not have an account? <Link href="/register" className="text-blue-400 hover:underline">Register now</Link>
         </p>
       </div>
     </div>

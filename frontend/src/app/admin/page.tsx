@@ -40,14 +40,14 @@ export default function AdminDashboardPage() {
               Admin Dashboard
             </h1>
             <p className="text-gray-400 mt-2">
-              Chào mừng quản trị viên <span className="font-bold text-white">{session.user.name}</span>. Bạn muốn làm gì hôm nay?
+              Welcome, administrator <span className="font-bold text-white">{session.user.name}</span>. You want to do what today?
             </p>
           </div>
           <Link 
             href="/profile" 
             className="px-6 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold rounded-lg border border-gray-700 transition"
           >
-            Về trang cá nhân
+            Back to profile
           </Link>
         </div>
 
@@ -61,10 +61,10 @@ export default function AdminDashboardPage() {
                 🎬
               </div>
               <h2 className="text-2xl font-bold text-gray-100 mb-3 group-hover:text-blue-400 transition-colors">
-                Quản lý Anime
+                Anime Management
               </h2>
               <p className="text-gray-400 text-sm leading-relaxed">
-                Thêm phim mới, upload video qua Cloudflare R2, quản lý danh sách tập phim và phụ đề.
+                Add new movies, upload videos, manage episode lists and subtitles.
               </p>
             </div>
           </Link>
@@ -76,10 +76,10 @@ export default function AdminDashboardPage() {
                 📚
               </div>
               <h2 className="text-2xl font-bold text-gray-100 mb-3 group-hover:text-green-400 transition-colors">
-                Quản lý Manga
+                Manga Management
               </h2>
               <p className="text-gray-400 text-sm leading-relaxed">
-                Tạo truyện mới, đăng chương, quản lý hình ảnh các trang truyện được lưu trữ trên Cloud.
+                Create new manga, upload chapters, manage images for each manga page.
               </p>
             </div>
           </Link>

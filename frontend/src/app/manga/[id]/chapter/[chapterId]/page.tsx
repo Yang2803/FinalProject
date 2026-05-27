@@ -70,7 +70,7 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
 
   // HÀM XỬ LÝ CHUYỂN TRANG (Cho chế độ lướt ngang)
   const handleNextPage = () => {
-    if (chapter && currentPage < chapter.images.length - 1) {
+    if (chapter && currentPage < chapter.images.length) {
       setCurrentPage((prev) => prev + 1);
     }
   };
@@ -92,8 +92,8 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [viewMode, currentPage, chapter]);
 
-  if (loading) return <div className="min-h-screen bg-gray-900 text-white flex justify-center items-center">Đang tải nội dung...</div>;
-  if (!chapter) return <div className="min-h-screen bg-gray-900 text-white flex justify-center items-center">Chương không tồn tại!</div>;
+  if (loading) return <div className="min-h-screen bg-gray-900 text-white flex justify-center items-center">Loading content...</div>;
+  if (!chapter) return <div className="min-h-screen bg-gray-900 text-white flex justify-center items-center">Chapter not found!</div>;
 
   return (
     <div className="min-h-screen bg-[#0f0f11] text-white">
@@ -104,7 +104,7 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
         {/* Nút quay lại & Tiêu đề */}
         <div className="flex items-center gap-4">
           <Link href={`/manga/${mangaId}`} className="text-gray-400 hover:text-white bg-gray-800 px-3 py-1.5 rounded-lg transition shrink-0">
-            &larr; Quay lại
+            &larr; Back to Series
           </Link>
           <div>
             <h1 className="font-bold text-blue-400 truncate max-w-[150px] md:max-w-[300px]">{chapter.manga.title}</h1>
@@ -116,21 +116,21 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
         <div className="flex items-center gap-2">
           {chapter.prevChapterId ? (
             <Link href={`/manga/${mangaId}/chapter/${chapter.prevChapterId}`} className="bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-lg text-sm font-bold transition">
-              &larr; Chap trước
+              &larr; Previous Chapter
             </Link>
           ) : (
             <span className="bg-gray-800/50 text-gray-600 px-3 py-1.5 rounded-lg text-sm font-bold cursor-not-allowed">
-              &larr; Chap trước
+              &larr; Previous Chapter
             </span>
           )}
 
           {chapter.nextChapterId ? (
             <Link href={`/manga/${mangaId}/chapter/${chapter.nextChapterId}`} className="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-sm font-bold transition">
-              Chap sau &rarr;
+              Next Chapter &rarr;
             </Link>
           ) : (
             <span className="bg-gray-800/50 text-gray-600 px-3 py-1.5 rounded-lg text-sm font-bold cursor-not-allowed">
-              Chap sau &rarr;
+              Next Chapter &rarr;
             </span>
           )}
         </div>
@@ -141,13 +141,13 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
             onClick={() => setViewMode("vertical")}
             className={`px-4 py-1.5 rounded-md text-sm font-bold transition ${viewMode === "vertical" ? "bg-blue-600 text-white shadow-md" : "text-gray-400 hover:text-white"}`}
           >
-            Cuộn dọc ↓
+            Scroll Vertically ↓
           </button>
           <button
             onClick={() => setViewMode("horizontal")}
             className={`px-4 py-1.5 rounded-md text-sm font-bold transition ${viewMode === "horizontal" ? "bg-blue-600 text-white shadow-md" : "text-gray-400 hover:text-white"}`}
           >
-            Lướt ngang ↔
+            Scroll Horizontally ↔
           </button>
         </div>
       </div>
@@ -169,26 +169,26 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
             
             {/* Thanh điều hướng ở cuối chương dọc */}
             <div className="my-12 w-full px-4 flex flex-col md:flex-row justify-between items-center gap-4 bg-gray-900 p-6 rounded-2xl border border-gray-800">
-              <p className="text-gray-400 font-medium md:hidden mb-2">Đã hết chương</p>
+              <p className="text-gray-400 font-medium md:hidden mb-2">No more chapters</p>
               
               {chapter.prevChapterId ? (
                 <Link href={`/manga/${mangaId}/chapter/${chapter.prevChapterId}`} className="w-full md:w-auto text-center bg-gray-800 hover:bg-gray-700 text-white px-8 py-3 rounded-xl font-bold transition">
-                  &larr; Chương Trước
+                  &larr; Previous Chapter
                 </Link>
               ) : (
-                <div className="w-full md:w-auto text-center bg-gray-800/30 text-gray-600 px-8 py-3 rounded-xl font-bold cursor-not-allowed">Chương Đầu Tiên</div>
+                <div className="w-full md:w-auto text-center bg-gray-800/30 text-gray-600 px-8 py-3 rounded-xl font-bold cursor-not-allowed">First Chapter</div>
               )}
 
               <Link href={`/manga/${mangaId}`} className="w-full md:w-auto text-center text-blue-400 hover:text-blue-300 font-bold px-6 py-3 transition hover:bg-gray-800 rounded-xl">
-                ≡ Mục Lục
+                ≡ All Chapters
               </Link>
 
               {chapter.nextChapterId ? (
                 <Link href={`/manga/${mangaId}/chapter/${chapter.nextChapterId}`} className="w-full md:w-auto text-center bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-xl font-bold transition shadow-lg shadow-blue-600/20">
-                  Chương Tiếp Theo &rarr;
+                  Next Chapter &rarr;
                 </Link>
               ) : (
-                <div className="w-full md:w-auto text-center bg-gray-800/30 text-gray-600 px-8 py-3 rounded-xl font-bold cursor-not-allowed">Đang Cập Nhật...</div>
+                <div className="w-full md:w-auto text-center bg-gray-800/30 text-gray-600 px-8 py-3 rounded-xl font-bold cursor-not-allowed">Updating...</div>
               )}
             </div>
           </div>
@@ -198,19 +198,46 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
         {viewMode === "horizontal" && (
           <div className="relative w-full max-w-4xl h-[calc(100vh-80px)] flex flex-col justify-center items-center bg-black select-none">
             
+            {/* Hiển thị số trang (Giới hạn hiển thị không vượt quá tổng số trang) */}
             <div className="absolute top-4 right-4 bg-black/60 px-3 py-1 rounded-full text-xs text-gray-300 z-20">
-              Trang {currentPage + 1} / {chapter.images.length}
+              Trang {currentPage < chapter.images.length ? currentPage + 1 : chapter.images.length} / {chapter.images.length}
             </div>
 
+            {/* Vùng bấm ẩn để chuyển trang bằng chuột */}
             <div className="absolute top-0 left-0 w-1/3 h-full z-10 cursor-w-resize" onClick={handlePrevPage} title="Trang trước" />
             <div className="absolute top-0 right-0 w-1/3 h-full z-10 cursor-e-resize" onClick={handleNextPage} title="Trang tiếp theo" />
 
-            <img 
-              src={chapter.images[currentPage]} 
-              alt={`Page ${currentPage + 1}`} 
-              className="max-w-full max-h-full object-contain relative z-0 transition-opacity duration-300" 
-            />
+            {/* LOGIC HIỂN THỊ: NẾU CHƯA QUA TRANG CUỐI THÌ HIỆN ẢNH, NẾU QUA RỒI THÌ HIỆN MENU */}
+            {currentPage < chapter.images.length ? (
+              <img 
+                src={chapter.images[currentPage]} 
+                alt={`Page ${currentPage + 1}`} 
+                className="max-w-full max-h-full object-contain relative z-0 transition-opacity duration-300" 
+              />
+            ) : (
+              /* GIAO DIỆN KẾT THÚC CHƯƠNG ĐƯỢC CHUYỂN THÀNH MỘT "TRANG" RIÊNG BIỆT */
+              <div className="bg-gray-900/95 backdrop-blur-md p-8 rounded-2xl border border-gray-700 text-center z-30 shadow-2xl w-[90%] max-w-md relative">
+                 <h3 className="text-xl font-bold text-white mb-2">The chapter has ended.</h3>
+                 <p className="mb-6 text-gray-400 text-sm">You want to do next?</p>
+                 
+                 <div className="flex flex-col gap-3">
+                   {chapter.nextChapterId ? (
+                     <Link href={`/manga/${mangaId}/chapter/${chapter.nextChapterId}`} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-3 rounded-xl font-bold transition w-full shadow-lg shadow-blue-600/20 z-50 relative pointer-events-auto">
+                       Read next Chapter &rarr;
+                     </Link>
+                   ) : (
+                     <div className="bg-gray-800 text-gray-500 px-4 py-3 rounded-xl font-bold cursor-not-allowed w-full border border-gray-700">
+                       Waiting for new Chapter...
+                     </div>
+                   )}
+                   <Link href={`/manga/${mangaId}`} className="bg-gray-800 hover:bg-gray-700 text-gray-300 px-4 py-3 rounded-xl font-bold transition w-full z-50 relative pointer-events-auto">
+                     ≡ All Chapters
+                   </Link>
+                 </div>
+              </div>
+            )}
 
+            {/* Thanh điều hướng bằng nút dưới cùng */}
             <div className="absolute bottom-6 flex gap-4 z-20 pointer-events-auto">
               <button 
                 onClick={handlePrevPage}
@@ -221,39 +248,16 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
               </button>
               <button 
                 onClick={handleNextPage}
-                disabled={currentPage === chapter.images.length - 1}
+                disabled={currentPage === chapter.images.length} // Khóa nút Next khi đã ở màn hình kết thúc
                 className="bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-white w-12 h-12 rounded-full flex justify-center items-center font-bold text-xl shadow-lg border border-gray-600 transition"
               >
                 &rarr;
               </button>
             </div>
 
-            {/* Popup hiện ra khi lướt tới trang cuối cùng */}
-            {currentPage === chapter.images.length - 1 && (
-               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-gray-900/95 backdrop-blur-md p-8 rounded-2xl border border-gray-700 text-center z-30 shadow-2xl w-[90%] max-w-md">
-                  <h3 className="text-xl font-bold text-white mb-2">Đã hết chương</h3>
-                  <p className="mb-6 text-gray-400 text-sm">Bạn muốn làm gì tiếp theo?</p>
-                  
-                  <div className="flex flex-col gap-3">
-                    {chapter.nextChapterId ? (
-                      <Link href={`/manga/${mangaId}/chapter/${chapter.nextChapterId}`} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-3 rounded-xl font-bold transition w-full shadow-lg shadow-blue-600/20">
-                        Đọc Chương Kế Tiếp &rarr;
-                      </Link>
-                    ) : (
-                      <div className="bg-gray-800 text-gray-500 px-4 py-3 rounded-xl font-bold cursor-not-allowed w-full border border-gray-700">
-                        Đang chờ chương mới...
-                      </div>
-                    )}
-                    <Link href={`/manga/${mangaId}`} className="bg-gray-800 hover:bg-gray-700 text-gray-300 px-4 py-3 rounded-xl font-bold transition w-full">
-                      ≡ Trở Về Mục Lục
-                    </Link>
-                  </div>
-               </div>
-            )}
           </div>
         )}
       </div>
-
       {/* KHU VỰC BÌNH LUẬN CỦA CHƯƠNG */}
       <div className="w-full flex justify-center mt-12 pb-20">
         <div className="w-full max-w-4xl px-4">

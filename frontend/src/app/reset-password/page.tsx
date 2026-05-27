@@ -51,14 +51,14 @@ export default function ResetPasswordPage() {
   return (
     <div className="flex h-screen items-center justify-center bg-gray-900 text-white">
       <div className="w-full max-w-md p-8 space-y-6 bg-gray-800 rounded-xl shadow-lg">
-        <h2 className="text-2xl font-bold text-center">Đặt lại mật khẩu</h2>
+        <h2 className="text-2xl font-bold text-center">Reset password</h2>
         
         {message && <p className="text-green-500 text-center text-sm">{message}</p>}
         {error && <p className="text-red-500 text-center text-sm">{error}</p>}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium">Mật khẩu mới</label>
+            <label className="block text-sm font-medium">New password</label>
             <input
               type="password"
               value={newPassword}
@@ -69,7 +69,7 @@ export default function ResetPasswordPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium">Xác nhận mật khẩu mới</label>
+            <label className="block text-sm font-medium">Confirm new password</label>
             <input
               type="password"
               value={confirmPassword}
@@ -83,7 +83,7 @@ export default function ResetPasswordPage() {
             disabled={loading}
             className="w-full py-2 bg-green-600 rounded-md hover:bg-green-700 transition disabled:bg-gray-600"
           >
-            {loading ? "Đang cập nhật..." : "Xác nhận đổi mật khẩu"}
+            {loading ? "Updating..." : "Confirm Password Reset"}
           </button>
         </form>
       </div>

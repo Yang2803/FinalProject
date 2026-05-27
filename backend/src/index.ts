@@ -50,9 +50,9 @@ app.post('/api/auth/register', async (req: Request, res: Response): Promise<any>
       },
     });
 
-    res.status(201).json({ message: 'Đăng ký thành công!', user: { id: newUser.id, email: newUser.email, name: newUser.name } });
+    res.status(201).json({ message: 'Registration successful!', user: { id: newUser.id, email: newUser.email, name: newUser.name } });
   } catch (error) {
-    res.status(500).json({ message: 'Lỗi server', error });
+    res.status(500).json({ message: 'Server error', error });
   }
 });
 
@@ -220,10 +220,10 @@ app.post("/api/auth/reset-password", async (req: Request, res: Response): Promis
       },
     });
 
-    res.status(200).json({ message: "Đặt lại mật khẩu thành công! Bạn có thể đăng nhập ngay bây giờ." });
+    res.status(200).json({ message: "Password reset successfully! You can log in now." });
   } catch (error) {
     console.error("Lỗi Reset Password:", error);
-    res.status(500).json({ message: "Lỗi server khi đặt lại mật khẩu." });
+    res.status(500).json({ message: "Server error while resetting password." });
   }
 });
 
@@ -258,10 +258,10 @@ app.post('/api/admin/manga', async (req: Request, res: Response): Promise<any> =
       },
     });
 
-    res.status(201).json({ message: "Thêm Manga thành công!", manga: newManga });
+    res.status(201).json({ message: "New manga added successfully!", manga: newManga });
   } catch (error) {
-    console.error("Lỗi khi thêm Manga:", error);
-    res.status(500).json({ message: "Lỗi server khi thêm Manga." });
+    console.error("Error adding manga:", error);
+    res.status(500).json({ message: "Server error while adding manga." });
   }
 });
 
@@ -273,8 +273,8 @@ app.get('/api/admin/manga', async (req: Request, res: Response) => {
     });
     res.status(200).json(mangas);
   } catch (error) {
-    console.error("Lỗi khi tải danh sách Manga:", error);
-    res.status(500).json({ message: "Lỗi server khi tải danh sách Manga" });
+    console.error("Error fetching manga list:", error);
+    res.status(500).json({ message: "Server error while fetching manga list" });
   }
 });
 
@@ -312,13 +312,13 @@ app.post('/api/manga', async (req: Request, res: Response): Promise<any> => {
     });
 
     res.status(201).json({ 
-      message: "Lưu chương truyện thành công!", 
+      message: "Save chapter successfully!", 
       chapter: newChapter 
     });
 
   } catch (error) {
-    console.error("Lỗi khi lưu Chapter vào Database:", error);
-    res.status(500).json({ message: "Lỗi server khi lưu dữ liệu." });
+    console.error("Error saving chapter to database:", error);
+    res.status(500).json({ message: "Server error while saving data." });
   }
 });
 
@@ -339,10 +339,10 @@ app.post('/api/admin/chapter', async (req: Request, res: Response): Promise<any>
       }
     });
 
-    res.status(201).json({ message: "Đăng chương mới thành công!", chapter: newChapter });
+    res.status(201).json({ message: "New chapter added successfully!", chapter: newChapter });
   } catch (error) {
-    console.error("Lỗi khi thêm Chapter:", error);
-    res.status(500).json({ message: "Lỗi server khi lưu chương truyện." });
+    console.error("Error adding chapter:", error);
+    res.status(500).json({ message: "Server error while saving chapter." });
   }
 });
 
@@ -359,11 +359,11 @@ app.get('/api/admin/manga/:id', async (req: Request, res: Response): Promise<any
       }
     });
 
-    if (!manga) return res.status(404).json({ message: "Không tìm thấy bộ truyện này!" });
+    if (!manga) return res.status(404).json({ message: "This series could not be found!" });
     res.status(200).json(manga);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Lỗi server khi tải chi tiết truyện." });
+    res.status(500).json({ message: "Server error while fetching manga details." });
   }
 });
 
@@ -378,10 +378,10 @@ app.put('/api/admin/manga/:id', async (req: Request, res: Response): Promise<any
       data: { title, author, coverImage, status, description }
     });
 
-    res.status(200).json({ message: "Cập nhật thông tin truyện thành công!", manga: updatedManga });
+    res.status(200).json({ message: "Update manga information successfully!", manga: updatedManga });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Lỗi server khi cập nhật truyện." });
+    res.status(500).json({ message: "Server error while updating manga." });
   }
 });
 
@@ -393,7 +393,7 @@ app.delete('/api/admin/manga/:id', async (req: Request, res: Response): Promise<
     // Vì schema đã cấu hình onDelete: Cascade nên khi xóa Manga, toàn bộ Chapter thuộc về nó sẽ tự động bị xóa sạch trong DB
     await prisma.manga.delete({ where: { id } });
 
-    res.status(200).json({ message: "Đã xóa bộ truyện và toàn bộ chương liên quan thành công!" });
+    res.status(200).json({ message: "New manga deleted successfully!" });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Lỗi server khi xóa truyện." });
@@ -434,10 +434,10 @@ app.put('/api/admin/chapter/:id', async (req: Request, res: Response): Promise<a
       }
     });
 
-    res.status(200).json({ message: "Cập nhật chương truyện thành công!", chapter: updatedChapter });
+    res.status(200).json({ message: "Chapter update successful!", chapter: updatedChapter });
   } catch (error) {
-    console.error("Lỗi khi sửa chương:", error);
-    res.status(500).json({ message: "Lỗi server khi cập nhật chương." });
+    console.error("Error updating chapter:", error);
+    res.status(500).json({ message: "Server error while updating chapter." });
   }
 });
 
@@ -450,10 +450,10 @@ app.delete('/api/admin/chapter/:id', async (req: Request, res: Response): Promis
       where: { id }
     });
 
-    res.status(200).json({ message: "Đã xóa chương truyện thành công!" });
+    res.status(200).json({ message: "New chapter deleted successfully!" });
   } catch (error) {
-    console.error("Lỗi khi xóa chương:", error);
-    res.status(500).json({ message: "Lỗi server khi xóa chương." });
+    console.error("Error deleting chapter:", error);
+    res.status(500).json({ message: "Server error while deleting chapter." });
   }
 });
 
@@ -487,10 +487,10 @@ app.get('/api/manga/:id', async (req: Request, res: Response): Promise<any> => {
       }
     });
 
-    if (!manga) return res.status(404).json({ message: "Không tìm thấy bộ truyện!" });
+    if (!manga) return res.status(404).json({ message: "This series could not be found!" });
     res.status(200).json(manga);
   } catch (error) {
-    res.status(500).json({ message: "Lỗi server khi tải chi tiết truyện." });
+    res.status(500).json({ message: "Server error while loading series details." });
   }
 });
 
@@ -509,7 +509,7 @@ app.get('/api/chapter/:chapterId', async (req: Request, res: Response): Promise<
       }
     });
 
-    if (!chapter) return res.status(404).json({ message: "Không tìm thấy chương truyện này!" });
+    if (!chapter) return res.status(404).json({ message: "This chapter could not be found!" });
     
     // ==========================================
     // 2. PHẦN BỔ SUNG: Tìm ID của chương trước và chương sau
@@ -841,7 +841,7 @@ app.post('/api/admin/episode', async (req: Request, res: Response): Promise<any>
       include: { subtitles: true }
     });
 
-    res.status(201).json({ message: "Đăng tập phim mới thành công!", episode: newEpisode });
+    res.status(201).json({ message: "New episode uploaded successfully!", episode: newEpisode });
   } catch (error) {
     console.error("Lỗi đăng tập phim:", error);
     res.status(500).json({ message: "Lỗi server khi lưu tập phim." });
@@ -868,7 +868,7 @@ app.post('/api/admin/anime', async (req: Request, res: Response): Promise<any> =
       }
     });
 
-    res.status(201).json({ message: "Thêm bộ Anime mới thành công!", anime: newAnime });
+    res.status(201).json({ message: "New anime added successfully!", anime: newAnime });
   } catch (error) {
     console.error("Lỗi khi thêm Anime:", error);
     res.status(500).json({ message: "Lỗi server khi thêm phim mới." });
@@ -899,7 +899,7 @@ app.delete('/api/admin/anime/:id', async (req: Request, res: Response): Promise<
     await prisma.anime.delete({
       where: { id }
     });
-    res.status(200).json({ message: "Đã xóa bộ phim thành công!" });
+    res.status(200).json({ message: "New anime deleted successfully!" });
   } catch (error) {
     console.error("Lỗi xóa Anime:", error);
     res.status(500).json({ message: "Lỗi server khi xóa phim." });
@@ -962,10 +962,10 @@ app.get('/api/admin/anime/:id', async (req: Request, res: Response): Promise<any
       }
     });
     
-    if (!anime) return res.status(404).json({ message: "Không tìm thấy bộ Anime yêu cầu" });
+    if (!anime) return res.status(404).json({ message: "The requested anime series was not found." });
     res.status(200).json(anime);
   } catch (error) {
-    res.status(500).json({ message: "Lỗi tải thông tin phim." });
+    res.status(500).json({ message: "Server error while loading anime details." });
   }
 });
 
@@ -975,17 +975,17 @@ app.put('/api/admin/anime/:id', async (req: Request, res: Response): Promise<any
     const animeId = req.params.id as string;
     const { title, description, coverImage } = req.body;
 
-    if (!title) return res.status(400).json({ message: "Tên phim không được để trống!" });
+    if (!title) return res.status(400).json({ message: "The anime title cannot be empty!" });
 
     const updatedAnime = await prisma.anime.update({
       where: { id: animeId },
       data: { title, description, coverImage }
     });
 
-    res.status(200).json({ message: "Cập nhật bộ Anime thành công!", anime: updatedAnime });
+    res.status(200).json({ message: "Update anime information successfully!", anime: updatedAnime });
   } catch (error) {
-    console.error("Lỗi cập nhật Anime:", error);
-    res.status(500).json({ message: "Lỗi server khi cập nhật phim." });
+    console.error("Error updating anime:", error);
+    res.status(500).json({ message: "Server error while updating anime." });
   }
 });
 
@@ -996,7 +996,7 @@ app.delete('/api/admin/episode/:id', async (req: Request, res: Response): Promis
     await prisma.episode.delete({
       where: { id: episodeId }
     });
-    res.status(200).json({ message: "Xóa tập phim thành công!" });
+    res.status(200).json({ message: "Episode deleted successfully!" });
   } catch (error) {
     console.error("Lỗi xóa tập phim:", error);
     res.status(500).json({ message: "Lỗi server khi xóa tập phim." });
@@ -1048,7 +1048,7 @@ app.put('/api/admin/episode/:id', async (req: Request, res: Response): Promise<a
       });
     }
 
-    res.status(200).json({ message: "Cập nhật tập phim thành công!", episode: updatedEpisode });
+    res.status(200).json({ message: "Episode updated successfully!", episode: updatedEpisode });
   } catch (error) {
     console.error("Lỗi cập nhật tập phim:", error);
     res.status(500).json({ message: "Lỗi server khi cập nhật tập phim." });
@@ -1089,7 +1089,7 @@ app.get('/api/anime/:id', async (req: Request, res: Response): Promise<any> => {
       }
     });
     
-    if (!anime) return res.status(404).json({ message: "Không tìm thấy bộ phim" });
+    if (!anime) return res.status(404).json({ message: "The anime could not be found." });
     res.status(200).json(anime);
   } catch (error) {
     res.status(500).json({ message: "Lỗi tải thông tin phim." });
@@ -1119,10 +1119,10 @@ app.post('/api/rating/anime', async (req: Request, res: Response): Promise<any> 
       create: { userId, animeId, score }
     });
 
-    res.status(200).json({ message: "Đánh giá thành công", rating });
+    res.status(200).json({ message: "Rating submitted successfully", rating });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Lỗi lưu đánh giá" });
+    res.status(500).json({ message: "Error saving rating" });
   }
 });
 

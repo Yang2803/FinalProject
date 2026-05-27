@@ -38,12 +38,12 @@ export default function UserAnimeListPage() {
     fetchAnimes();
   }, []);
 
-  if (loading) return <div className="text-white text-center mt-20">Đang tải danh sách phim...</div>;
+  if (loading) return <div className="text-white text-center mt-20">Loading anime list...</div>;
 
   return (
     <div className="min-h-screen bg-[#0f0f11] text-white p-8">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-black text-blue-400 mb-8 border-l-4 border-blue-500 pl-4">Khám Phá Anime</h1>
+        <h1 className="text-3xl font-black text-blue-400 mb-8 border-l-4 border-blue-500 pl-4">Explore Anime</h1>
         
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
           {animes.map((anime) => (
@@ -60,7 +60,7 @@ export default function UserAnimeListPage() {
                   
                   {/* Badge số tập */}
                   <div className="absolute top-2 left-2 bg-blue-600/90 text-white font-bold text-xs px-2 py-1 rounded">
-                    {anime._count.episodes} Tập
+                    {anime._count.episodes} Episodes
                   </div>
                 </div>
                 <div className="p-4">

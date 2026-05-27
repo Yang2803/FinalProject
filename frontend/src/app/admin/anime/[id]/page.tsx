@@ -102,13 +102,13 @@ export default function AdminAnimeDetailPage() {
         throw new Error(err.message);
       }
 
-      alert("Cập nhật thông tin Anime thành công!");
+      alert("Anime information update successful!");
       setIsEditing(false);
       setNewCoverFile(null);
       setRefreshKey((prev) => prev + 1);// Tải lại dữ liệu mới cập nhật lên UI
 
     } catch (error) {
-      alert(error instanceof Error ? error.message : "Có lỗi xảy ra");
+      alert(error instanceof Error ? error.message : "An error occurred");
     } finally {
       setSaveLoading(false);
     }
@@ -178,7 +178,7 @@ export default function AdminAnimeDetailPage() {
         
         {/* NÚT BACK VỀ TRANH CHỦ ADMIN */}
         <div className="mb-6">
-          <Link href="/admin/anime" className="text-sm text-gray-400 hover:text-purple-400 transition">&larr; Quản lý kho phim</Link>
+          <Link href="/admin/anime" className="text-sm text-gray-400 hover:text-purple-400 transition">&larr; Anime Inventory Management</Link>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -190,14 +190,14 @@ export default function AdminAnimeDetailPage() {
                 {anime.coverImage ? (
                   <img src={anime.coverImage} alt={anime.title} className="w-full h-full object-cover" />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-gray-600">Không có ảnh</div>
+                  <div className="w-full h-full flex items-center justify-center text-gray-600">No Images</div>
                 )}
               </div>
               <Link 
                 href={`/admin/anime/${anime.id}/upload-episode`}
                 className="block w-full text-center bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 rounded-xl transition text-sm"
               >
-                + Đăng Tập Phim Mới
+                + Upload New Episode
               </Link>
             </div>
           </div>
@@ -216,27 +216,27 @@ export default function AdminAnimeDetailPage() {
                         onClick={() => setIsEditing(true)}
                         className="bg-gray-700 hover:bg-gray-600 text-xs font-bold px-4 py-2 rounded-lg transition"
                       >
-                        ✏️ Sửa thông tin
+                        ✏️ Edit information
                       </button>
                       <button 
                         onClick={handleDeleteAnime}
                         className="bg-red-900/30 hover:bg-red-600 text-red-400 hover:text-white border border-red-800 hover:border-red-600 text-xs font-bold px-4 py-2 rounded-lg transition"
                       >
-                        🗑️ Xóa phim
+                        🗑️ Delete anime
                       </button>
                     </div>
                   </div>
                   <p className="text-gray-300 leading-relaxed text-sm whitespace-pre-line bg-gray-900/40 p-4 rounded-xl border border-gray-700/60">
-                    {anime.description || "Chưa có tóm tắt nội dung cho bộ phim này."}
+                    {anime.description || "There is no synopsis for this film yet."}
                   </p>
                 </div>
               ) : (
                 /* CHẾ ĐỘ CHỈNH SỬA (FORM) */
                 <form onSubmit={handleUpdateAnime} className="space-y-4">
-                  <h2 className="text-xl font-bold text-yellow-400">Chỉnh sửa thông tin Anime</h2>
+                  <h2 className="text-xl font-bold text-yellow-400">Edit Anime Information</h2>
                   
                   <div>
-                    <label className="block text-xs text-gray-400 font-bold mb-1">Tên phim (*)</label>
+                    <label className="block text-xs text-gray-400 font-bold mb-1">Anime Title (*)</label>
                     <input 
                       type="text" 
                       required
@@ -247,7 +247,7 @@ export default function AdminAnimeDetailPage() {
                   </div>
 
                   <div>
-                    <label className="block text-xs text-gray-400 font-bold mb-1">Thay đổi ảnh bìa (Tùy chọn)</label>
+                    <label className="block text-xs text-gray-400 font-bold mb-1">Change Cover Image (Optional)</label>
                     <input 
                       type="file" 
                       accept="image/*"
@@ -259,7 +259,7 @@ export default function AdminAnimeDetailPage() {
                   </div>
 
                   <div>
-                    <label className="block text-xs text-gray-400 font-bold mb-1">Tóm tắt nội dung</label>
+                    <label className="block text-xs text-gray-400 font-bold mb-1">Summary</label>
                     <textarea 
                       rows={5}
                       value={editDescription}
@@ -275,14 +275,14 @@ export default function AdminAnimeDetailPage() {
                       onClick={() => { setIsEditing(false); setNewCoverFile(null); }}
                       className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg text-sm transition"
                     >
-                      Hủy
+                      Cancel
                     </button>
                     <button 
                       type="submit"
                       disabled={saveLoading}
                       className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-5 py-2 rounded-lg text-sm transition disabled:opacity-50"
                     >
-                      {saveLoading ? "Đang lưu..." : "Lưu thay đổi"}
+                      {saveLoading ? "Saving..." : "Save Changes"}
                     </button>
                   </div>
                 </form>
@@ -292,11 +292,11 @@ export default function AdminAnimeDetailPage() {
             {/* DANH SÁCH CÁC TẬP PHIM ĐÃ ĐĂNG */}
             <div className="bg-gray-800 p-6 rounded-2xl border border-gray-700 shadow-xl">
               <h2 className="text-xl font-black text-purple-400 mb-4 border-b border-gray-700 pb-2">
-                Danh sách tập phim đã đăng ({anime.episodes.length})
+                List of episodes that have been released ({anime.episodes.length})
               </h2>
 
               {anime.episodes.length === 0 ? (
-                <p className="text-sm text-gray-500 italic py-4">Bộ phim này hiện chưa phát hành tập phim nào.</p>
+                <p className="text-sm text-gray-500 italic py-4">This anime has not released any episodes yet.</p>
               ) : (
                 <div className="space-y-2 max-h-80 overflow-y-auto pr-2">
                   {anime.episodes.map((ep, idx) => (
@@ -318,13 +318,13 @@ export default function AdminAnimeDetailPage() {
                           href={`/admin/anime/${animeId}/episode/${ep.id}/edit`}
                           className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-3 py-1.5 rounded transition"
                         >
-                          Sửa / Up lại
+                          Edit / Re-upload
                         </Link>
                         <button 
                           onClick={() => handleDeleteEpisode(ep.id, ep.title)}
                           className="bg-red-600 hover:bg-red-500 text-white text-xs font-bold px-3 py-1.5 rounded transition"
                         >
-                          Xóa
+                          Delete
                         </button>
                       </div>
                     </div>

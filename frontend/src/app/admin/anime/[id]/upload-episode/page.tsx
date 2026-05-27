@@ -37,7 +37,7 @@ export default function UploadEpisodePage() {
   const addSubtitleField = () => {
     const newField: SubtitleInput = {
       id: Math.random().toString(36).substring(2, 9),
-      label: "Tiếng Việt",
+      label: "Vietnamese",
       file: null
     };
     setSubtitleInputs([...subtitleInputs, newField]);
@@ -57,7 +57,7 @@ export default function UploadEpisodePage() {
   // 3. Hàm Submit đẩy lên Cloudflare R2
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!videoFile) return alert("Vui lòng chọn file video!");
+    if (!videoFile) return alert("Please select a video file!");
 
     setLoading(true);
 
@@ -71,7 +71,7 @@ export default function UploadEpisodePage() {
         body: JSON.stringify({ fileName: videoFile.name, fileType: safeVideoType })
       });
       const urlData = await urlRes.json();
-      if (!urlRes.ok) throw new Error(`Lỗi cấp quyền Video: ${urlData.message}`);
+      if (!urlRes.ok) throw new Error(`Video Permission Error: ${urlData.message}`);
 
       // Bọc Blob để vượt lỗi Cloudflare R2
       const videoBlob = new Blob([videoFile], { type: safeVideoType });
@@ -81,7 +81,7 @@ export default function UploadEpisodePage() {
         body: videoBlob // Headerless PUT
       });
       
-      if (!uploadVideoRes.ok) throw new Error("Lỗi khi tải video lên R2");
+      if (!uploadVideoRes.ok) throw new Error("Error uploading video to R2");
       const finalVideoUrl = urlData.publicUrl;
 
       // --- PHẦN B: UPLOAD SUBTITLES ---
@@ -104,7 +104,7 @@ export default function UploadEpisodePage() {
               body: currentFile // Headerless PUT
             });
             
-            if (!uploadSubRes.ok) throw new Error("Lỗi tải phụ đề");
+            if (!uploadSubRes.ok) throw new Error("Error uploading subtitles");
             return { label: sub.label, url: subUrlData.publicUrl };
           })
       );
@@ -121,9 +121,9 @@ export default function UploadEpisodePage() {
         })
       });
 
-      if (!backendRes.ok) throw new Error("Lỗi lưu dữ liệu vào hệ thống");
+      if (!backendRes.ok) throw new Error("Error saving data to the system");
 
-      alert("Tải lên tập phim mới thành công!");
+      alert("Successfully uploaded the new episode!");
       router.push(`/admin/anime/${animeId}`);
       setEpisodeTitle("");
       setVideoFile(null);
@@ -131,9 +131,9 @@ export default function UploadEpisodePage() {
 
     } catch (error) {
       if (error instanceof Error) {
-        alert(`Lỗi: ${error.message}`);
+        alert(`Error: ${error.message}`);
       } else {
-        alert("Lỗi upload không xác định!");
+        alert("Undefined upload error!");
       }
     } finally {
       setLoading(false);
@@ -145,20 +145,20 @@ export default function UploadEpisodePage() {
       <div className="max-w-3xl mx-auto bg-gray-800 p-8 rounded-2xl shadow-xl border border-gray-700">
         <div className="flex justify-between items-center mb-6 border-b border-gray-700 pb-4">
           <div>
-            <h1 className="text-2xl font-black text-purple-400">Đăng Tập Phim Anime</h1>
-            <p className="text-gray-400 text-sm mt-1">Phim: <span className="text-white font-bold">{animeTitle}</span></p>
+            <h1 className="text-2xl font-black text-purple-400">Upload New Episode</h1>
+            <p className="text-gray-400 text-sm mt-1">Anime: <span className="text-white font-bold">{animeTitle}</span></p>
           </div>
-          <Link href="/admin/anime" className="text-sm text-gray-400 hover:text-white">&larr; Trở về</Link>
+          <Link href="/admin/anime" className="text-sm text-gray-400 hover:text-white">&larr; Back to Anime List</Link>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Ô NHẬP TÊN TẬP PHIM */}
           <div>
-            <label className="block text-sm font-semibold text-gray-300 mb-2">Tên tập phim (*)</label>
+            <label className="block text-sm font-semibold text-gray-300 mb-2">Episode name (*)</label>
             <input
               type="text"
               required
-              placeholder="Ví dụ: Tập 01: Khởi đầu mới"
+              placeholder="Example: Episode 01: A New Beginning"
               value={episodeTitle}
               onChange={(e) => setEpisodeTitle(e.target.value)}
               className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white outline-none focus:border-purple-500"
@@ -167,7 +167,7 @@ export default function UploadEpisodePage() {
 
           {/* Ô CHỌN FILE VIDEO */}
           <div>
-            <label className="block text-sm font-semibold text-gray-300 mb-2">Tệp Video (Chấp nhận .mp4, .mkv) (*)</label>
+            <label className="block text-sm font-semibold text-gray-300 mb-2">Video file (Accepts .mp4, .mkv) (*)</label>
             <input
               type="file"
               required
@@ -182,13 +182,13 @@ export default function UploadEpisodePage() {
           {/* KHU VỰC PHỤ ĐỀ */}
           <div className="border-t border-gray-700 pt-6">
             <div className="flex justify-between items-center mb-4">
-              <label className="block text-sm font-semibold text-gray-300">Tệp Phụ đề (Tùy chọn)</label>
+              <label className="block text-sm font-semibold text-gray-300">Subtitle files (Optional)</label>
               <button
                 type="button"
                 onClick={addSubtitleField}
                 className="bg-gray-700 hover:bg-gray-600 text-xs font-bold px-3 py-1.5 rounded-lg transition text-purple-400"
               >
-                + Thêm dòng phụ đề
+                + Add subtitle file
               </button>
             </div>
 
@@ -198,7 +198,7 @@ export default function UploadEpisodePage() {
                   <input
                     type="text"
                     required
-                    placeholder="Nhãn sub (VD: Tiếng Việt)"
+                    placeholder="Subtitle label (e.g., Vietnamese)"
                     value={sub.label}
                     onChange={(e) => updateSubtitleField(sub.id, "label", e.target.value)}
                     className="w-full sm:w-1/3 bg-gray-800 border border-gray-700 rounded-lg p-2 text-sm text-white outline-none"
@@ -206,7 +206,7 @@ export default function UploadEpisodePage() {
                   <input
                     type="file"
                     required
-                    accept=".srt,.ass"
+                    accept=".srt,.ass,.vtt"
                     onChange={(e) => {
                       if (e.target.files && e.target.files[0]) {
                         updateSubtitleField(sub.id, "file", e.target.files[0]);
@@ -229,7 +229,7 @@ export default function UploadEpisodePage() {
             disabled={loading}
             className="w-full py-3 mt-4 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl shadow-lg transition disabled:opacity-50 flex justify-center"
           >
-            {loading ? "Đang xử lý tải lên..." : "Phát Hành Tập Phim Mới"}
+            {loading ? "Processing upload..." : "Upload New Episode"}
           </button>
         </form>
       </div>

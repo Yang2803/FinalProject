@@ -28,26 +28,26 @@ export default function RegisterPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.message || "Có lỗi xảy ra");
+        setError(data.message || "An error occurred.");
         return;
       }
 
-      setSuccess("Đăng ký thành công! Đang chuyển hướng...");
+      setSuccess("Registration successful! Redirecting...");
       setTimeout(() => router.push("/login"), 2000);
     } catch (err) {
-      setError("Lỗi kết nối đến máy chủ.");
+      setError("An error occurred while connecting to the server.");
     }
   };
 
   return (
     <div className="flex h-screen items-center justify-center bg-gray-900">
       <div className="w-full max-w-md p-8 space-y-6 bg-gray-800 rounded-xl shadow-lg text-white">
-        <h2 className="text-3xl font-bold text-center">Đăng ký</h2>
+        <h2 className="text-3xl font-bold text-center">Register</h2>
         {error && <p className="text-red-500 text-center">{error}</p>}
         {success && <p className="text-green-500 text-center">{success}</p>}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium">Tên hiển thị</label>
+            <label className="block text-sm font-medium">Display Name</label>
             <input
               type="text"
               value={name}
@@ -67,7 +67,7 @@ export default function RegisterPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium">Mật khẩu</label>
+            <label className="block text-sm font-medium">Password</label>
             <input
               type="password"
               value={password}
@@ -80,11 +80,11 @@ export default function RegisterPage() {
             type="submit"
             className="w-full py-2 text-white bg-green-600 rounded-md hover:bg-green-700 transition"
           >
-            Tạo tài khoản
+            Create Account
           </button>
         </form>
         <p className="text-sm text-center text-gray-400">
-          Đã có tài khoản? <Link href="/login" className="text-green-400 hover:underline">Đăng nhập ngay</Link>
+          Already have an account? <Link href="/login" className="text-green-400 hover:underline">Sign in now</Link>
         </p>
       </div>
     </div>

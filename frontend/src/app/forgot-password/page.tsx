@@ -38,15 +38,15 @@ export default function ForgotPasswordPage() {
   return (
     <div className="flex h-screen items-center justify-center bg-gray-900 text-white">
       <div className="w-full max-w-md p-8 space-y-6 bg-gray-800 rounded-xl shadow-lg">
-        <h2 className="text-2xl font-bold text-center">Quên mật khẩu</h2>
-        <p className="text-sm text-gray-400 text-center">Nhập email của bạn để nhận liên kết lấy lại mật khẩu.</p>
+        <h2 className="text-2xl font-bold text-center">Forgot password</h2>
+        <p className="text-sm text-gray-400 text-center">Enter your email to receive a link to reset your password.</p>
         
         {message && <p className="text-green-500 text-center text-sm">{message}</p>}
         {error && <p className="text-red-500 text-center text-sm">{error}</p>}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium">Địa chỉ Email</label>
+            <label className="block text-sm font-medium">Email Address</label>
             <input
               type="email"
               value={email}
@@ -60,12 +60,12 @@ export default function ForgotPasswordPage() {
             disabled={loading}
             className="w-full py-2 bg-blue-600 rounded-md hover:bg-blue-700 transition disabled:bg-gray-600"
           >
-            {loading ? "Đang xử lý..." : "Gửi yêu cầu"}
+            {loading ? "Processing..." : "Send Request"}
           </button>
         </form>
 
         <div className="text-center">
-          <Link href="/login" className="text-sm text-blue-400 hover:underline">Quay lại đăng nhập</Link>
+          <Link href="/login" className="text-sm text-blue-400 hover:underline">Back to Login</Link>
         </div>
       </div>
     </div>

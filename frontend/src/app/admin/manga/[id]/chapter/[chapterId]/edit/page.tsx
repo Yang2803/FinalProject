@@ -110,7 +110,7 @@ export default function EditChapterPage({ params }: { params: Promise<{ id: stri
     const fetchChapter = async () => {
       try {
         const res = await fetch(`http://localhost:5000/api/admin/chapter/${chapterId}`);
-        if (!res.ok) throw new Error("Không thể tải thông tin chương");
+        if (!res.ok) throw new Error("Chapter information cannot be loaded.");
         const data = await res.json();
         setTitle(data.title);
         
@@ -125,7 +125,7 @@ export default function EditChapterPage({ params }: { params: Promise<{ id: stri
           setImageItems(existingFormatted);
         }
       } catch (error) {
-        alert("Lỗi tải thông tin chương!");
+        alert("Chapter information cannot be loaded.");
       } finally {
         setLoading(false);
       }
@@ -171,13 +171,13 @@ export default function EditChapterPage({ params }: { params: Promise<{ id: stri
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (imageItems.length === 0) return alert("Chương truyện phải có ít nhất 1 ảnh!");
+    if (imageItems.length === 0) return alert("Chapter must have at least 1 image!");
     setIsSaving(true);
 
     try {
       const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
       const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
-      if (!cloudName || !uploadPreset) throw new Error("Thiếu cấu hình Cloudinary!");
+      if (!cloudName || !uploadPreset) throw new Error("Missing Cloudinary configuration!");
 
       // 5. TUYỆT KỸ LƯU TRỮ: Duyệt qua mảng đang được sắp xếp
       const finalImagesArray = await Promise.all(
@@ -197,7 +197,7 @@ export default function EditChapterPage({ params }: { params: Promise<{ id: stri
             body: formData,
           });
           const data = await res.json();
-          if (!res.ok) throw new Error("Lỗi upload ảnh mới");
+          if (!res.ok) throw new Error("Error uploading new image");
           
           return data.secure_url;
         })
@@ -211,46 +211,46 @@ export default function EditChapterPage({ params }: { params: Promise<{ id: stri
         body: JSON.stringify({ title, images: finalImagesArray }),
       });
 
-      if (!backendRes.ok) throw new Error("Lỗi khi lưu dữ liệu Backend");
-      alert("Cập nhật chương thành công!");
+      if (!backendRes.ok) throw new Error("Error saving backend data");
+      alert("Chapter updated successfully!");
       router.push(`/admin/manga/${mangaId}`);
     } catch (error) {
       if (error instanceof Error) {
-        alert(`Lỗi: ${error.message}`);
+        alert(`Error: ${error.message}`);
       } else {
-        alert("Đã xảy ra lỗi không xác định!");
+        alert("An undefined error occurred!");
       }
     } finally {
       setIsSaving(false);
     }
   };
 
-  if (loading) return <div className="p-8 text-center text-white">Đang tải dữ liệu...</div>;
+  if (loading) return <div className="p-8 text-center text-white">Loading data...</div>;
 
   return (
     <div className="p-8 min-h-screen text-white max-w-4xl mx-auto">
       <div className="bg-gray-800 p-8 rounded-xl shadow-lg">
         <div className="flex justify-between items-center mb-6 border-b border-gray-700 pb-4">
-          <h1 className="text-3xl font-bold text-blue-400">Chỉnh sửa Chương</h1>
+          <h1 className="text-3xl font-bold text-blue-400">Edit Chapter</h1>
           <Link href={`/admin/manga/${mangaId}`} className="text-gray-400 hover:text-white transition">
-            &larr; Quay lại
+            &larr; Back
           </Link>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Tên chương (*)</label>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Chapter Name (*)</label>
             <input type="text" required value={title} onChange={(e) => setTitle(e.target.value)} className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:border-blue-500" />
           </div>
 
           {/* KHU VỰC ẢNH (GỘP CHUNG) */}
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2 hover:text-blue-400 cursor-default transition">
-              Sắp xếp & Chỉnh sửa ({imageItems.length} ảnh) - <span className="text-xs text-gray-500 font-normal">Kéo ảnh để thay đổi thứ tự</span>
+              Sort and Edit ({imageItems.length} images) - <span className="text-xs text-gray-500 font-normal">Drag the images to change their order.</span>
             </label>
 
             {imageItems.length === 0 ? (
-              <p className="text-sm text-red-400">Chương truyện đang trống. Vui lòng thêm ảnh!</p>
+              <p className="text-sm text-red-400">Chapter is empty. Please add some images!</p>
             ) : (
               <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-gray-900 rounded-lg border border-gray-700 h-64 overflow-y-auto shadow-inner">
@@ -266,7 +266,7 @@ export default function EditChapterPage({ params }: { params: Promise<{ id: stri
 
           <div className="border-t border-gray-700 pt-6">
             <label className="block text-sm font-medium text-gray-300 mb-2">
-              Bổ sung thêm ảnh mới
+              Add New Images
             </label>
             <input
               type="file"
@@ -278,7 +278,7 @@ export default function EditChapterPage({ params }: { params: Promise<{ id: stri
           </div>
 
           <button type="submit" disabled={isSaving} className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center">
-            {isSaving ? "Đang xử lý tải ảnh và lưu..." : "Lưu Các Thay Đổi"}
+            {isSaving ? "Processing image upload and saving..." : "Save Changes"}
           </button>
         </form>
       </div>

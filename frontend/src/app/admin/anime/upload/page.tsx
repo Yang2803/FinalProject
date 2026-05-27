@@ -133,9 +133,9 @@ export default function UploadAnimePage() {
             {loading ? (
               <div className="flex items-center gap-3">
                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                <span>Đang xử lý dữ liệu...</span>
+                <span>Processing data...</span>
               </div>
-            ) : "Đăng Anime Lên Hệ Thống"}
+            ) : "Upload Anime to the System"}
           </button>
         </form>
       </div>

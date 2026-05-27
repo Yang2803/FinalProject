@@ -76,7 +76,7 @@ export default function ProfilePage() {
   // Lấy role từ session để hiển thị động
   // ==========================================
   const isAdmin = session.user.role === "ADMIN";
-  const roleText = isAdmin ? "Quản trị viên (ADMIN)" : "Thành viên (USER)";
+  const roleText = isAdmin ? "ADMIN" : "USER";
   const roleColor = isAdmin ? "text-red-400" : "text-blue-400";
   const roleBadge = isAdmin ? "bg-red-500/20 border-red-500/50" : "bg-blue-500/20 border-blue-500/50";
   const glowColor = isAdmin ? "bg-red-500" : "bg-blue-500";
@@ -139,7 +139,7 @@ export default function ProfilePage() {
               className="group relative overflow-hidden flex items-center gap-3 bg-blue-600/10 hover:bg-blue-600 text-blue-400 hover:text-white border border-blue-600/30 font-bold py-3 px-6 rounded-xl transition-all duration-300"
             >
               <span className="text-xl group-hover:scale-125 transition-transform">📚</span> 
-              <span>Tủ Truyện Tranh</span>
+              <span>Manga Collection</span>
             </Link>
             
             <Link 
@@ -147,7 +147,7 @@ export default function ProfilePage() {
               className="group relative overflow-hidden flex items-center gap-3 bg-purple-600/10 hover:bg-purple-600 text-purple-400 hover:text-white border border-purple-600/30 font-bold py-3 px-6 rounded-xl transition-all duration-300"
             >
               <span className="text-xl group-hover:scale-125 transition-transform">🎬</span> 
-              <span>Kho Anime</span>
+              <span>Anime Library</span>
             </Link>
 
             {/* Nút đặc quyền: Chỉ Admin mới thấy nút nhảy nhanh sang trang Quản trị */}
@@ -157,7 +157,7 @@ export default function ProfilePage() {
                 className="group md:ml-auto relative overflow-hidden flex items-center gap-3 bg-red-600/10 hover:bg-red-600 text-red-400 hover:text-white border border-red-600/30 font-bold py-3 px-6 rounded-xl transition-all duration-300"
               >
                 <span className="text-xl group-hover:scale-125 transition-transform">⚙️</span> 
-                <span>Quản Trị Hệ Thống</span>
+                <span>System Administration</span>
               </Link>
             )}
           </div>
@@ -168,18 +168,18 @@ export default function ProfilePage() {
             {/* Card 1: Account Details */}
             <div className="bg-gray-900/60 p-6 rounded-2xl border border-gray-700/50 hover:border-gray-500 transition duration-300 shadow-inner group">
               <h3 className="text-lg font-bold text-gray-200 mb-6 flex items-center gap-2">
-                <span className="text-blue-500 text-xl group-hover:rotate-180 transition-transform duration-500">❖</span> Thông tin tài khoản
+                <span className="text-blue-500 text-xl group-hover:rotate-180 transition-transform duration-500">❖</span> Account Information
               </h3>
               <ul className="space-y-4 text-sm text-gray-400">
                 <li className="flex justify-between items-center bg-gray-800/50 p-3.5 rounded-lg border border-gray-700/30">
-                  <span className="font-medium">Trạng thái:</span>
+                  <span className="font-medium">Status:</span>
                   <span className="flex items-center gap-2 text-green-400 font-bold">
                     <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_#22c55e]"></span>
-                    Đang hoạt động
+                    Active
                   </span>
                 </li>
                 <li className="flex justify-between items-center bg-gray-800/50 p-3.5 rounded-lg border border-gray-700/30">
-                  <span className="font-medium">Cấp bậc:</span>
+                  <span className="font-medium">Role:</span>
                   <span className={`${roleColor} font-bold`}>{roleText}</span>
                 </li>
               </ul>
@@ -189,17 +189,17 @@ export default function ProfilePage() {
             <div className="bg-gray-900/60 p-6 rounded-2xl border border-gray-700/50 hover:border-gray-500 transition duration-300 shadow-inner group">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-lg font-bold text-gray-200 flex items-center gap-2">
-                  <span className="text-purple-500 text-xl group-hover:animate-spin">⟳</span> Hoạt động gần đây
+                  <span className="text-purple-500 text-xl group-hover:animate-spin">⟳</span> Recent Activity
                 </h3>
               </div>
 
               {loadingHistory ? (
-                <div className="text-center text-gray-500 py-4">Đang tải lịch sử...</div>
+                <div className="text-center text-gray-500 py-4">Loading history...</div>
               ) : combinedHistory.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-32 text-center bg-gray-800/30 rounded-lg border border-gray-700/30 border-dashed">
                   <span className="text-3xl mb-2 opacity-30 grayscale group-hover:grayscale-0 transition">📭</span>
                   <p className="text-sm text-gray-500 italic">
-                    Chưa có dữ liệu lịch sử.<br/>Hãy bắt đầu cuộc hành trình ngay thôi!
+                    No activity history available.<br/>Lets start your journey now!
                   </p>
                 </div>
               ) : (
@@ -213,8 +213,8 @@ export default function ProfilePage() {
                     const coverImg = isManga ? item.manga.coverImage : item.anime.coverImage;
                     const mainTitle = isManga ? item.manga.title : item.anime.title;
                     const subTitle = isManga 
-                      ? <><span className="text-blue-400">Đang đọc:</span> {item.chapter.title}</>
-                      : <><span className="text-purple-400">Đang xem:</span> {item.episode.title}</>;
+                      ? <><span className="text-blue-400">Reading:</span> {item.chapter.title}</>
+                      : <><span className="text-purple-400">Watching:</span> {item.episode.title}</>;
 
                     return (
                       <Link 

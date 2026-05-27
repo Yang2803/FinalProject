@@ -103,8 +103,8 @@ export default function WatchEpisodePage() {
     saveHistory();
   }, [session?.user?.id, animeId, episodeId]);
 
-  if (loading) return <div className="text-white text-center mt-20">Đang tải video...</div>;
-  if (!episode) return <div className="text-white text-center mt-20">Không tìm thấy tập phim!</div>;
+  if (loading) return <div className="text-white text-center mt-20">Loading video...</div>;
+  if (!episode) return <div className="text-white text-center mt-20">Episode not found!</div>;
 
   return (
     <div className="min-h-screen bg-black text-white pb-12">
@@ -135,7 +135,7 @@ export default function WatchEpisodePage() {
             {episode.subtitles && episode.subtitles.map((sub, index) => (
               <track key={sub.id} kind="subtitles" srcLang={sub.label} label={sub.label} src={sub.url} default={index === 0} />
             ))}
-            Trình duyệt của bạn không hỗ trợ thẻ video.
+            Your browser does not support video tags.
           </video>
 
           {/* LỚP PHỦ CHỨA 2 NÚT TUA */}
@@ -164,7 +164,7 @@ export default function WatchEpisodePage() {
         <div className="mt-6 bg-gray-900 p-6 rounded-xl border border-gray-800">
           <h2 className="text-2xl font-bold">{episode.title}</h2>
           <p className="text-gray-400 text-sm mt-2">
-            Ngày đăng: {new Date(episode.createdAt).toLocaleDateString('vi-VN')}
+            Date posted: {new Date(episode.createdAt).toLocaleDateString('vi-VN')}
           </p>
         </div>
 
@@ -173,12 +173,12 @@ export default function WatchEpisodePage() {
         ========================================== */}
         <div className="mt-8 bg-gray-900 rounded-xl p-6 md:p-8 shadow-xl border border-gray-800">
           <h3 className="text-xl font-bold text-white mb-6 border-l-4 border-blue-500 pl-3">
-            Chọn tập phim
+            Select Episode
           </h3>
           
           {allEpisodes.length === 0 ? (
             <div className="text-center py-10 text-gray-500 italic">
-              Đang tải danh sách tập phim...
+              Loading episode list...
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">

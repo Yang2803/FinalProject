@@ -37,7 +37,7 @@ export default function AdminMangaList() {
       <div className="flex flex-col md:flex-row justify-between items-center mb-6 border-b border-gray-700 pb-4">
         
         {/* Bên trái: Tiêu đề */}
-        <h1 className="text-3xl font-bold text-blue-400 mb-4 md:mb-0">Danh sách Manga</h1>
+        <h1 className="text-3xl font-bold text-blue-400 mb-4 md:mb-0">Manga List</h1>
         
         {/* Bên phải: Cụm nút điều hướng */}
         <div className="flex gap-4">
@@ -45,30 +45,30 @@ export default function AdminMangaList() {
             href="/admin" 
             className="px-6 py-2.5 bg-gray-700 hover:bg-gray-600 rounded-lg font-bold transition text-gray-200 flex items-center justify-center text-sm"
           >
-            Về Dashboard
+            Back to Dashboard
           </Link>
 
           <Link 
             href="/admin/manga/upload" 
             className="px-6 py-2.5 bg-green-600 hover:bg-green-500 rounded-lg font-bold shadow-lg shadow-green-600/30 transition text-white flex items-center justify-center text-sm"
           >
-            + Thêm Truyện Mới
+            + Add New Manga
           </Link>
         </div>
 
       </div>
 
       {loading ? (
-        <p>Đang tải dữ liệu...</p>
+        <p>Processing data loading...</p>
       ) : (
         <div className="bg-gray-800 rounded-xl overflow-hidden shadow-lg">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-gray-900 border-b border-gray-700">
-                <th className="p-4 font-semibold text-gray-300">Tên Truyện</th>
-                <th className="p-4 font-semibold text-gray-300">Tác giả</th>
-                <th className="p-4 font-semibold text-gray-300">Trạng thái</th>
-                <th className="p-4 font-semibold text-gray-300 text-center">Hành động</th>
+                <th className="p-4 font-semibold text-gray-300">Manga Title</th>
+                <th className="p-4 font-semibold text-gray-300">Author</th>
+                <th className="p-4 font-semibold text-gray-300">Status</th>
+                <th className="p-4 font-semibold text-gray-300 text-center">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -79,7 +79,7 @@ export default function AdminMangaList() {
                         {manga.title}
                       </Link>
                     </td>
-                  <td className="p-4 text-gray-400">{manga.author || "Đang cập nhật"}</td>
+                  <td className="p-4 text-gray-400">{manga.author || "Updating..."}</td>
                   <td className="p-4">
                     <span className={`px-2 py-1 rounded text-xs font-bold ${manga.status === "ONGOING" ? "bg-blue-900/50 text-blue-400" : "bg-green-900/50 text-green-400"}`}>
                       {manga.status}
@@ -90,14 +90,14 @@ export default function AdminMangaList() {
                       href={`/admin/manga/${manga.id}/upload-chapter`}
                       className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-sm transition"
                     >
-                      Tải lên Chương mới
+                      Upload New Chapter
                     </Link>
                   </td>
                 </tr>
               ))}
               {mangas.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="p-8 text-center text-gray-500">Chưa có truyện nào trong hệ thống.</td>
+                  <td colSpan={4} className="p-8 text-center text-gray-500">No manga available in the system.</td>
                 </tr>
               )}
             </tbody>
