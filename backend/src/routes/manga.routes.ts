@@ -1,0 +1,314 @@
+import express, { Request, Response } from 'express';
+import prisma from '../config/db';
+
+const router = express.Router();
+
+// ================= API ADMIN (MANGA & CHAPTER) =================
+
+router.post('/api/admin/manga', async (req: Request, res: Response): Promise<any> => {
+  /* ... Paste ruột API Thêm Manga mới ... */
+  try {
+    // 1. Nhận dữ liệu từ Frontend gửi lên, bao gồm cả userId để check quyền
+    const { title, description, author, coverImage, status, userId } = req.body;
+
+    if (!title || !userId) {
+      return res.status(400).json({ message: "Thiếu thông tin bắt buộc (Tiêu đề hoặc ID người dùng)!" });
+    }
+
+    // 2. Kiểm tra bảo mật: User này có tồn tại không và có phải ADMIN không?
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    
+    if (!user || user.role !== "ADMIN") {
+      return res.status(403).json({ message: "Từ chối truy cập! Chỉ Admin mới có quyền thực hiện hành động này." });
+    }
+
+    // 3. Nếu là ADMIN, tiến hành lưu Manga vào Database
+    const newManga = await prisma.manga.create({
+      data: {
+        title,
+        description,
+        author,
+        coverImage,
+        status,
+      },
+    });
+
+    res.status(201).json({ message: "New manga added successfully!", manga: newManga });
+  } catch (error) {
+    console.error("Error adding manga:", error);
+    res.status(500).json({ message: "Server error while adding manga." });
+  }
+});
+
+router.get('/api/admin/manga', async (req: Request, res: Response): Promise<any> => {
+  /* ... Paste ruột API Lấy danh sách toàn bộ Manga (Admin) ... */
+  try {
+    const mangas = await prisma.manga.findMany({
+      orderBy: { createdAt: 'desc' } // Sắp xếp truyện mới nhất lên đầu
+    });
+    res.status(200).json(mangas);
+  } catch (error) {
+    console.error("Error fetching manga list:", error);
+    res.status(500).json({ message: "Server error while fetching manga list" });
+  }
+});
+
+router.get('/api/admin/manga/:id', async (req: Request, res: Response): Promise<any> => {
+  /* ... Paste ruột API Lấy chi tiết 1 Manga (Admin) ... */
+  try {
+    const id = req.params.id as string;
+    const manga = await prisma.manga.findUnique({
+      where: { id },
+      include: {
+        chapters: {
+          orderBy: { createdAt: 'desc' } // Chương mới lên đầu
+        }
+      }
+    });
+
+    if (!manga) return res.status(404).json({ message: "This series could not be found!" });
+    res.status(200).json(manga);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error while fetching manga details." });
+  }
+});
+
+router.put('/api/admin/manga/:id', async (req: Request, res: Response): Promise<any> => {
+  /* ... Paste ruột API Cập nhật thông tin truyện ... */
+  try {
+    const id = req.params.id as string;
+    const { title, author, coverImage, status, description } = req.body;
+
+    const updatedManga = await prisma.manga.update({
+      where: { id },
+      data: { title, author, coverImage, status, description }
+    });
+
+    res.status(200).json({ message: "Update manga information successfully!", manga: updatedManga });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error while updating manga." });
+  }
+});
+
+router.delete('/api/admin/manga/:id', async (req: Request, res: Response): Promise<any> => {
+  /* ... Paste ruột API Xóa truyện ... */
+  try {
+    const id = req.params.id as string;
+
+    // Vì schema đã cấu hình onDelete: Cascade nên khi xóa Manga, toàn bộ Chapter thuộc về nó sẽ tự động bị xóa sạch trong DB
+    await prisma.manga.delete({ where: { id } });
+
+    res.status(200).json({ message: "New manga deleted successfully!" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Lỗi server khi xóa truyện." });
+  }
+});
+
+router.post('/api/admin/chapter', async (req: Request, res: Response): Promise<any> => {
+  /* ... Paste ruột API Thêm Chapter mới cho một Manga ... */
+  try {
+    const { mangaId, title, images } = req.body;
+
+    if (!mangaId || !title || !images || images.length === 0) {
+      return res.status(400).json({ message: "Thiếu thông tin hoặc chưa có ảnh!" });
+    }
+
+    const newChapter = await prisma.chapter.create({
+      data: {
+        title: title,
+        images: images,
+        mangaId: mangaId // Nối chương này vào đúng Manga đã chọn
+      }
+    });
+
+    res.status(201).json({ message: "New chapter added successfully!", chapter: newChapter });
+  } catch (error) {
+    console.error("Error adding chapter:", error);
+    res.status(500).json({ message: "Server error while saving chapter." });
+  }
+});
+
+// Lấy chi tiết 1 Chapter (Admin)
+router.get('/api/admin/chapter/:id', async (req: Request, res: Response): Promise<any> => {
+  try {
+    const id = req.params.id as string;
+    const chapter = await prisma.chapter.findUnique({ where: { id } });
+    if (!chapter) return res.status(404).json({ message: "Không tìm thấy chương truyện này!" });
+    res.status(200).json(chapter);
+  } catch (error) {
+    res.status(500).json({ message: "Lỗi server khi tải thông tin chương." });
+  }
+});
+
+// Sửa chương truyện (SỬA)
+router.put('/api/admin/chapter/:id', async (req: Request, res: Response): Promise<any> => {
+  try {
+    const id = req.params.id as string;
+    const { title, images } = req.body; // Nhận biến images từ Frontend
+
+    if (!title) {
+      return res.status(400).json({ message: "Tên chương không được để trống!" });
+    }
+
+    const updatedChapter = await prisma.chapter.update({
+      where: { id },
+      data: { 
+        title,
+        ...(images && { images }) // Nếu frontend có gửi mảng ảnh mới thì cập nhật, không thì thôi
+      }
+    });
+
+    res.status(200).json({ message: "Chapter update successful!", chapter: updatedChapter });
+  } catch (error) {
+    console.error("Error updating chapter:", error);
+    res.status(500).json({ message: "Server error while updating chapter." });
+  }
+});
+
+// Xóa chương truyện (XÓA)
+router.delete('/api/admin/chapter/:id', async (req: Request, res: Response): Promise<any> => {
+  try {
+    const id = req.params.id as string;
+
+    // Đổi lại đúng là prisma.chapter.delete
+    await prisma.chapter.delete({
+      where: { id }
+    });
+
+    res.status(200).json({ message: "Chapter deleted successfully!" });
+  } catch (error) {
+    console.error("Error deleting chapter:", error);
+    res.status(500).json({ message: "Lỗi server khi xóa chương truyện." });
+  }
+});
+
+
+// ================= API PUBLIC (DÀNH CHO NGƯỜI DÙNG) =================
+
+router.post('/api/manga', async (req: Request, res: Response): Promise<any> => {
+  /* ... Paste ruột API Upload Chapter mới kèm ảnh từ Frontend ... */
+  try {
+    const { mangaTitle, chapterTitle, images } = req.body;
+
+    if (!mangaTitle || !chapterTitle || !images || images.length === 0) {
+      return res.status(400).json({ message: "Thiếu thông tin hoặc chưa có ảnh!" });
+    }
+
+    // 1. Tìm truyện trong DB xem đã có chưa
+    let manga = await prisma.manga.findUnique({
+      where: { title: mangaTitle }
+    });
+
+    // 2. Nếu truyện chưa tồn tại, tự động tạo truyện mới
+    if (!manga) {
+      manga = await prisma.manga.create({
+        data: {
+          title: mangaTitle,
+          description: "Đang cập nhật...", // Thông tin phụ có thể sửa ở trang Admin sau
+        }
+      });
+    }
+
+    // 3. Tạo Chương mới và nhét toàn bộ link ảnh Cloudinary vào
+    const newChapter = await prisma.chapter.create({
+      data: {
+        title: chapterTitle,
+        images: images, // Prisma tự động hiểu và lưu mảng URL này
+        mangaId: manga.id
+      }
+    });
+
+    res.status(201).json({ 
+      message: "Save chapter successfully!", 
+      chapter: newChapter 
+    });
+
+  } catch (error) {
+    console.error("Error saving chapter to database:", error);
+    res.status(500).json({ message: "Server error while saving data." });
+  }
+});
+
+router.get('/api/manga', async (req: Request, res: Response): Promise<any> => {
+  /* ... Paste ruột API Lấy danh sách toàn bộ Manga (Public) ... */
+  try {
+    const mangas = await prisma.manga.findMany({
+      orderBy: { createdAt: 'desc' } // Mới nhất lên đầu
+    });
+    res.status(200).json(mangas);
+  } catch (error) {
+    res.status(500).json({ message: "Lỗi server khi tải danh sách truyện." });
+  }
+});
+
+router.get('/api/manga/:id', async (req: Request, res: Response): Promise<any> => {
+  /* ... Paste ruột API Lấy chi tiết 1 Manga kèm danh sách Chapter ... */
+  try {
+    const id = req.params.id as string;
+    const manga = await prisma.manga.findUnique({
+      where: { id },
+      include: {
+        chapters: {
+          orderBy: { createdAt: 'desc' } // Chương mới nhất lên đầu để user dễ theo dõi
+        }
+      }
+    });
+
+    if (!manga) return res.status(404).json({ message: "This series could not be found!" });
+    res.status(200).json(manga);
+  } catch (error) {
+    res.status(500).json({ message: "Server error while loading series details." });
+  }
+});
+
+router.get('/api/chapter/:chapterId', async (req: Request, res: Response): Promise<any> => {
+  /* ... Paste ruột API Lấy chi tiết nội dung 1 Chapter (Bao gồm Next/Prev chapter) ... */
+  try {
+    const chapterId = req.params.chapterId as string;
+    
+    // 1. GIỮ NGUYÊN LOGIC CŨ: Tìm chương truyện và lấy kèm thông tin Manga
+    const chapter = await prisma.chapter.findUnique({
+      where: { id: chapterId },
+      include: {
+        manga: {
+          select: { title: true } // Chỉ lấy tên truyện cho nhẹ
+        }
+      }
+    });
+
+    if (!chapter) return res.status(404).json({ message: "This chapter could not be found!" });
+    
+    // ==========================================
+    // 2. PHẦN BỔ SUNG: Tìm ID của chương trước và chương sau
+    // ==========================================
+    
+    // Lấy toàn bộ danh sách chương của bộ truyện này, sắp xếp theo thời gian tạo
+    const allChapters = await prisma.chapter.findMany({
+      where: { mangaId: chapter.mangaId },
+      orderBy: { createdAt: 'asc' }, // Xếp từ cũ đến mới
+      select: { id: true } // Chỉ lấy đúng ID ra để tính toán cho nhẹ Database
+    });
+
+    // Tìm vị trí (index) của chương hiện tại trong mảng
+    const currentIndex = allChapters.findIndex(c => c.id === chapterId);
+
+    // Lấy ID của chap trước và sau dựa trên index (nếu nằm ở rìa thì gán null)
+   const prevChapterId = currentIndex > 0 ? allChapters[currentIndex - 1]?.id ?? null : null;
+   const nextChapterId = currentIndex < allChapters.length - 1 ? allChapters[currentIndex + 1]?.id ?? null : null;
+   
+    // 3. Trả về cục data y hệt lúc trước, nhưng nhét thêm 2 biến mới vào
+    res.status(200).json({
+      ...chapter,
+      prevChapterId,
+      nextChapterId
+    });
+    
+  } catch (error) {
+    res.status(500).json({ message: "Lỗi server khi tải nội dung chương truyện." });
+  }
+});
+
+export default router;
