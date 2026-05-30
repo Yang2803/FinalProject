@@ -1,5 +1,7 @@
 import express, { Request, Response } from 'express';
 import prisma from '../config/db';
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
 
 const router = express.Router();
 
@@ -308,6 +310,123 @@ router.get('/api/chapter/:chapterId', async (req: Request, res: Response): Promi
     
   } catch (error) {
     res.status(500).json({ message: "Lỗi server khi tải nội dung chương truyện." });
+  }
+});
+
+// API: Quét ảnh và Dịch trang truyện Manga
+router.post('/api/manga/translate-page', async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { imageUrl, targetLang = "Vietnamese" } = req.body;
+
+    if (!imageUrl) {
+      return res.status(400).json({ message: "Thiếu link ảnh để dịch!" });
+    }
+
+    // ==========================================
+    // 1. CƠ CHẾ CACHE: KIỂM TRA TRONG DATABASE TRƯỚC
+    // ==========================================
+    const cachedData = await prisma.translationCache.findUnique({
+      where: {
+        imageUrl_targetLang: {
+          imageUrl: imageUrl,
+          targetLang: targetLang
+        }
+      }
+    });
+
+    // Nếu đã có người dịch trang này ra ngôn ngữ này rồi -> Trả về lập tức!
+    if (cachedData) {
+      console.log("⚡ [CACHE HIT] Lấy bản dịch từ Database siêu tốc!");
+      return res.status(200).json({ blocks: cachedData.blocks });
+    }
+
+    // ==========================================
+    // 2. NẾU CHƯA CÓ CACHE (CACHE MISS): GỌI GEMINI AI
+    // ==========================================
+    console.log("🐢 [CACHE MISS] Chưa có dữ liệu, đang nhờ Gemini phân tích...");
+    const imageResponse = await fetch(imageUrl);
+    if (!imageResponse.ok) {
+      return res.status(400).json({ message: "Không thể tải ảnh." });
+    }
+
+    // Biến ảnh thành Base64 để gửi cho Gemini
+    const arrayBuffer = await imageResponse.arrayBuffer();
+    const base64Image = Buffer.from(arrayBuffer).toString("base64");
+
+    console.log("Đã tải ảnh, đang nhờ Gemini phân tích và dịch...");
+
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
+    const model = genAI.getGenerativeModel({ 
+      model: "gemini-2.5-flash",
+      generationConfig: { responseMimeType: "application/json" } 
+    });
+
+    // PROMPT ĐẶC BIỆT DÀNH CHO BÀI TOÁN MANGA
+    // Yêu cầu AI tìm bong bóng thoại, dịch, và trả về tọa độ [ymin, xmin, ymax, xmax] theo tỷ lệ 1000
+    const prompt = `
+      You are an expert manga translator and OCR vision AI.
+      Analyze this manga page image. Find all speech bubbles and text elements.
+      For each text element, provide:
+      1. "translatedText": Translate the text into ${targetLang}. Keep the manga tone.
+      2. "box": The bounding box coordinates of the text bubble in the format [ymin, xmin, ymax, xmax], where coordinates are normalized from 0 to 1000 (0 is top/left, 1000 is bottom/right).
+      
+      Return ONLY a valid JSON array. If no text is found, return [].
+      Example format: [{"translatedText": "Chết tiệt!", "box": [150, 200, 300, 450]}]
+    `;
+
+    // Gửi CẢ câu lệnh VÀ bức ảnh cho Gemini
+    const aiResult = await model.generateContent([
+      prompt,
+      {
+        inlineData: {
+          data: base64Image,
+          mimeType: "image/png" // Hoặc jpeg tùy ảnh của bạn
+        }
+      }
+    ]);
+
+    const resultText = aiResult.response.text();
+    const blocks = JSON.parse(resultText);
+
+    console.log("=== KẾT QUẢ GEMINI TRẢ VỀ ===");
+    console.log("Tìm thấy số bong bóng thoại:", blocks.length);
+
+    if (blocks.length === 0) {
+      return res.status(200).json({ blocks: [] });
+    }
+
+    // Đổi tọa độ [ymin, xmin, ymax, xmax] (thang 1000) của Gemini sang dạng phần trăm (%)
+    const finalBlocks = blocks.map((b: any) => {
+      const [ymin, xmin, ymax, xmax] = b.box;
+      return {
+        translatedText: b.translatedText,
+        // Chuyển sang phần trăm bằng cách chia cho 10
+        topPercent: ymin / 10,
+        leftPercent: xmin / 10,
+        widthPercent: (xmax - xmin) / 10,
+        heightPercent: (ymax - ymin) / 10
+      };
+    });
+
+    // ==========================================
+    // 3. LƯU KẾT QUẢ VÀO CACHE ĐỂ LẦN SAU DÙNG
+    // ==========================================
+    await prisma.translationCache.create({
+      data: {
+        imageUrl: imageUrl,
+        targetLang: targetLang,
+        // Prisma hỗ trợ lưu mảng JSON trực tiếp
+        blocks: finalBlocks 
+      }
+    });
+
+    console.log("💾 Đã lưu bản dịch mới vào Database!");
+
+    res.status(200).json({ blocks: finalBlocks });
+
+  } catch (error) {
+    console.error("Lỗi AI Dịch:", error);
+    res.status(500).json({ message: "Lỗi server khi quét và dịch ảnh." });
   }
 });
 

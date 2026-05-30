@@ -1,5 +1,7 @@
 import express, { Request, Response } from 'express';
 import prisma from '../config/db'; // Nhúng DB dùng chung
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 
 const router = express.Router();
 
@@ -252,6 +254,119 @@ router.get('/api/anime/:id', async (req: Request, res: Response): Promise<any> =
     res.status(200).json(anime);
   } catch (error) {
     res.status(500).json({ message: "Lỗi tải thông tin phim." });
+  }
+});
+
+// Cấu hình lại S3 Client (Dùng cho việc upload file dịch lên R2)
+const s3Client = new S3Client({
+  region: "auto",
+  endpoint: process.env.R2_ENDPOINT as string,
+  credentials: {
+    accessKeyId: process.env.R2_ACCESS_KEY_ID as string,
+    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY as string,
+  },
+  forcePathStyle: true,
+});
+
+// API: Dịch phụ đề tự động bằng Gemini 1.5 Flash
+router.post('/api/anime/translate-sub', async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { episodeId, targetLang } = req.body;
+
+    if (!episodeId || !targetLang) {
+      return res.status(400).json({ message: "Thiếu thông tin tập phim hoặc ngôn ngữ đích." });
+    }
+
+    const newLabel = `${targetLang} (Auto)`;
+
+    // 1. KIỂM TRA CACHE: Xem ngôn ngữ này đã từng được dịch chưa
+    const existingSub = await prisma.subtitle.findFirst({
+      where: { episodeId, label: newLabel }
+    });
+
+    // Nếu có rồi, trả về luôn, không cần gọi AI tốn thời gian
+    if (existingSub) {
+      return res.status(200).json({ message: "Loaded from cache", subtitle: existingSub });
+    }
+
+    // 2. TÌM FILE GỐC (Ưu tiên tiếng Anh)
+    const episode = await prisma.episode.findUnique({
+      where: { id: episodeId },
+      include: { subtitles: true }
+    });
+
+    if (!episode || episode.subtitles.length === 0) {
+      return res.status(404).json({ message: "Tập phim này chưa có phụ đề gốc nào để dịch." });
+    }
+
+    // Thuật toán chọn file gốc: Ưu tiên file có chữ "English" hoặc "Full"
+    let sourceSub = episode.subtitles.find(sub => 
+      sub.label.toLowerCase().includes("english") || sub.label.toLowerCase().includes("full")
+    );
+    
+    // Nếu không tìm thấy, lấy file đầu tiên
+    if (!sourceSub) {
+      sourceSub = episode.subtitles[0];
+    }
+    if (!sourceSub) {
+      return res.status(404).json({ message: "Không tìm thấy dữ liệu phụ đề gốc hợp lệ." });
+    }
+
+    // 3. TẢI NỘI DUNG FILE VTT GỐC
+    const response = await fetch(sourceSub.url); // Vết gạch đỏ sẽ biến mất ngay lập tức!
+    if (!response.ok) throw new Error("Không thể tải file phụ đề gốc");
+    const vttContent = await response.text();
+
+    // 4. GỌI GEMINI 1.5 FLASH DỊCH THUẬT
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+    // Prompt (Câu lệnh) thiết kế đặc biệt để ép AI không làm hỏng cấu trúc VTT
+    const prompt = `
+      You are a professional anime subtitle translator. Translate the following WEBVTT subtitle file into ${targetLang}.
+      IMPORTANT RULES:
+      1. Keep the 'WEBVTT' header exactly as it is.
+      2. DO NOT translate, change, or format the timestamps (e.g., 00:00:01.000 --> 00:00:03.000).
+      3. DO NOT alter the sequence numbers.
+      4. ONLY translate the spoken dialogue text. Keep character names sounding natural.
+      5. Return ONLY the translated WEBVTT content, without any markdown formatting like \`\`\`vtt.
+      
+      Here is the file:
+      ${vttContent}
+    `;
+
+    const aiResult = await model.generateContent(prompt);
+    let translatedVtt = aiResult.response.text();
+    
+    // Đảm bảo AI không tự bọc markdown vào kết quả (Xóa bỏ ```vtt nếu có)
+    translatedVtt = translatedVtt.replace(/```vtt/g, '').replace(/```/g, '').trim();
+
+    // 5. UPLOAD FILE VTT MỚI LÊN CLOUDFLARE R2
+    const fileName = `translated-${episodeId}-${Date.now()}.vtt`;
+    
+    const command = new PutObjectCommand({
+      Bucket: process.env.R2_BUCKET_NAME as string,
+      Key: fileName,
+      Body: translatedVtt, // Đẩy thẳng chuỗi text lên làm nội dung file
+      ContentType: "text/vtt",
+    });
+
+    await s3Client.send(command);
+    const publicUrl = `${process.env.R2_PUBLIC_DOMAIN}/${fileName}`;
+
+    // 6. LƯU VÀO DATABASE
+    const newSubtitle = await prisma.subtitle.create({
+      data: {
+        label: newLabel,
+        url: publicUrl,
+        episodeId: episodeId
+      }
+    });
+
+    res.status(200).json({ message: "Translated successfully", subtitle: newSubtitle });
+  } catch (error) {
+    console.error("Lỗi Dịch Auto:", error);
+    res.status(500).json({ message: "Lỗi server khi dịch tự động." });
   }
 });
 

@@ -6,6 +6,8 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import CommentSection from "@/components/CommentSection";
 
+import { SUPPORTED_LANGUAGES } from '@/components/constants/languages';
+
 // Khai báo cấu trúc Phụ đề
 interface Subtitle {
   id: string;
@@ -44,6 +46,10 @@ export default function WatchEpisodePage() {
       videoRef.current.currentTime += seconds;
     }
   };
+
+  //State của auto translate
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [activeSubId, setActiveSubId] = useState<string | null>(null);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -102,6 +108,44 @@ export default function WatchEpisodePage() {
 
     saveHistory();
   }, [session?.user?.id, animeId, episodeId]);
+
+  // HÀM GỌI API DỊCH AI
+  const handleAutoTranslate = async (targetLang: string) => {
+    if (!episode || !targetLang) return;
+    
+    setIsTranslating(true);
+    try {
+      const res = await fetch("http://localhost:5000/api/anime/translate-sub", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ episodeId, targetLang })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        
+        // Cập nhật lại mảng phụ đề của tập phim hiện tại để nhét file mới vào
+        setEpisode(prev => {
+          if (!prev) return prev;
+          // Kiểm tra xem đã có trong list chưa (tránh add trùng nếu bấm liên tục)
+          const exists = prev.subtitles?.find(s => s.id === data.subtitle.id);
+          if (exists) return prev;
+          return {
+            ...prev,
+            subtitles: [...(prev.subtitles || []), data.subtitle]
+          };
+        });
+        
+        alert(`Đã hoàn tất dịch sang ${targetLang}! Vui lòng bật phụ đề trong Player (CC).`);
+      } else {
+        alert("Có lỗi xảy ra trong quá trình dịch thuật.");
+      }
+    } catch (error) {
+      console.error("Translate error:", error);
+    } finally {
+      setIsTranslating(false);
+    }
+  };
 
   if (loading) return <div className="text-white text-center mt-20">Loading video...</div>;
   if (!episode) return <div className="text-white text-center mt-20">Episode not found!</div>;
@@ -167,6 +211,38 @@ export default function WatchEpisodePage() {
             Date posted: {new Date(episode.createdAt).toLocaleDateString('vi-VN')}
           </p>
         </div>
+
+        {/* CỤM NÚT AUTO TRANSLATE AI */}
+          <div className="bg-gray-800 p-3 rounded-lg flex items-center gap-3 border border-gray-700">
+            <span className="text-sm font-bold text-blue-400 flex items-center gap-1">
+              ✨ AI Translate:
+            </span>
+            <select 
+              className="bg-gray-900 text-white text-sm px-3 py-1.5 rounded outline-none border border-gray-600 disabled:opacity-50"
+              disabled={isTranslating}
+              onChange={(e) => {
+                if(e.target.value) handleAutoTranslate(e.target.value);
+                e.target.value = ""; // Reset dropdown sau khi chọn
+              }}
+            >
+              <option value="">Chọn ngôn ngữ...</option>
+              
+              {/* Dùng map để tự động sinh ra danh sách ngôn ngữ */}
+              {SUPPORTED_LANGUAGES.map((lang) => (
+                <option key={lang.code} value={lang.code}>
+                  {lang.label}
+                </option>
+              ))}
+              
+            </select>
+            
+            {isTranslating && (
+              <span className="text-xs text-yellow-400 animate-pulse flex items-center gap-1">
+                <div className="w-3 h-3 border-2 border-yellow-400 border-t-transparent rounded-full animate-spin"></div>
+                Đang dịch...
+              </span>
+            )}
+          </div>
 
         {/* =========================================
             3. KHU VỰC DANH SÁCH TẬP PHIM BỔ SUNG

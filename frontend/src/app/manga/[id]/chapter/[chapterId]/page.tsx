@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import CommentSection from "@/components/CommentSection";
+import { SUPPORTED_LANGUAGES } from "@/components/constants/languages";
+import { useState, useEffect, use } from "react"; // Đã xóa useRef vì không còn cần thiết
 
-// 1. Đã cập nhật Interface để nhận thêm ID của chương trước và sau
+// 1. Interface Dữ liệu
 interface ChapterData {
   id: string;
   title: string;
@@ -18,6 +19,129 @@ interface ChapterData {
   nextChapterId: string | null;
 }
 
+// Cập nhật lại Interface để nhận tọa độ % từ Backend
+interface TextBlock {
+  translatedText: string;
+  topPercent: number;
+  leftPercent: number;
+  widthPercent: number;
+  heightPercent: number;
+}
+
+// =====================================================================
+// COMPONENT CON: ẢNH MANGA HỖ TRỢ DỊCH THUẬT BẰNG GEMINI VISION
+// =====================================================================
+function TranslateableImage({ 
+  imgUrl, 
+  targetLang, 
+  mode 
+}: { 
+  imgUrl: string; 
+  targetLang: string;
+  mode: "vertical" | "horizontal" 
+}) {
+  const [blocks, setBlocks] = useState<TextBlock[]>([]);
+  const [isTranslating, setIsTranslating] = useState(false);
+  
+  // ➕ THÊM STATE ĐỂ QUẢN LÝ ẨN/HIỆN
+  const [showTranslation, setShowTranslation] = useState(true);
+
+  const handleTranslate = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    // Nếu đã có bản dịch rồi thì chỉ cần bật/tắt, KHÔNG gọi API nữa
+    if (blocks.length > 0) {
+      setShowTranslation(!showTranslation);
+      return;
+    }
+
+    setIsTranslating(true);
+    const absoluteImageUrl = imgUrl.startsWith("http") 
+      ? imgUrl 
+      : `${window.location.origin}${imgUrl}`;
+
+    try {
+      const res = await fetch("http://localhost:5000/api/manga/translate-page", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageUrl: absoluteImageUrl, targetLang })
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        if (data.blocks.length === 0) {
+           alert("AI không tìm thấy chữ nào hợp lệ trên trang này!");
+        }
+        setBlocks(data.blocks);
+        setShowTranslation(true); // Mặc định hiện khi dịch xong
+      }
+    } catch (error) {
+      console.error("Lỗi dịch trang:", error);
+    } finally {
+      setIsTranslating(false);
+    }
+  };
+
+  const wrapperClass = mode === "vertical" 
+    ? "relative w-full mb-4" 
+    : "relative h-full inline-block z-0"; 
+
+  const imgClass = mode === "vertical"
+    ? "w-full h-auto block object-contain"
+    : "h-full w-auto block object-contain transition-opacity duration-300";
+
+  return (
+    <div className={wrapperClass}>
+      <img src={imgUrl} alt="Manga Page" className={imgClass} />
+      
+      {/* ➕ LOGIC HIỂN THỊ NÚT THÔNG MINH */}
+      <button 
+        onClick={handleTranslate} 
+        disabled={isTranslating}
+        className={`absolute top-4 right-4 text-white px-3 py-1.5 text-xs md:text-sm font-bold rounded shadow-lg z-20 backdrop-blur-sm transition disabled:opacity-50
+          ${blocks.length > 0 ? "bg-gray-800/90 hover:bg-gray-700" : "bg-blue-600/90 hover:bg-blue-500"}
+        `}
+      >
+        {isTranslating ? "✨ Đang quét..." : 
+         blocks.length > 0 ? (showTranslation ? "👁️ Ẩn bản dịch" : "👁️ Hiện bản dịch") : 
+         "✨ Dịch trang này"}
+      </button>
+
+      {/* ➕ CHỈ RENDER BẢN DỊCH KHI SHOWTRANSLATION = TRUE */}
+     {showTranslation && blocks.map((block, index) => (
+        <div 
+          key={index}
+          // Xóa class 'p-2' ở đây để kiểm soát padding trực tiếp trong style cho linh hoạt hơn
+          className="absolute bg-white text-black flex items-center justify-center text-center z-10 overflow-hidden"
+          style={{
+            top: `${block.topPercent}%`,
+            left: `${block.leftPercent}%`,
+            width: `${block.widthPercent}%`,
+            height: `${block.heightPercent}%`,
+            borderRadius: '12px', 
+            transform: 'scale(1.15)', 
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)', 
+            
+            // =====================================
+            // CÁC DÒNG ĐÃ ĐƯỢC TINH CHỈNH LẠI
+            // =====================================
+            padding: '4px', // Khoảng cách viền vừa phải để chữ không bị sát mép
+            fontSize: 'clamp(0.4rem, 1vw, 0.85rem)', // Đã thu nhỏ: Min 0.4rem, tự động theo màn hình 1vw, Max 0.85rem
+            lineHeight: '1.35', // Dãn dòng ra một chút để các dấu (như ề, ố, ặ) không đụng nhau
+            fontWeight: '500', // Đã giảm từ 800 (siêu đậm) xuống 500 (vừa phải/dễ đọc)
+            fontFamily: "'Segoe UI', Roboto, Helvetica, Arial, sans-serif", // Bộ font quốc dân, chống lỗi dấu Tiếng Việt 100%
+            wordBreak: 'break-word' // Bắt buộc tự động xuống dòng, không bao giờ bị tràn ra ngoài khung
+          }}
+        >
+          {block.translatedText}
+        </div>
+      ))}
+    </div>
+  );
+}
+// =====================================================================
+
+
 export default function MangaReaderPage({ params }: { params: Promise<{ id: string; chapterId: string }> }) {
   const resolvedParams = use(params);
   const mangaId = resolvedParams.id;
@@ -26,11 +150,12 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
   const [chapter, setChapter] = useState<ChapterData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // STATE ĐIỀU KHIỂN CHẾ ĐỘ ĐỌC
   const [viewMode, setViewMode] = useState<"vertical" | "horizontal">("vertical");
   const [currentPage, setCurrentPage] = useState(0);
+  
+  // STATE: Quản lý ngôn ngữ Dịch (AI Lang)
+  const [targetLang, setTargetLang] = useState("Vietnamese");
 
-  // GỌI API LẤY NỘI DUNG CHƯƠNG
   useEffect(() => {
     const fetchChapter = async () => {
       try {
@@ -50,7 +175,6 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
 
   const { data: session } = useSession();
 
-  // Ghi nhận Lịch sử đọc ngầm
   useEffect(() => {
     const recordHistory = async () => {
       if (session?.user?.id && mangaId && chapterId) {
@@ -68,7 +192,6 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
     recordHistory();
   }, [session?.user?.id, mangaId, chapterId]);
 
-  // HÀM XỬ LÝ CHUYỂN TRANG (Cho chế độ lướt ngang)
   const handleNextPage = () => {
     if (chapter && currentPage < chapter.images.length) {
       setCurrentPage((prev) => prev + 1);
@@ -81,7 +204,6 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
     }
   };
 
-  // TÍCH HỢP BÀN PHÍM (ArrowRight / ArrowLeft)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (viewMode !== "horizontal") return;
@@ -99,7 +221,7 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
     <div className="min-h-screen bg-[#0f0f11] text-white">
       
       {/* THANH ĐIỀU HƯỚNG BÊN TRÊN (STICKY NAVBAR) */}
-      <div className="sticky top-0 z-50 bg-gray-900/90 backdrop-blur-md border-b border-gray-800 p-4 shadow-lg flex flex-col md:flex-row justify-between items-center gap-4">
+      <div className="sticky top-0 z-50 bg-gray-900/95 backdrop-blur-md border-b border-gray-800 p-4 shadow-lg flex flex-wrap md:flex-nowrap justify-between items-center gap-4">
         
         {/* Nút quay lại & Tiêu đề */}
         <div className="flex items-center gap-4">
@@ -107,48 +229,42 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
             &larr; Back to Series
           </Link>
           <div>
-            <h1 className="font-bold text-blue-400 truncate max-w-[150px] md:max-w-[300px]">{chapter.manga.title}</h1>
+            <h1 className="font-bold text-blue-400 truncate max-w-[150px] md:max-w-[200px]">{chapter.manga.title}</h1>
             <h2 className="text-sm text-gray-400">{chapter.title}</h2>
           </div>
         </div>
 
-        {/* CỤM NÚT ĐIỀU HƯỚNG CHƯƠNG MỚI ĐƯỢC THÊM VÀO */}
-        <div className="flex items-center gap-2">
-          {chapter.prevChapterId ? (
-            <Link href={`/manga/${mangaId}/chapter/${chapter.prevChapterId}`} className="bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-lg text-sm font-bold transition">
-              &larr; Previous Chapter
-            </Link>
-          ) : (
-            <span className="bg-gray-800/50 text-gray-600 px-3 py-1.5 rounded-lg text-sm font-bold cursor-not-allowed">
-              &larr; Previous Chapter
-            </span>
-          )}
+        <div className="flex items-center gap-4 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 hide-scrollbar">
+          
+          {/* Menu Chọn ngôn ngữ dịch AI */}
+          <div className="flex items-center gap-2 bg-gray-800 p-1 rounded-lg shrink-0 border border-gray-700">
+            <span className="text-xs font-bold text-gray-400 pl-2">Dịch ra:</span>
+            <select 
+              value={targetLang}
+              onChange={(e) => setTargetLang(e.target.value)}
+              className="bg-gray-900 text-white text-sm px-2 py-1 rounded outline-none border border-gray-600 cursor-pointer"
+            >
+              {SUPPORTED_LANGUAGES.map((lang) => (
+                <option key={lang.code} value={lang.code}>{lang.label}</option>
+              ))}
+            </select>
+          </div>
 
-          {chapter.nextChapterId ? (
-            <Link href={`/manga/${mangaId}/chapter/${chapter.nextChapterId}`} className="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-sm font-bold transition">
-              Next Chapter &rarr;
-            </Link>
-          ) : (
-            <span className="bg-gray-800/50 text-gray-600 px-3 py-1.5 rounded-lg text-sm font-bold cursor-not-allowed">
-              Next Chapter &rarr;
-            </span>
-          )}
-        </div>
-
-        {/* Cụm nút Đổi chế độ đọc */}
-        <div className="flex items-center gap-2 bg-gray-800 p-1 rounded-lg shrink-0">
-          <button
-            onClick={() => setViewMode("vertical")}
-            className={`px-4 py-1.5 rounded-md text-sm font-bold transition ${viewMode === "vertical" ? "bg-blue-600 text-white shadow-md" : "text-gray-400 hover:text-white"}`}
-          >
-            Scroll Vertically ↓
-          </button>
-          <button
-            onClick={() => setViewMode("horizontal")}
-            className={`px-4 py-1.5 rounded-md text-sm font-bold transition ${viewMode === "horizontal" ? "bg-blue-600 text-white shadow-md" : "text-gray-400 hover:text-white"}`}
-          >
-            Scroll Horizontally ↔
-          </button>
+          {/* Cụm nút Đổi chế độ đọc */}
+          <div className="flex items-center gap-2 bg-gray-800 p-1 rounded-lg shrink-0">
+            <button
+              onClick={() => setViewMode("vertical")}
+              className={`px-3 py-1.5 rounded-md text-sm font-bold transition ${viewMode === "vertical" ? "bg-blue-600 text-white shadow-md" : "text-gray-400 hover:text-white"}`}
+            >
+              ↓ Vertical
+            </button>
+            <button
+              onClick={() => setViewMode("horizontal")}
+              className={`px-3 py-1.5 rounded-md text-sm font-bold transition ${viewMode === "horizontal" ? "bg-blue-600 text-white shadow-md" : "text-gray-400 hover:text-white"}`}
+            >
+              ↔ Horizontal
+            </button>
+          </div>
         </div>
       </div>
 
@@ -157,13 +273,13 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
         
         {/* CHẾ ĐỘ 1: CUỘN DỌC TRUYỀN THỐNG */}
         {viewMode === "vertical" && (
-          <div className="flex flex-col items-center w-full max-w-3xl">
+          <div className="flex flex-col items-center w-full max-w-3xl px-2 md:px-0 pt-4">
             {chapter.images.map((imgUrl, index) => (
-              <img 
+              <TranslateableImage 
                 key={index} 
-                src={imgUrl} 
-                alt={`Page ${index + 1}`} 
-                className="w-full object-contain block" 
+                imgUrl={imgUrl} 
+                targetLang={targetLang} 
+                mode="vertical" 
               />
             ))}
             
@@ -196,33 +312,31 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
 
         {/* CHẾ ĐỘ 2: LƯỚT NGANG TỪNG TRANG */}
         {viewMode === "horizontal" && (
-          <div className="relative w-full max-w-4xl h-[calc(100vh-80px)] flex flex-col justify-center items-center bg-black select-none">
+          <div className="relative w-full h-[calc(100vh-80px)] flex flex-col justify-center items-center bg-black select-none overflow-hidden py-4">
             
-            {/* Hiển thị số trang (Giới hạn hiển thị không vượt quá tổng số trang) */}
-            <div className="absolute top-4 right-4 bg-black/60 px-3 py-1 rounded-full text-xs text-gray-300 z-20">
+            <div className="absolute top-4 right-4 bg-black/60 px-3 py-1 rounded-full text-xs text-gray-300 z-30">
               Trang {currentPage < chapter.images.length ? currentPage + 1 : chapter.images.length} / {chapter.images.length}
             </div>
 
-            {/* Vùng bấm ẩn để chuyển trang bằng chuột */}
-            <div className="absolute top-0 left-0 w-1/3 h-full z-10 cursor-w-resize" onClick={handlePrevPage} title="Trang trước" />
-            <div className="absolute top-0 right-0 w-1/3 h-full z-10 cursor-e-resize" onClick={handleNextPage} title="Trang tiếp theo" />
+            {/* Vùng bấm ẩn chuyển trang */}
+            <div className="absolute top-0 left-0 w-1/4 h-full z-10 cursor-w-resize" onClick={handlePrevPage} title="Trang trước" />
+            <div className="absolute top-0 right-0 w-1/4 h-full z-10 cursor-e-resize" onClick={handleNextPage} title="Trang tiếp theo" />
 
-            {/* LOGIC HIỂN THỊ: NẾU CHƯA QUA TRANG CUỐI THÌ HIỆN ẢNH, NẾU QUA RỒI THÌ HIỆN MENU */}
+            {/* HIỂN THỊ ẢNH HOẶC MENU KẾT THÚC */}
             {currentPage < chapter.images.length ? (
-              <img 
-                src={chapter.images[currentPage]} 
-                alt={`Page ${currentPage + 1}`} 
-                className="max-w-full max-h-full object-contain relative z-0 transition-opacity duration-300" 
+              <TranslateableImage 
+                imgUrl={chapter.images[currentPage]} 
+                targetLang={targetLang} 
+                mode="horizontal" 
               />
             ) : (
-              /* GIAO DIỆN KẾT THÚC CHƯƠNG ĐƯỢC CHUYỂN THÀNH MỘT "TRANG" RIÊNG BIỆT */
               <div className="bg-gray-900/95 backdrop-blur-md p-8 rounded-2xl border border-gray-700 text-center z-30 shadow-2xl w-[90%] max-w-md relative">
                  <h3 className="text-xl font-bold text-white mb-2">The chapter has ended.</h3>
                  <p className="mb-6 text-gray-400 text-sm">You want to do next?</p>
                  
                  <div className="flex flex-col gap-3">
                    {chapter.nextChapterId ? (
-                     <Link href={`/manga/${mangaId}/chapter/${chapter.nextChapterId}`} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-3 rounded-xl font-bold transition w-full shadow-lg shadow-blue-600/20 z-50 relative pointer-events-auto">
+                     <Link href={`/manga/${mangaId}/chapter/${chapter.nextChapterId}`} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-3 rounded-xl font-bold transition w-full shadow-lg z-50 relative pointer-events-auto">
                        Read next Chapter &rarr;
                      </Link>
                    ) : (
@@ -237,34 +351,33 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
               </div>
             )}
 
-            {/* Thanh điều hướng bằng nút dưới cùng */}
-            <div className="absolute bottom-6 flex gap-4 z-20 pointer-events-auto">
+            {/* Thanh điều hướng */}
+            <div className="absolute bottom-6 flex gap-4 z-30 pointer-events-auto">
               <button 
                 onClick={handlePrevPage}
                 disabled={currentPage === 0}
-                className="bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-white w-12 h-12 rounded-full flex justify-center items-center font-bold text-xl shadow-lg border border-gray-600 transition"
+                className="bg-gray-800/80 backdrop-blur hover:bg-gray-700 disabled:opacity-50 text-white w-12 h-12 rounded-full flex justify-center items-center font-bold text-xl shadow-lg border border-gray-600 transition"
               >
                 &larr;
               </button>
               <button 
                 onClick={handleNextPage}
-                disabled={currentPage === chapter.images.length} // Khóa nút Next khi đã ở màn hình kết thúc
-                className="bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-white w-12 h-12 rounded-full flex justify-center items-center font-bold text-xl shadow-lg border border-gray-600 transition"
+                disabled={currentPage === chapter.images.length}
+                className="bg-gray-800/80 backdrop-blur hover:bg-gray-700 disabled:opacity-50 text-white w-12 h-12 rounded-full flex justify-center items-center font-bold text-xl shadow-lg border border-gray-600 transition"
               >
                 &rarr;
               </button>
             </div>
-
           </div>
         )}
       </div>
-      {/* KHU VỰC BÌNH LUẬN CỦA CHƯƠNG */}
+
+      {/* KHU VỰC BÌNH LUẬN */}
       <div className="w-full flex justify-center mt-12 pb-20">
         <div className="w-full max-w-4xl px-4">
            <CommentSection targetType="chapter" targetId={chapterId} />
         </div>
       </div>
-
     </div> 
   );
 }
