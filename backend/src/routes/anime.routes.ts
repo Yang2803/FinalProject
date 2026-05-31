@@ -22,23 +22,26 @@ router.get('/api/admin/anime/list-select', async (req: Request, res: Response) =
   }
 });
 
-// 2. API: Tạo tập phim mới kèm theo mảng phụ đề tương ứng
+// 2. API: Tạo tập phim mới kèm theo mảng phụ đề và liên kết Manga
 router.post('/api/admin/episode', async (req: Request, res: Response): Promise<any> => {
   try {
-    const { animeId, title, videoUrl, subtitles } = req.body;
+    // ➕ LẤY THÊM episodeNumber VÀ mappedChapterIds TỪ FRONTEND GỬI LÊN
+    const { animeId, title, videoUrl, subtitles, episodeNumber, mappedChapterIds } = req.body;
 
-    if (!animeId || !title || !videoUrl) {
+    if (!animeId || !title || !videoUrl || episodeNumber === undefined) {
       return res.status(400).json({ message: "Vui lòng điền đủ thông tin bắt buộc!" });
     }
 
-    // Tiến hành lưu thông tin tập phim và các phụ đề vào DB bằng cơ chế lồng dữ liệu (create Many)
     const newEpisode = await prisma.episode.create({
       data: {
         animeId,
         title,
         videoUrl,
+        // ➕ LƯU VÀO DATABASE
+        episodeNumber: Number(episodeNumber), 
+        mappedChapterIds: mappedChapterIds || [], // Nếu không có thì mặc định là mảng rỗng
         subtitles: {
-          create: subtitles // Mảng object chứa { label, url } gửi từ Frontend lên
+          create: subtitles 
         }
       },
       include: { subtitles: true }
@@ -179,27 +182,27 @@ router.get('/api/admin/episode-detail/:id', async (req: Request, res: Response):
   }
 });
 
-// 9. API: Cập nhật tập phim (Đổi tên hoặc Đổi link video)
+// 9. API: Cập nhật tập phim (Đổi tên, video, subtitle hoặc Manga Sync)
 router.put('/api/admin/episode/:id', async (req: Request, res: Response): Promise<any> => {
   try {
     const episodeId = req.params.id as string;
-    const { title, videoUrl, newSubtitles } = req.body;
+    // ➕ LẤY THÊM DỮ LIỆU TỪ BODY
+    const { title, videoUrl, newSubtitles, episodeNumber, mappedChapterIds } = req.body;
 
     const updatedEpisode = await prisma.episode.update({
       where: { id: episodeId },
       data: {
         title,
-        ...(videoUrl && { videoUrl }) // Nếu có videoUrl mới gửi lên thì mới update trường này
+        ...(videoUrl && { videoUrl }), 
+        // ➕ CẬP NHẬT THÊM NẾU CÓ THAY ĐỔI
+        ...(episodeNumber !== undefined && { episodeNumber: Number(episodeNumber) }),
+        ...(mappedChapterIds && { mappedChapterIds }),
       }
     });
 
-    // 2. Xử lý phụ đề: Nếu Frontend có gửi mảng phụ đề mới lên -> Thay thế toàn bộ
+    // Xử lý phụ đề (Giữ nguyên như cũ)
     if (newSubtitles && newSubtitles.length > 0) {
-      // Xóa sạch phụ đề cũ của tập này
-      await prisma.subtitle.deleteMany({
-        where: { episodeId: episodeId }
-      });
-      // Tạo các phụ đề mới
+      await prisma.subtitle.deleteMany({ where: { episodeId: episodeId } });
       await prisma.subtitle.createMany({
         data: newSubtitles.map((sub: any) => ({
           label: sub.label,
@@ -215,7 +218,6 @@ router.put('/api/admin/episode/:id', async (req: Request, res: Response): Promis
     res.status(500).json({ message: "Lỗi server khi cập nhật tập phim." });
   }
 });
-
 
 // ==========================================
 // API ANIME DÀNH CHO USER (PUBLIC)
@@ -369,5 +371,104 @@ router.post('/api/anime/translate-sub', async (req: Request, res: Response): Pro
     res.status(500).json({ message: "Lỗi server khi dịch tự động." });
   }
 });
+
+
+//API Tự động liên kết Tập Anime với Chapter Manga bằng AI (Dùng Gemini 2.5 Flash)
+router.post('/api/admin/auto-map-chapters', async (req: Request, res: Response): Promise<any> => {
+  try {
+    // Frontend sẽ gửi lên Tên Anime, Tập số mấy, và ID của bộ Manga trong DB
+    const { animeName, episodeNumber, mangaId } = req.body;
+
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
+    const model = genAI.getGenerativeModel({ 
+      model: "gemini-2.5-flash",
+      generationConfig: { responseMimeType: "application/json" } 
+    });
+
+    // 1. Dùng AI để tìm ra số của Chapter
+    const prompt = `
+      You are an anime/manga database expert. 
+      The anime is "${animeName}". 
+      Which manga chapter numbers correspond exactly to episode ${episodeNumber} of this anime?
+      Return ONLY a JSON array of integers representing the chapter numbers. 
+      For example, if it covers chapters 4 and 5, return: [4, 5]. 
+      If it's a filler episode with no manga chapters, return: [].
+    `;
+
+    const aiResult = await model.generateContent(prompt);
+    const chapterNumbers: number[] = JSON.parse(aiResult.response.text());
+
+    if (chapterNumbers.length === 0) {
+      return res.status(200).json({ mappedChapterIds: [], message: "Đây là tập Filler (Ngoại truyện), không có Manga." });
+    }
+
+    // 2. Tự động khớp số Chapter AI tìm được với ID trong Database của bạn
+    // Giả sử cột title của Chapter lưu dạng "Chapter 1", "Chương 2"...
+    const mappedChapterIds: string[] = [];
+
+    for (const chapNum of chapterNumbers) {
+      // Tìm chap trong DB thuộc bộ Manga đó, có chứa số chapter
+      const chapterInDb = await prisma.chapter.findFirst({
+        where: {
+          mangaId: mangaId,
+          title: {
+            contains: chapNum.toString() // Tìm chap có chứa số này
+          }
+        }
+      });
+
+      if (chapterInDb) {
+        mappedChapterIds.push(chapterInDb.id);
+      }
+    }
+
+    res.status(200).json({ 
+      mappedChapterIds, 
+      foundNumbers: chapterNumbers,
+      message: "Tìm liên kết thành công!" 
+    });
+
+  } catch (error) {
+    console.error("Lỗi Auto-Map:", error);
+    res.status(500).json({ message: "Lỗi server khi tự động liên kết." });
+  }
+});
+
+
+// Auto generate Anime description using Gemini 2.5 Flash
+router.post('/api/admin/generate-anime-desc', async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { title } = req.body;
+
+    if (!title) {
+      return res.status(400).json({ message: "Vui lòng cung cấp tên phim." });
+    }
+
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+    // Cấu hình Prompt (Câu lệnh) cho AI
+    const prompt = `
+      Bạn là một chuyên gia đánh giá Anime (Wibu chính hiệu).
+      Hãy viết một đoạn tóm tắt nội dung hấp dẫn, chính xác cho bộ anime có tên là "${title}".
+      YÊU CẦU BẮT BUỘC:
+      1. Viết bằng Tiếng Anh.
+      2. Độ dài khoảng 3-4 câu (ngắn gọn, súc tích).
+      3. Tuyệt đối KHÔNG tiết lộ nội dung quan trọng (No spoilers).
+      4. Chỉ trả về văn bản tóm tắt, không giải thích gì thêm, không dùng markdown code block.
+    `;
+
+    const aiResult = await model.generateContent(prompt);
+    const description = aiResult.response.text().trim();
+
+    res.status(200).json({ description });
+
+  } catch (error) {
+    console.error("Lỗi AI viết tóm tắt:", error);
+    res.status(500).json({ message: "Lỗi server khi nhờ AI viết tóm tắt." });
+  }
+});
+
+
 
 export default router;

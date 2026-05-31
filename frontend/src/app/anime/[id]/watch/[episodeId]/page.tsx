@@ -5,25 +5,112 @@ import { useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import CommentSection from "@/components/CommentSection";
-
 import { SUPPORTED_LANGUAGES } from '@/components/constants/languages';
 
-// Khai báo cấu trúc Phụ đề
+// =====================================================================
+// 1. CÁC INTERFACE DỮ LIỆU
+// =====================================================================
 interface Subtitle {
   id: string;
   label: string;
   url: string;
 }
 
-// Khai báo cấu trúc Tập phim
 interface Episode {
   id: string;
   title: string;
   videoUrl: string;
   createdAt: string;
   subtitles?: Subtitle[];
+  mappedChapterIds?: string[]; // Mảng chứa ID các Chapter Manga liên kết
 }
 
+interface ChapterData {
+  id: string;
+  title: string;
+  images: string[];
+  mangaId: string;
+}
+
+interface TextBlock {
+  translatedText: string;
+  topPercent: number;
+  leftPercent: number;
+  widthPercent: number;
+  heightPercent: number;
+}
+
+// =====================================================================
+// 2. COMPONENT CON: ẢNH MANGA HỖ TRỢ DỊCH THUẬT (Nhúng trực tiếp vào đây)
+// =====================================================================
+function TranslateableImage({ imgUrl, targetLang }: { imgUrl: string; targetLang: string }) {
+  const [blocks, setBlocks] = useState<TextBlock[]>([]);
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [showTranslation, setShowTranslation] = useState(true);
+
+  const handleTranslate = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (blocks.length > 0) {
+      setShowTranslation(!showTranslation);
+      return;
+    }
+    setIsTranslating(true);
+    const absoluteImageUrl = imgUrl.startsWith("http") ? imgUrl : `${window.location.origin}${imgUrl}`;
+
+    try {
+      const res = await fetch("http://localhost:5000/api/manga/translate-page", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageUrl: absoluteImageUrl, targetLang })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.blocks.length === 0) alert("AI không tìm thấy chữ nào hợp lệ trên trang này!");
+        setBlocks(data.blocks);
+        setShowTranslation(true);
+      }
+    } catch (error) {
+      console.error("Lỗi dịch trang:", error);
+    } finally {
+      setIsTranslating(false);
+    }
+  };
+
+  return (
+    <div className="relative w-full mb-4">
+      <img src={imgUrl} alt="Manga Page" className="w-full h-auto block object-contain rounded-md" />
+      
+      <button 
+        onClick={handleTranslate} 
+        disabled={isTranslating}
+        className={`absolute top-4 right-4 text-white px-3 py-1.5 text-xs md:text-sm font-bold rounded shadow-lg z-20 backdrop-blur-sm transition disabled:opacity-50
+          ${blocks.length > 0 ? "bg-gray-800/90 hover:bg-gray-700" : "bg-blue-600/90 hover:bg-blue-500"}
+        `}
+      >
+        {isTranslating ? "✨ Đang quét..." : blocks.length > 0 ? (showTranslation ? "👁️ Ẩn bản dịch" : "👁️ Hiện bản dịch") : "✨ Dịch trang"}
+      </button>
+
+      {showTranslation && blocks.map((block, index) => (
+        <div 
+          key={index}
+          className="absolute bg-white text-black flex items-center justify-center text-center z-10 overflow-hidden"
+          style={{
+            top: `${block.topPercent}%`, left: `${block.leftPercent}%`, width: `${block.widthPercent}%`, height: `${block.heightPercent}%`,
+            borderRadius: '12px', transform: 'scale(1.15)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)', 
+            padding: '4px', fontSize: 'clamp(0.4rem, 1vw, 0.85rem)', lineHeight: '1.35', fontWeight: '500', 
+            fontFamily: "'Segoe UI', Roboto, Helvetica, Arial, sans-serif", wordBreak: 'break-word'
+          }}
+        >
+          {block.translatedText}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// =====================================================================
+// 3. PAGE CHÍNH: XEM PHIM & SPLIT-SCREEN MANGA
+// =====================================================================
 export default function WatchEpisodePage() {
   const params = useParams();
   const animeId = params.id as string || params.animeId as string;
@@ -34,22 +121,21 @@ export default function WatchEpisodePage() {
   // --- STATE CỦA VIDEO ---
   const [animeTitle, setAnimeTitle] = useState("");
   const [episode, setEpisode] = useState<Episode | null>(null);
-  
-  // 1. BỔ SUNG STATE LƯU TOÀN BỘ DANH SÁCH TẬP PHIM
   const [allEpisodes, setAllEpisodes] = useState<Episode[]>([]); 
-  
   const [loading, setLoading] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  const skipTime = (seconds: number) => {
-    if (videoRef.current) {
-      videoRef.current.currentTime += seconds;
-    }
-  };
+  // --- STATE DỊCH SUBTITLE (ANIME) ---
+  const [isTranslatingSub, setIsTranslatingSub] = useState(false);
 
-  //State của auto translate
-  const [isTranslating, setIsTranslating] = useState(false);
-  const [activeSubId, setActiveSubId] = useState<string | null>(null);
+  // --- STATE SPLIT-SCREEN MANGA ---
+  const [showSplitScreen, setShowSplitScreen] = useState(false);
+  const [linkedChapters, setLinkedChapters] = useState<ChapterData[]>([]);
+  const [mangaTargetLang, setMangaTargetLang] = useState("Vietnamese"); // Dành cho AI quét ảnh truyện
+
+  const skipTime = (seconds: number) => {
+    if (videoRef.current) videoRef.current.currentTime += seconds;
+  };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -57,11 +143,11 @@ export default function WatchEpisodePage() {
       if (e.key === "ArrowRight") skipTime(10);
       if (e.key === "ArrowLeft") skipTime(-10);
     };
-
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  // 1. LOAD THÔNG TIN ANIME VÀ TẬP PHIM
   useEffect(() => {
     const fetchVideoData = async () => {
       try {
@@ -69,10 +155,7 @@ export default function WatchEpisodePage() {
         if (resAnime.ok) {
           const data = await resAnime.json();
           setAnimeTitle(data.title);
-          
-          // 2. LƯU MẢNG EPISODES VÀO STATE
           setAllEpisodes(data.episodes); 
-          
           const currentEp = data.episodes.find((ep: Episode) => ep.id === episodeId);
           setEpisode(currentEp || null);
         }
@@ -82,12 +165,29 @@ export default function WatchEpisodePage() {
         setLoading(false);
       }
     };
-    
-    if (animeId && episodeId) {
-      fetchVideoData();
-    }
+    if (animeId && episodeId) fetchVideoData();
   }, [animeId, episodeId]);
 
+  // 2. LOAD THÔNG TIN CÁC CHƯƠNG MANGA LIÊN KẾT (NẾU CÓ)
+  useEffect(() => {
+    const fetchLinkedChapters = async () => {
+      if (!episode?.mappedChapterIds || episode.mappedChapterIds.length === 0) return;
+      
+      try {
+        // Dùng Promise.all để gọi API lấy ảnh của tất cả các chapter liên kết cùng lúc
+        const chapterPromises = episode.mappedChapterIds.map(id =>
+          fetch(`http://localhost:5000/api/chapter/${id}`).then(res => res.json())
+        );
+        const chapters = await Promise.all(chapterPromises);
+        setLinkedChapters(chapters);
+      } catch (error) {
+        console.error("Lỗi tải chapter liên kết:", error);
+      }
+    };
+    fetchLinkedChapters();
+  }, [episode?.mappedChapterIds]);
+
+  // 3. LƯU LỊCH SỬ XEM
   useEffect(() => {
     const saveHistory = async () => {
       if (!session?.user?.id || !animeId || !episodeId) return;
@@ -95,47 +195,33 @@ export default function WatchEpisodePage() {
         await fetch("http://localhost:5000/api/history/anime", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            userId: session.user.id,
-            animeId: animeId,
-            episodeId: episodeId
-          })
+          body: JSON.stringify({ userId: session.user.id, animeId, episodeId })
         });
       } catch (error) {
         console.error("Lỗi lưu lịch sử anime:", error);
       }
     };
-
     saveHistory();
   }, [session?.user?.id, animeId, episodeId]);
 
-  // HÀM GỌI API DỊCH AI
-  const handleAutoTranslate = async (targetLang: string) => {
+  // HÀM GỌI API DỊCH AI CHO PHỤ ĐỀ (VIDEO)
+  const handleAutoTranslateSub = async (targetLang: string) => {
     if (!episode || !targetLang) return;
-    
-    setIsTranslating(true);
+    setIsTranslatingSub(true);
     try {
       const res = await fetch("http://localhost:5000/api/anime/translate-sub", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ episodeId, targetLang })
       });
-
       if (res.ok) {
         const data = await res.json();
-        
-        // Cập nhật lại mảng phụ đề của tập phim hiện tại để nhét file mới vào
         setEpisode(prev => {
           if (!prev) return prev;
-          // Kiểm tra xem đã có trong list chưa (tránh add trùng nếu bấm liên tục)
           const exists = prev.subtitles?.find(s => s.id === data.subtitle.id);
           if (exists) return prev;
-          return {
-            ...prev,
-            subtitles: [...(prev.subtitles || []), data.subtitle]
-          };
+          return { ...prev, subtitles: [...(prev.subtitles || []), data.subtitle] };
         });
-        
         alert(`Đã hoàn tất dịch sang ${targetLang}! Vui lòng bật phụ đề trong Player (CC).`);
       } else {
         alert("Có lỗi xảy ra trong quá trình dịch thuật.");
@@ -143,7 +229,7 @@ export default function WatchEpisodePage() {
     } catch (error) {
       console.error("Translate error:", error);
     } finally {
-      setIsTranslating(false);
+      setIsTranslatingSub(false);
     }
   };
 
@@ -153,131 +239,181 @@ export default function WatchEpisodePage() {
   return (
     <div className="min-h-screen bg-black text-white pb-12">
       
-      {/* THANH ĐIỀU HƯỚNG */}
+      {/* THANH ĐIỀU HƯỚNG CÓ NÚT BẬT TẮT MANGA */}
       <div className="p-4 bg-gray-900/80 backdrop-blur-md sticky top-0 z-50 flex items-center gap-4">
-        <Link href={`/anime/${animeId}`} className="text-gray-400 hover:text-white bg-gray-800 px-4 py-2 rounded-lg transition">
+        <Link href={`/anime/${animeId}`} className="text-gray-400 hover:text-white bg-gray-800 px-4 py-2 rounded-lg transition shrink-0">
           &larr; Trở về
         </Link>
-        <div>
-          <h1 className="text-lg font-bold text-blue-400">{animeTitle}</h1>
-          <p className="text-xs text-gray-300">{episode.title}</p>
+        <div className="flex-1 truncate">
+          <h1 className="text-lg font-bold text-blue-400 truncate">{animeTitle}</h1>
+          <p className="text-xs text-gray-300 truncate">{episode.title}</p>
         </div>
+
+        {/* NÚT THẦN THÁNH: BẬT/TẮT ĐỒNG BỘ MANGA */}
+        {linkedChapters.length > 0 && (
+          <button 
+            onClick={() => setShowSplitScreen(!showSplitScreen)}
+            className={`px-4 py-2 rounded-lg font-bold text-sm transition shrink-0 shadow-lg ${
+              showSplitScreen ? 'bg-red-600 hover:bg-red-500' : 'bg-purple-600 hover:bg-purple-500 shadow-purple-500/30'
+            }`}
+          >
+            {showSplitScreen ? "✕ Đóng Manga" : "📖 Đọc Manga gốc"}
+          </button>
+        )}
       </div>
 
-      {/* KHU VỰC TRÌNH PHÁT VIDEO */}
-      <div className="max-w-6xl mx-auto mt-4 px-4">
-        <div className="relative aspect-video w-full bg-gray-900 rounded-xl overflow-hidden shadow-2xl border border-gray-800 group">
-          
-          <video 
-            ref={videoRef}
-            controls 
-            className="w-full h-full outline-none"
-            controlsList="nodownload"
-            crossOrigin="anonymous"
-          >
-            <source src={episode.videoUrl} type="video/mp4" />
-            {episode.subtitles && episode.subtitles.map((sub, index) => (
-              <track key={sub.id} kind="subtitles" srcLang={sub.label} label={sub.label} src={sub.url} default={index === 0} />
-            ))}
-            Your browser does not support video tags.
-          </video>
-
-          {/* LỚP PHỦ CHỨA 2 NÚT TUA */}
-          <div className="absolute inset-0 flex items-center justify-center gap-32 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
-            <button 
-              onClick={() => skipTime(-10)}
-              className="pointer-events-auto bg-black/60 hover:bg-blue-600 text-white p-4 rounded-full backdrop-blur-sm transition-transform hover:scale-110 flex flex-col items-center justify-center w-16 h-16 shadow-lg border border-gray-700"
-              title="Lùi 10 giây (Phím mũi tên Trái)"
-            >
-              <span className="text-xl font-black mb-1">↺</span>
-              <span className="text-[10px] font-bold">-10s</span>
-            </button>
-
-            <button 
-              onClick={() => skipTime(10)}
-              className="pointer-events-auto bg-black/60 hover:bg-blue-600 text-white p-4 rounded-full backdrop-blur-sm transition-transform hover:scale-110 flex flex-col items-center justify-center w-16 h-16 shadow-lg border border-gray-700"
-              title="Tiến 10 giây (Phím mũi tên Phải)"
-            >
-              <span className="text-xl font-black mb-1">↻</span>
-              <span className="text-[10px] font-bold">+10s</span>
-            </button>
-          </div>
-        </div>
+      {/* ================================================================= */}
+      {/* KHU VỰC SPLIT-SCREEN (CHIA ĐÔI MÀN HÌNH NẾU BẬT) */}
+      {/* ================================================================= */}
+      <div className={`mx-auto mt-4 px-4 flex flex-col lg:flex-row gap-6 transition-all duration-300 ${showSplitScreen ? 'max-w-[1600px]' : 'max-w-6xl'}`}>
         
-        {/* Box thông tin bên dưới Video */}
-        <div className="mt-6 bg-gray-900 p-6 rounded-xl border border-gray-800">
-          <h2 className="text-2xl font-bold">{episode.title}</h2>
-          <p className="text-gray-400 text-sm mt-2">
-            Date posted: {new Date(episode.createdAt).toLocaleDateString('vi-VN')}
-          </p>
-        </div>
+        {/* CỘT TRÁI: VIDEO PLAYER (Co giãn theo trạng thái Split Screen) */}
+        <div className={`flex flex-col transition-all duration-500 ${showSplitScreen ? 'w-full lg:w-[60%]' : 'w-full'}`}>
+          <div className="relative w-full aspect-video bg-gray-900 rounded-xl overflow-hidden shadow-2xl border border-gray-800 group">
+            <video 
+              ref={videoRef}
+              controls 
+              className="w-full h-full outline-none"
+              controlsList="nodownload"
+              crossOrigin="anonymous"
+            >
+              <source src={episode.videoUrl} type="video/mp4" />
+              {episode.subtitles && episode.subtitles.map((sub, index) => (
+                <track key={sub.id} kind="subtitles" srcLang={sub.label} label={sub.label} src={sub.url} default={index === 0} />
+              ))}
+            </video>
 
-        {/* CỤM NÚT AUTO TRANSLATE AI */}
-          <div className="bg-gray-800 p-3 rounded-lg flex items-center gap-3 border border-gray-700">
-            <span className="text-sm font-bold text-blue-400 flex items-center gap-1">
-              ✨ AI Translate:
-            </span>
+            {/* OVERLAY NÚT TUA */}
+            <div className="absolute inset-0 flex items-center justify-center gap-32 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+              <button 
+                onClick={() => skipTime(-10)}
+                className="pointer-events-auto bg-black/60 hover:bg-blue-600 text-white p-4 rounded-full backdrop-blur-sm transition-transform hover:scale-110 flex flex-col items-center justify-center w-16 h-16 shadow-lg border border-gray-700"
+              >
+                <span className="text-xl font-black mb-1">↺</span>
+                <span className="text-[10px] font-bold">-10s</span>
+              </button>
+              <button 
+                onClick={() => skipTime(10)}
+                className="pointer-events-auto bg-black/60 hover:bg-blue-600 text-white p-4 rounded-full backdrop-blur-sm transition-transform hover:scale-110 flex flex-col items-center justify-center w-16 h-16 shadow-lg border border-gray-700"
+              >
+                <span className="text-xl font-black mb-1">↻</span>
+                <span className="text-[10px] font-bold">+10s</span>
+              </button>
+            </div>
+          </div>
+          
+          {/* Box thông tin bên dưới Video */}
+          <div className="mt-6 bg-gray-900 p-6 rounded-xl border border-gray-800">
+            <h2 className="text-2xl font-bold">{episode.title}</h2>
+            <p className="text-gray-400 text-sm mt-2">Date posted: {new Date(episode.createdAt).toLocaleDateString('vi-VN')}</p>
+          </div>
+
+          {/* DỊCH PHỤ ĐỀ AI */}
+          <div className="mt-4 bg-gray-800 p-3 rounded-lg flex items-center gap-3 border border-gray-700">
+            <span className="text-sm font-bold text-blue-400">✨ Dịch Sub (Video):</span>
             <select 
               className="bg-gray-900 text-white text-sm px-3 py-1.5 rounded outline-none border border-gray-600 disabled:opacity-50"
-              disabled={isTranslating}
+              disabled={isTranslatingSub}
               onChange={(e) => {
-                if(e.target.value) handleAutoTranslate(e.target.value);
-                e.target.value = ""; // Reset dropdown sau khi chọn
+                if(e.target.value) handleAutoTranslateSub(e.target.value);
+                e.target.value = ""; 
               }}
             >
               <option value="">Chọn ngôn ngữ...</option>
-              
-              {/* Dùng map để tự động sinh ra danh sách ngôn ngữ */}
               {SUPPORTED_LANGUAGES.map((lang) => (
-                <option key={lang.code} value={lang.code}>
-                  {lang.label}
-                </option>
+                <option key={lang.code} value={lang.code}>{lang.label}</option>
               ))}
-              
             </select>
-            
-            {isTranslating && (
-              <span className="text-xs text-yellow-400 animate-pulse flex items-center gap-1">
-                <div className="w-3 h-3 border-2 border-yellow-400 border-t-transparent rounded-full animate-spin"></div>
-                Đang dịch...
-              </span>
-            )}
+            {isTranslatingSub && <span className="text-xs text-yellow-400 animate-pulse">Đang dịch...</span>}
           </div>
+        </div>
 
-        {/* =========================================
-            3. KHU VỰC DANH SÁCH TẬP PHIM BỔ SUNG
-        ========================================== */}
-        <div className="mt-8 bg-gray-900 rounded-xl p-6 md:p-8 shadow-xl border border-gray-800">
-          <h3 className="text-xl font-bold text-white mb-6 border-l-4 border-blue-500 pl-3">
-            Select Episode
-          </h3>
-          
-          {allEpisodes.length === 0 ? (
-            <div className="text-center py-10 text-gray-500 italic">
-              Loading episode list...
+        {/* CỘT PHẢI: KHU VỰC MANGA ĐỒNG BỘ */}
+        {showSplitScreen && (
+          <div className="w-full lg:w-[40%] flex flex-col h-[70vh] lg:h-[calc(100vh-100px)] bg-gray-900 rounded-xl border border-gray-800 shadow-2xl overflow-hidden sticky top-[80px]">
+            
+            {/* Header Manga Panel */}
+            <div className="bg-gray-800 p-4 border-b border-gray-700 flex flex-wrap justify-between items-center gap-2">
+              <span className="font-bold text-purple-400 uppercase tracking-wide text-sm">📖 Manga Tương Ứng</span>
+              
+              <div className="flex items-center gap-2">
+                <select 
+                  value={mangaTargetLang}
+                  onChange={(e) => setMangaTargetLang(e.target.value)}
+                  className="bg-gray-900 text-white text-xs px-2 py-1 rounded outline-none border border-gray-600"
+                >
+                  {SUPPORTED_LANGUAGES.map((lang) => (
+                    <option key={lang.code} value={lang.code}>{lang.label}</option>
+                  ))}
+                </select>
+                
+              </div>
             </div>
+            
+            {/* Vùng cuộn đọc truyện (Độc lập không trôi trang) */}
+            <div className="flex-1 overflow-y-auto p-4 custom-scrollbar bg-[#0f0f11]">
+              {linkedChapters.map((chapter) => (
+                <div key={chapter.id} className="mb-10">
+                  
+                  {/* ======================================================= */}
+                  {/* KHU VỰC TIÊU ĐỀ CHƯƠNG & NÚT LINK ĐÃ ĐƯỢC THIẾT KẾ LẠI */}
+                  {/* ======================================================= */}
+                  <div className="flex items-center justify-between gap-4 mb-6 relative">
+                     <div className="h-px bg-gray-700 flex-1"></div>
+                     
+                     <div className="flex flex-col items-center">
+                       <h3 className="text-gray-300 font-bold text-sm tracking-wider uppercase">
+                         {chapter.title}
+                       </h3>
+                       {/* NÚT ĐIỀU HƯỚNG VÀO CHÍNH XÁC CHƯƠNG NÀY */}
+                       <Link 
+                         href={`/manga/${chapter.mangaId}/chapter/${chapter.id}`}
+                         target="_blank"
+                         className="text-blue-400 hover:text-blue-300 text-[11px] font-semibold mt-2 flex items-center gap-1 transition bg-gray-800/60 px-4 py-1.5 rounded-full border border-gray-700 hover:bg-gray-700 hover:scale-105"
+                       >
+                         Đọc Full Màn Hình ↗
+                       </Link>
+                     </div>
+                     
+                     <div className="h-px bg-gray-700 flex-1"></div>
+                  </div>
+                  {/* ======================================================= */}
+
+                  {chapter.images.map((imgUrl, index) => (
+                    <TranslateableImage 
+                      key={index} 
+                      imgUrl={imgUrl} 
+                      targetLang={mangaTargetLang} 
+                    />
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+      {/* ================================================================= */}
+
+      <div className="max-w-6xl mx-auto px-4">
+        {/* DANH SÁCH CÁC TẬP PHIM */}
+        <div className="mt-8 bg-gray-900 rounded-xl p-6 md:p-8 shadow-xl border border-gray-800">
+          <h3 className="text-xl font-bold text-white mb-6 border-l-4 border-blue-500 pl-3">Select Episode</h3>
+          {allEpisodes.length === 0 ? (
+            <div className="text-center py-10 text-gray-500 italic">Loading episode list...</div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
               {allEpisodes.map((ep, index) => {
-                // Kiểm tra xem đây có phải là tập phim đang phát không
                 const isActive = ep.id === episodeId; 
-                
                 return (
                   <Link 
                     key={ep.id} 
                     href={`/anime/${animeId}/watch/${ep.id}`}
                     className={`text-center py-4 rounded-xl transition-all font-semibold shadow-md group flex flex-col items-center justify-center h-full border ${
-                      isActive 
-                        ? "bg-blue-600 border-blue-400 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]" // Nổi bật tập đang xem
-                        : "bg-gray-800 hover:bg-gray-700 border-gray-700 hover:border-gray-500" // Cấu hình tập bình thường
+                      isActive ? "bg-blue-600 border-blue-400 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]" : "bg-gray-800 hover:bg-gray-700 border-gray-700 hover:border-gray-500"
                     }`}
                   >
-                    <span className={`${isActive ? "text-blue-200" : "text-gray-400 group-hover:text-white"} text-xs block mb-1`}>
-                      Tập {index + 1}
-                    </span>
-                    <span className={`${isActive ? "text-white" : "text-gray-200"} truncate w-full px-2 text-sm`}>
-                      {ep.title}
-                    </span>
+                    <span className={`${isActive ? "text-blue-200" : "text-gray-400 group-hover:text-white"} text-xs block mb-1`}>Tập {index + 1}</span>
+                    <span className={`${isActive ? "text-white" : "text-gray-200"} truncate w-full px-2 text-sm`}>{ep.title}</span>
                   </Link>
                 );
               })}
@@ -285,11 +421,10 @@ export default function WatchEpisodePage() {
           )}
         </div>
 
-        {/* NHÚNG COMPONENT BÌNH LUẬN */}
+        {/* BÌNH LUẬN */}
         <div className="mt-8">
           <CommentSection targetType="episode" targetId={episodeId} />
         </div>
-
       </div>
     </div>
   );

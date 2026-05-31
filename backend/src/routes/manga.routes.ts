@@ -430,4 +430,56 @@ router.post('/api/manga/translate-page', async (req: Request, res: Response): Pr
   }
 });
 
+// Lấy danh sách các Chapter của 1 bộ Manga để làm UI chọn liên kết
+router.get('/api/admin/manga/:id/chapters', async (req: Request, res: Response): Promise<any> => {
+  try {
+    const mangaId = req.params.id as string;
+    const chapters = await prisma.chapter.findMany({
+      where: { mangaId: mangaId },
+      select: { id: true, title: true }, // Chỉ lấy ID và Tên cho nhẹ server
+      orderBy: { createdAt: 'asc' } // Hoặc sắp xếp theo title tùy bạn
+    });
+    
+    res.status(200).json(chapters);
+  } catch (error) {
+    console.error("Lỗi lấy danh sách chapter:", error);
+    res.status(500).json({ message: "Lỗi server khi tải chapters." });
+  }
+});
+
+
+
+// API: Dùng AI viết tóm tắt Manga
+router.post('/api/admin/generate-manga-desc', async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { title } = req.body;
+
+    if (!title) {
+      return res.status(400).json({ message: "Vui lòng cung cấp tên truyện." });
+    }
+
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+    const prompt = `
+      Bạn là một chuyên gia đánh giá Manga/Truyện tranh (Otaku chính hiệu).
+      Hãy viết một đoạn tóm tắt nội dung hấp dẫn, tò mò và chính xác cho bộ manga có tên là "${title}".
+      YÊU CẦU BẮT BUỘC:
+      1. Viết bằng Tiếng Anh.
+      2. Độ dài khoảng 3-4 câu (ngắn gọn, súc tích).
+      3. Tuyệt đối KHÔNG tiết lộ nội dung quan trọng (No spoilers).
+      4. Chỉ trả về văn bản tóm tắt, không giải thích gì thêm, không bọc trong markdown code block.
+    `;
+
+    const aiResult = await model.generateContent(prompt);
+    const description = aiResult.response.text().trim();
+
+    res.status(200).json({ description });
+
+  } catch (error) {
+    console.error("Lỗi AI viết tóm tắt Manga:", error);
+    res.status(500).json({ message: "Lỗi server khi nhờ AI viết tóm tắt." });
+  }
+});
+
 export default router;

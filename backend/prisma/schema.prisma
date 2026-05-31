@@ -70,6 +70,8 @@ model Episode {
   timelineMappings TimelineMapping[]
   comments         Comment[]
   animeHistories   AnimeHistory[]
+  mappedChapterIds String[] @default([])
+  episodeNumber    Int?
 }
 
 model Subtitle {

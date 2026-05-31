@@ -14,12 +14,14 @@ export default function UploadMangaPage() {
   const [author, setAuthor] = useState("");
   const [mangaStatus, setMangaStatus] = useState("ONGOING");
   
-  // 1. ĐỔI STATE: Thay vì lưu URL string, ta lưu trực tiếp File ảnh admin chọn
   const [coverFile, setCoverFile] = useState<File | null>(null);
   
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // ➕ STATE MỚI: Quản lý loading khi AI đang viết tóm tắt
+  const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
 
   useEffect(() => {
     if (status === "loading") return;
@@ -32,10 +34,39 @@ export default function UploadMangaPage() {
     return <div className="flex h-screen items-center justify-center bg-gray-900 text-white">Authorization in progress...</div>;
   }
 
-  // Hàm bắt sự kiện khi admin chọn file
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setCoverFile(e.target.files[0]);
+    }
+  };
+
+  // ➕ HÀM MỚI: Gọi API để AI tự động viết tóm tắt dựa trên Title
+  const handleGenerateDescription = async () => {
+    if (!title) {
+      alert("Vui lòng nhập Tên Manga trước khi dùng AI!");
+      return;
+    }
+    
+    setIsGeneratingDesc(true);
+    try {
+      const res = await fetch("http://localhost:5000/api/admin/generate-manga-desc", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title }),
+      });
+      
+      const data = await res.json();
+      
+      if (res.ok) {
+        setDescription(data.description);
+      } else {
+        alert(data.message || "Không thể tạo tóm tắt.");
+      }
+    } catch (error) {
+      console.error("Lỗi:", error);
+      alert("Lỗi kết nối tới Server AI.");
+    } finally {
+      setIsGeneratingDesc(false);
     }
   };
 
@@ -46,9 +77,8 @@ export default function UploadMangaPage() {
     setLoading(true);
 
     try {
-      let uploadedCoverUrl = ""; // Biến chứa link ảnh sau khi up lên Cloudinary
+      let uploadedCoverUrl = ""; 
 
-      // 2. NẾU CÓ CHỌN ẢNH BÌA -> TẢI LÊN CLOUDINARY TRƯỚC
       if (coverFile) {
         const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
         const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
@@ -72,11 +102,9 @@ export default function UploadMangaPage() {
           throw new Error(cloudinaryData.error?.message || "Error uploading cover image to Cloudinary");
         }
         
-        // Lấy link URL an toàn từ Cloudinary
         uploadedCoverUrl = cloudinaryData.secure_url;
       }
 
-      // 3. GỬI DỮ LIỆU KÈM LINK ẢNH VỀ BACKEND API NHƯ BÌNH THƯỜNG
       const res = await fetch("http://localhost:5000/api/admin/manga", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -84,7 +112,7 @@ export default function UploadMangaPage() {
           title,
           description,
           author,
-          coverImage: uploadedCoverUrl, // Truyền link vừa lấy được vào đây
+          coverImage: uploadedCoverUrl, 
           status: mangaStatus,
           userId: session.user.id,
         }),
@@ -94,9 +122,7 @@ export default function UploadMangaPage() {
 
       if (res.ok) {
         setMessage(data.message);
-        // Reset form
         setTitle(""); setDescription(""); setAuthor(""); setCoverFile(null);
-        // Reset lại input file bằng cách query element (vì input type="file" không binding 2 chiều trực tiếp qua value được)
         const fileInput = document.getElementById('cover-upload') as HTMLInputElement;
         if (fileInput) fileInput.value = '';
         
@@ -137,7 +163,6 @@ export default function UploadMangaPage() {
             <input type="text" placeholder="e.g., Asagiri Kafka" value={author} onChange={(e) => setAuthor(e.target.value)} className="w-full px-4 py-2 bg-gray-700 rounded-md focus:ring focus:ring-blue-500 outline-none" />
           </div>
 
-          {/* 4. ĐỔI GIAO DIỆN SANG DẠNG CHỌN FILE */}
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">Upload Cover Image</label>
             <input
@@ -150,9 +175,27 @@ export default function UploadMangaPage() {
             {coverFile && <p className="text-xs text-green-400 mt-2">Selected file: {coverFile.name}</p>}
           </div>
 
+          {/* ➕ TÍCH HỢP NÚT AI VÀO KHU VỰC TÓM TẮT */}
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Content Summary</label>
-            <textarea rows={4} placeholder="Enter manga description..." value={description} onChange={(e) => setDescription(e.target.value)} className="w-full px-4 py-2 bg-gray-700 rounded-md focus:ring focus:ring-blue-500 outline-none resize-none"></textarea>
+            <div className="flex justify-between items-center mb-1">
+              <label className="block text-sm font-medium text-gray-300">Content Summary</label>
+              <button
+                type="button"
+                onClick={handleGenerateDescription}
+                disabled={isGeneratingDesc || !title}
+                className="bg-blue-600 hover:bg-blue-500 disabled:bg-gray-600 text-white text-xs font-bold px-3 py-1.5 rounded transition flex items-center gap-1 shadow-md"
+              >
+                {isGeneratingDesc ? (
+                  <>
+                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Đang viết...
+                  </>
+                ) : (
+                  "✨ AI Viết Tóm Tắt"
+                )}
+              </button>
+            </div>
+            <textarea rows={4} placeholder="Enter manga description or use AI..." value={description} onChange={(e) => setDescription(e.target.value)} className="w-full px-4 py-2 bg-gray-700 rounded-md focus:ring focus:ring-blue-500 outline-none resize-none"></textarea>
           </div>
 
           <div>
