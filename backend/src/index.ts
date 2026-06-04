@@ -8,6 +8,8 @@ import mangaRoutes from './routes/manga.routes';
 import animeRoutes from './routes/anime.routes';
 import userRoutes from './routes/user.routes';
 import uploadRoutes from './routes/upload.routes';
+import chatRoutes from './routes/chat.routes';
+import searchRoutes from './routes/search.routes';
 
 dotenv.config();
 
@@ -40,6 +42,12 @@ app.use('/', userRoutes);
 
 // 5. Nhóm API Upload File (Cloudflare R2)
 app.use('/', uploadRoutes);
+
+//6. Nhóm API Chat với AI (Lưu trữ session, tin nhắn, gọi Gemini...)
+app.use('/', chatRoutes);
+
+//7. Nhóm API Tìm kiếm
+app.use('/', searchRoutes);
 
 // ============================================
 // ROUTE MẶC ĐỊNH & KHỞI ĐỘNG SERVER

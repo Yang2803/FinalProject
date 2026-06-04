@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Sidebar from "@/components/Sidebar";
+import TopHeader from "@/components/TopHeader"; // ➕ 1. IMPORT COMPONENT
 import "./globals.css";
 import { Providers } from "@/components/Providers";
 
@@ -22,17 +23,25 @@ export default function RootLayout({
   return (
     <html lang="vi">
       <body className="antialiased">
-        {/* Khởi tạo Providers chứa SessionProvider để sử dụng được useSession */}
         <Providers>
-          <div className="flex min-h-screen bg-gray-950 text-gray-100">
+          {/* Container tổng: Dàn hàng ngang (Row) */}
+          <div className="flex h-screen bg-gray-950 text-gray-100 overflow-hidden">
             
-            {/* Thanh điều hướng dọc cố định bên trái */}
+            {/* CỘT TRÁI: Thanh điều hướng dọc cố định */}
             <Sidebar />
 
-            {/* Vùng không gian hiển thị nội dung chính của từng trang con */}
-            <main className="flex-1 min-h-screen overflow-y-auto">
-              {children}
-            </main>
+            {/* CỘT PHẢI: Chứa Header và Nội dung chính */}
+            <div className="flex-1 flex flex-col min-w-0">
+              
+              {/* ➕ 2. NHÚNG TOP HEADER VÀO TRÊN CÙNG CỘT PHẢI */}
+              <TopHeader />
+
+              {/* Vùng cuộn nội dung (Chỉ cuộn phần này, Header đứng im) */}
+              <main className="flex-1 overflow-y-auto">
+                {children}
+              </main>
+
+            </div>
 
           </div>
         </Providers>

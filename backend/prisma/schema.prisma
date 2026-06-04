@@ -25,6 +25,7 @@ model User {
   animeRatings   AnimeRating[]
   watchLists     WatchList[]
   animeHistories AnimeHistory[]
+  aiChatSessions AiChatSession[]
 }
 
 model Anime {
@@ -240,4 +241,24 @@ model TranslationCache {
 
   // Tạo khóa Unique kép: Đảm bảo 1 ảnh + 1 ngôn ngữ chỉ lưu đúng 1 dòng
   @@unique([imageUrl, targetLang])
+}
+
+model AiChatSession {
+  id        String   @id @default(uuid())
+  title     String   // Tên phiên chat (Tự động lấy từ câu hỏi đầu tiên)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages  AiChatMessage[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Bảng lưu từng tin nhắn trong phiên chat
+model AiChatMessage {
+  id        String   @id @default(uuid())
+  sessionId String
+  session   AiChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role      String   // Chỉ nhận 2 giá trị: "user" hoặc "model"
+  content   String   @db.Text
+  createdAt DateTime @default(now())
 }
