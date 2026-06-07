@@ -32,81 +32,14 @@ interface ChapterData {
   mangaId: string;
 }
 
-interface TextBlock {
-  translatedText: string;
-  topPercent: number;
-  leftPercent: number;
-  widthPercent: number;
-  heightPercent: number;
-}
+// interface TextBlock {
+//   translatedText: string;
+//   topPercent: number;
+//   leftPercent: number;
+//   widthPercent: number;
+//   heightPercent: number;
+// }
 
-// =====================================================================
-// 2. COMPONENT CON: ẢNH MANGA HỖ TRỢ DỊCH THUẬT (Nhúng trực tiếp vào đây)
-// =====================================================================
-function TranslateableImage({ imgUrl, targetLang }: { imgUrl: string; targetLang: string }) {
-  const [blocks, setBlocks] = useState<TextBlock[]>([]);
-  const [isTranslating, setIsTranslating] = useState(false);
-  const [showTranslation, setShowTranslation] = useState(true);
-
-  const handleTranslate = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (blocks.length > 0) {
-      setShowTranslation(!showTranslation);
-      return;
-    }
-    setIsTranslating(true);
-    const absoluteImageUrl = imgUrl.startsWith("http") ? imgUrl : `${window.location.origin}${imgUrl}`;
-
-    try {
-      const res = await fetch("http://localhost:5000/api/manga/translate-page", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageUrl: absoluteImageUrl, targetLang })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.blocks.length === 0) alert("AI không tìm thấy chữ nào hợp lệ trên trang này!");
-        setBlocks(data.blocks);
-        setShowTranslation(true);
-      }
-    } catch (error) {
-      console.error("Lỗi dịch trang:", error);
-    } finally {
-      setIsTranslating(false);
-    }
-  };
-
-  return (
-    <div className="relative w-full mb-4">
-      <img src={imgUrl} alt="Manga Page" className="w-full h-auto block object-contain rounded-md" />
-      
-      <button 
-        onClick={handleTranslate} 
-        disabled={isTranslating}
-        className={`absolute top-4 right-4 text-white px-3 py-1.5 text-xs md:text-sm font-bold rounded shadow-lg z-20 backdrop-blur-sm transition disabled:opacity-50
-          ${blocks.length > 0 ? "bg-gray-800/90 hover:bg-gray-700" : "bg-blue-600/90 hover:bg-blue-500"}
-        `}
-      >
-        {isTranslating ? "✨ Đang quét..." : blocks.length > 0 ? (showTranslation ? "👁️ Ẩn bản dịch" : "👁️ Hiện bản dịch") : "✨ Dịch trang"}
-      </button>
-
-      {showTranslation && blocks.map((block, index) => (
-        <div 
-          key={index}
-          className="absolute bg-white text-black flex items-center justify-center text-center z-10 overflow-hidden"
-          style={{
-            top: `${block.topPercent}%`, left: `${block.leftPercent}%`, width: `${block.widthPercent}%`, height: `${block.heightPercent}%`,
-            borderRadius: '12px', transform: 'scale(1.15)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)', 
-            padding: '4px', fontSize: 'clamp(0.4rem, 1vw, 0.85rem)', lineHeight: '1.35', fontWeight: '500', 
-            fontFamily: "'Segoe UI', Roboto, Helvetica, Arial, sans-serif", wordBreak: 'break-word'
-          }}
-        >
-          {block.translatedText}
-        </div>
-      ))}
-    </div>
-  );
-}
 
 // =====================================================================
 // 3. PAGE CHÍNH: XEM PHIM & SPLIT-SCREEN MANGA
@@ -257,7 +190,7 @@ export default function WatchEpisodePage() {
               showSplitScreen ? 'bg-red-600 hover:bg-red-500' : 'bg-purple-600 hover:bg-purple-500 shadow-purple-500/30'
             }`}
           >
-            {showSplitScreen ? "✕ Đóng Manga" : "📖 Đọc Manga gốc"}
+            {showSplitScreen ? "✕ Close Manga" : "📖 Read Original Manga"}
           </button>
         )}
       </div>
@@ -310,7 +243,7 @@ export default function WatchEpisodePage() {
 
           {/* DỊCH PHỤ ĐỀ AI */}
           <div className="mt-4 bg-gray-800 p-3 rounded-lg flex items-center gap-3 border border-gray-700">
-            <span className="text-sm font-bold text-blue-400">✨ Dịch Sub (Video):</span>
+            <span className="text-sm font-bold text-blue-400">✨ Auto-translate subtitile:</span>
             <select 
               className="bg-gray-900 text-white text-sm px-3 py-1.5 rounded outline-none border border-gray-600 disabled:opacity-50"
               disabled={isTranslatingSub}
@@ -319,12 +252,12 @@ export default function WatchEpisodePage() {
                 e.target.value = ""; 
               }}
             >
-              <option value="">Chọn ngôn ngữ...</option>
+              <option value="">Select language...</option>
               {SUPPORTED_LANGUAGES.map((lang) => (
                 <option key={lang.code} value={lang.code}>{lang.label}</option>
               ))}
             </select>
-            {isTranslatingSub && <span className="text-xs text-yellow-400 animate-pulse">Đang dịch...</span>}
+            {isTranslatingSub && <span className="text-xs text-yellow-400 animate-pulse">Translating...</span>}
           </div>
         </div>
 
@@ -334,20 +267,9 @@ export default function WatchEpisodePage() {
             
             {/* Header Manga Panel */}
             <div className="bg-gray-800 p-4 border-b border-gray-700 flex flex-wrap justify-between items-center gap-2">
-              <span className="font-bold text-purple-400 uppercase tracking-wide text-sm">📖 Manga Tương Ứng</span>
+              <span className="font-bold text-purple-400 uppercase tracking-wide text-sm">📖 Manga</span>
               
-              <div className="flex items-center gap-2">
-                <select 
-                  value={mangaTargetLang}
-                  onChange={(e) => setMangaTargetLang(e.target.value)}
-                  className="bg-gray-900 text-white text-xs px-2 py-1 rounded outline-none border border-gray-600"
-                >
-                  {SUPPORTED_LANGUAGES.map((lang) => (
-                    <option key={lang.code} value={lang.code}>{lang.label}</option>
-                  ))}
-                </select>
-                
-              </div>
+              
             </div>
             
             {/* Vùng cuộn đọc truyện (Độc lập không trôi trang) */}
@@ -371,7 +293,7 @@ export default function WatchEpisodePage() {
                          target="_blank"
                          className="text-blue-400 hover:text-blue-300 text-[11px] font-semibold mt-2 flex items-center gap-1 transition bg-gray-800/60 px-4 py-1.5 rounded-full border border-gray-700 hover:bg-gray-700 hover:scale-105"
                        >
-                         Đọc Full Màn Hình ↗
+                         Read in Full Screen ↗
                        </Link>
                      </div>
                      
@@ -380,11 +302,14 @@ export default function WatchEpisodePage() {
                   {/* ======================================================= */}
 
                   {chapter.images.map((imgUrl, index) => (
-                    <TranslateableImage 
-                      key={index} 
-                      imgUrl={imgUrl} 
-                      targetLang={mangaTargetLang} 
-                    />
+                    // Chỉ hiển thị ảnh thô, không kèm nút dịch
+                    <div key={index} className="w-full mb-4">
+                      <img 
+                        src={imgUrl} 
+                        alt={`Trang ${index + 1}`} 
+                        className="w-full h-auto block object-contain rounded-md" 
+                      />
+                    </div>
                   ))}
                 </div>
               ))}
