@@ -7,6 +7,9 @@ import Link from "next/link";
 import CommentSection from "@/components/CommentSection";
 import { SUPPORTED_LANGUAGES } from '@/components/constants/languages';
 
+// ⚠️ ĐIỀN ĐƯỜNG LINK R2 CỦA CẬU VÀO ĐÂY (KHÔNG CÓ DẤU / Ở CUỐI)
+const R2_BASE_URL = "https://pub-67a4b86a3ac64626ac476f9978ec23d2.r2.dev"; 
+
 // =====================================================================
 // 1. CÁC INTERFACE DỮ LIỆU
 // =====================================================================
@@ -23,6 +26,7 @@ interface Episode {
   createdAt: string;
   subtitles?: Subtitle[];
   mappedChapterIds?: string[]; // Mảng chứa ID các Chapter Manga liên kết
+  dubbedLanguages?: string[];  // ➕ Thêm mảng ngôn ngữ lồng tiếng từ Database
 }
 
 interface ChapterData {
@@ -31,15 +35,6 @@ interface ChapterData {
   images: string[];
   mangaId: string;
 }
-
-// interface TextBlock {
-//   translatedText: string;
-//   topPercent: number;
-//   leftPercent: number;
-//   widthPercent: number;
-//   heightPercent: number;
-// }
-
 
 // =====================================================================
 // 3. PAGE CHÍNH: XEM PHIM & SPLIT-SCREEN MANGA
@@ -58,13 +53,66 @@ export default function WatchEpisodePage() {
   const [loading, setLoading] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
 
+  // --- ➕ STATE LỒNG TIẾNG AI ---
+  const [selectedDubLang, setSelectedDubLang] = useState<string>("");
+  const audioDubRef = useRef<HTMLAudioElement | null>(null);
+
   // --- STATE DỊCH SUBTITLE (ANIME) ---
   const [isTranslatingSub, setIsTranslatingSub] = useState(false);
+
+  // --- STATE TẠO LỒNG TIẾNG (GENERATE DUB) ---
+  const [isGeneratingDub, setIsGeneratingDub] = useState(false);
+
+  // Hàm gọi API yêu cầu Backend sinh file MP3 lồng tiếng
+  const handleGenerateDub = async (targetLang: string, subtitleUrl: string) => {
+    if (!episode || !targetLang || !subtitleUrl) return;
+    
+    // Cảnh báo UX: Quá trình này sẽ mất thời gian vì AI phải đọc hết cả tập phim
+    const confirmMsg = `Hệ thống sẽ bắt đầu tạo lồng tiếng AI cho ngôn ngữ [${targetLang}]. Quá trình này có thể mất 1 - 2 phút tùy độ dài tập phim. Bạn có muốn tiếp tục?`;
+    if (!window.confirm(confirmMsg)) return;
+
+    setIsGeneratingDub(true);
+    try {
+      const res = await fetch("http://localhost:5000/api/anime/generate-dub", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          episodeId: episode.id, 
+          subtitleUrl: subtitleUrl, 
+          targetLang: targetLang 
+        })
+      });
+
+      if (res.ok) {
+        alert("🎉 Đã tạo lồng tiếng thành công! Bạn có thể bật nghe ngay bây giờ.");
+        
+        // Cập nhật lại State để UI chọn lồng tiếng (Playback) hiện ra ngay lập tức
+        setEpisode(prev => {
+          if (!prev) return prev;
+          const currentDubs = prev.dubbedLanguages || [];
+          if (!currentDubs.includes(targetLang)) {
+            return { ...prev, dubbedLanguages: [...currentDubs, targetLang] };
+          }
+          return prev;
+        });
+
+        // Tự động chuyển Player sang ngôn ngữ vừa tạo
+        setSelectedDubLang(targetLang);
+      } else {
+        alert("❌ Có lỗi xảy ra trong quá trình tạo lồng tiếng.");
+      }
+    } catch (error) {
+      console.error("Generate dub error:", error);
+      alert("❌ Lỗi kết nối đến máy chủ!");
+    } finally {
+      setIsGeneratingDub(false);
+    }
+  };
 
   // --- STATE SPLIT-SCREEN MANGA ---
   const [showSplitScreen, setShowSplitScreen] = useState(false);
   const [linkedChapters, setLinkedChapters] = useState<ChapterData[]>([]);
-  const [mangaTargetLang, setMangaTargetLang] = useState("Vietnamese"); // Dành cho AI quét ảnh truyện
+  const [mangaTargetLang, setMangaTargetLang] = useState("Vietnamese"); 
 
   const skipTime = (seconds: number) => {
     if (videoRef.current) videoRef.current.currentTime += seconds;
@@ -107,7 +155,6 @@ export default function WatchEpisodePage() {
       if (!episode?.mappedChapterIds || episode.mappedChapterIds.length === 0) return;
       
       try {
-        // Dùng Promise.all để gọi API lấy ảnh của tất cả các chapter liên kết cùng lúc
         const chapterPromises = episode.mappedChapterIds.map(id =>
           fetch(`http://localhost:5000/api/chapter/${id}`).then(res => res.json())
         );
@@ -136,6 +183,153 @@ export default function WatchEpisodePage() {
     };
     saveHistory();
   }, [session?.user?.id, animeId, episodeId]);
+
+  // =====================================================================
+  // ➕ 4. LOGIC ĐỒNG BỘ LỒNG TIẾNG & AUDIO DUCKING (NÂNG CẤP CHẠY NGẦM)
+  // =====================================================================
+  useEffect(() => {
+    const videoElement = videoRef.current;
+    const audioEl = audioDubRef.current;
+
+    if (!videoElement) return;
+
+    // 🌟 FIX LỖI 1: XỬ LÝ KHI CHỌN ORIGINAL AUDIO (TẮT DUB)
+    if (!selectedDubLang) {
+      if (audioEl) {
+        audioEl.pause();
+        audioEl.currentTime = 0;
+      }
+      videoElement.volume = 1.0; // Trả lại 100% âm lượng gốc
+      return; // Thoát luôn, không chạy các logic đồng bộ phía dưới nữa
+    }
+
+    // Hàm tìm kiếm và cấu hình trạng thái chạy ngầm cho Track phụ đề
+    const setupTargetTrack = () => {
+      const textTracks = videoElement.textTracks;
+      let targetTrack: TextTrack | null = null;
+
+      // 1. Dò tìm track phụ đề khớp với ngôn ngữ lồng tiếng đang chọn
+      for (let i = 0; i < textTracks.length; i++) {
+        if (selectedDubLang.includes(textTracks[i].label) || textTracks[i].label.includes(selectedDubLang)) {
+          targetTrack = textTracks[i];
+          break;
+        }
+      }
+
+      // Fallback: Nếu không khớp tên, lấy đại track phụ đề đầu tiên trong hệ thống làm đồng hồ đếm nhịp
+      if (!targetTrack && textTracks.length > 0) {
+        const fallbackTrack = Array.from(textTracks).find(t => t.kind === 'subtitles' || t.kind === 'captions');
+        if (fallbackTrack) targetTrack = fallbackTrack;
+      }
+
+      if (!targetTrack) return null;
+
+      // 🌟 FIX TÍNH NĂNG 2: ÉP CHẠY NGẦM KHI USER TẮT SUB
+      // Nếu người dùng chọn "Tắt phụ đề" (disabled) ở giao diện Player, 
+      // ta chuyển nó thành 'hidden' để ẩn chữ đi nhưng sự kiện cuechange VẪN CHẠY NGẦM dưới nền!
+      if (targetTrack.mode === 'disabled') {
+        targetTrack.mode = 'hidden';
+      }
+
+      return targetTrack;
+    };
+
+    // Khởi tạo track mục tiêu ban đầu
+    let activeTrack = setupTargetTrack();
+
+    // Logic xử lý khi mốc thời gian phụ đề thay đổi (Hiện câu thoại)
+    const handleCueChange = (e: Event) => {
+      const track = e.target as TextTrack;
+      const activeCues = track.activeCues;
+
+      if (activeCues && activeCues.length > 0 && audioEl) {
+        const currentCue = activeCues[0];
+        const allCues = Array.from(track.cues || []);
+        const index = allCues.indexOf(currentCue as TextTrackCue);
+
+        if (index !== -1) {
+          const encodedLang = encodeURIComponent(selectedDubLang);
+          const audioUrl = `${R2_BASE_URL}/dubs/${episodeId}/${encodedLang}/${index}.mp3`;
+          
+          audioEl.src = audioUrl;
+          const cueDuration = currentCue.endTime - currentCue.startTime;
+
+          audioEl.onloadedmetadata = () => {
+            const audioDuration = audioEl.duration;
+            // Thuật toán Co giãn tốc độ động (Dynamic Playback Rate)
+            if (audioDuration > cueDuration) {
+              let neededSpeed = audioDuration / cueDuration;
+              if (neededSpeed > 1.4) neededSpeed = 1.4;
+              audioEl.playbackRate = neededSpeed;
+            } else {
+              audioEl.playbackRate = 1.0;
+            }
+            audioEl.play().catch(err => console.log("Lỗi Autoplay ngầm:", err));
+          };
+
+          // Kích hoạt Audio Ducking (Hạ âm phim xuống 20%)
+          videoElement.volume = 0.2; 
+
+          audioEl.onended = () => { videoElement.volume = 1.0; };
+          audioEl.onerror = () => { videoElement.volume = 1.0; };
+        }
+      }
+    };
+
+    // Gắn cổng lắng nghe cuechange vào track phụ đề
+    if (activeTrack) {
+      activeTrack.addEventListener("cuechange", handleCueChange);
+    }
+
+    // 🌟 VŨ KHÍ BÍ MẬT: Lắng nghe sự kiện user bấm nút Bật/Tắt phụ đề trên thanh công cụ của Player
+    const handlePlayerCcToggle = () => {
+      if (activeTrack) {
+        activeTrack.removeEventListener("cuechange", handleCueChange);
+      }
+      
+      // Cấu hình tái lập lại chế độ 'hidden' nếu user vừa bấm tắt CC
+      activeTrack = setupTargetTrack();
+      
+      if (activeTrack) {
+        activeTrack.addEventListener("cuechange", handleCueChange);
+      }
+    };
+
+    // Bắt sự kiện thay đổi trạng thái phụ đề của toàn bộ Player
+    videoElement.textTracks.addEventListener("change", handlePlayerCcToggle);
+
+    // Dọn dẹp bộ nhớ (Cleanup) khi component unmount
+    return () => {
+      if (activeTrack) {
+        activeTrack.removeEventListener("cuechange", handleCueChange);
+      }
+      videoElement.textTracks.removeEventListener("change", handlePlayerCcToggle);
+    };
+  }, [selectedDubLang, episodeId, episode?.subtitles]);
+
+  // ➕ 5. ANTI-SEEK GLITCH: Tắt âm thanh lồng tiếng nếu Tua/Dừng phim
+  useEffect(() => {
+    const videoElement = videoRef.current;
+    if (!videoElement) return;
+
+    const handlePause = () => audioDubRef.current?.pause();
+    const handleSeek = () => {
+      if (audioDubRef.current) {
+        audioDubRef.current.pause();
+        audioDubRef.current.currentTime = 0;
+      }
+      videoElement.volume = 1.0;
+    };
+
+    videoElement.addEventListener("pause", handlePause);
+    videoElement.addEventListener("seeking", handleSeek);
+
+    return () => {
+      videoElement.removeEventListener("pause", handlePause);
+      videoElement.removeEventListener("seeking", handleSeek);
+    };
+  }, []);
+  // =====================================================================
 
   // HÀM GỌI API DỊCH AI CHO PHỤ ĐỀ (VIDEO)
   const handleAutoTranslateSub = async (targetLang: string) => {
@@ -172,6 +366,9 @@ export default function WatchEpisodePage() {
   return (
     <div className="min-h-screen bg-black text-white pb-12">
       
+      {/* ➕ THẺ AUDIO CHẠY NGẦM ĐỂ PHÁT TIẾNG AI */}
+      <audio ref={audioDubRef} className="hidden" />
+
       {/* THANH ĐIỀU HƯỚNG CÓ NÚT BẬT TẮT MANGA */}
       <div className="p-4 bg-gray-900/80 backdrop-blur-md sticky top-0 z-50 flex items-center gap-4">
         <Link href={`/anime/${animeId}`} className="text-gray-400 hover:text-white bg-gray-800 px-4 py-2 rounded-lg transition shrink-0">
@@ -195,12 +392,10 @@ export default function WatchEpisodePage() {
         )}
       </div>
 
-      {/* ================================================================= */}
-      {/* KHU VỰC SPLIT-SCREEN (CHIA ĐÔI MÀN HÌNH NẾU BẬT) */}
-      {/* ================================================================= */}
+      {/* KHU VỰC SPLIT-SCREEN */}
       <div className={`mx-auto mt-4 px-4 flex flex-col lg:flex-row gap-6 transition-all duration-300 ${showSplitScreen ? 'max-w-[1600px]' : 'max-w-6xl'}`}>
         
-        {/* CỘT TRÁI: VIDEO PLAYER (Co giãn theo trạng thái Split Screen) */}
+        {/* CỘT TRÁI: VIDEO PLAYER */}
         <div className={`flex flex-col transition-all duration-500 ${showSplitScreen ? 'w-full lg:w-[60%]' : 'w-full'}`}>
           <div className="relative w-full aspect-video bg-gray-900 rounded-xl overflow-hidden shadow-2xl border border-gray-800 group">
             <video 
@@ -218,17 +413,11 @@ export default function WatchEpisodePage() {
 
             {/* OVERLAY NÚT TUA */}
             <div className="absolute inset-0 flex items-center justify-center gap-32 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
-              <button 
-                onClick={() => skipTime(-10)}
-                className="pointer-events-auto bg-black/60 hover:bg-blue-600 text-white p-4 rounded-full backdrop-blur-sm transition-transform hover:scale-110 flex flex-col items-center justify-center w-16 h-16 shadow-lg border border-gray-700"
-              >
+              <button onClick={() => skipTime(-10)} className="pointer-events-auto bg-black/60 hover:bg-blue-600 text-white p-4 rounded-full backdrop-blur-sm transition-transform hover:scale-110 flex flex-col items-center justify-center w-16 h-16 shadow-lg border border-gray-700">
                 <span className="text-xl font-black mb-1">↺</span>
                 <span className="text-[10px] font-bold">-10s</span>
               </button>
-              <button 
-                onClick={() => skipTime(10)}
-                className="pointer-events-auto bg-black/60 hover:bg-blue-600 text-white p-4 rounded-full backdrop-blur-sm transition-transform hover:scale-110 flex flex-col items-center justify-center w-16 h-16 shadow-lg border border-gray-700"
-              >
+              <button onClick={() => skipTime(10)} className="pointer-events-auto bg-black/60 hover:bg-blue-600 text-white p-4 rounded-full backdrop-blur-sm transition-transform hover:scale-110 flex flex-col items-center justify-center w-16 h-16 shadow-lg border border-gray-700">
                 <span className="text-xl font-black mb-1">↻</span>
                 <span className="text-[10px] font-bold">+10s</span>
               </button>
@@ -236,58 +425,130 @@ export default function WatchEpisodePage() {
           </div>
           
           {/* Box thông tin bên dưới Video */}
-          <div className="mt-6 bg-gray-900 p-6 rounded-xl border border-gray-800">
-            <h2 className="text-2xl font-bold">{episode.title}</h2>
-            <p className="text-gray-400 text-sm mt-2">Date posted: {new Date(episode.createdAt).toLocaleDateString('vi-VN')}</p>
+          <div className="mt-6 bg-gray-900 p-6 rounded-xl border border-gray-800 flex flex-col md:flex-row md:items-start justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-bold">{episode.title}</h2>
+              <p className="text-gray-400 text-sm mt-2">Date posted: {new Date(episode.createdAt).toLocaleDateString('vi-VN')}</p>
+            </div>
+
+            {/* ➕ UI CHỌN LỒNG TIẾNG (Chỉ hiện khi DB báo có lồng tiếng) */}
+            {(episode.dubbedLanguages && episode.dubbedLanguages.length > 0) ? (
+              <div className="bg-purple-900/30 border border-purple-500/50 p-3 rounded-lg flex items-center gap-3 shrink-0">
+                <span className="text-sm font-bold text-purple-400 flex items-center gap-1">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clipRule="evenodd"></path></svg>
+                  AI Dub:
+                </span>
+                <select 
+                  value={selectedDubLang}
+                  onChange={(e) => setSelectedDubLang(e.target.value)}
+                  className="bg-gray-900 text-white text-sm px-3 py-1.5 rounded outline-none border border-gray-600 focus:border-purple-500 transition-all cursor-pointer shadow-inner"
+                >
+                  <option value="">Original Audio</option>
+                  
+                  {/* DÙNG VÒNG LẶP MAP ĐỂ RENDER ĐỘNG MỌI NGÔN NGỮ CÓ TRONG DATABASE */}
+                  {episode.dubbedLanguages.map((lang) => (
+                    <option key={lang} value={lang}>
+                      {lang} (AI Voice)
+                    </option>
+                  ))}
+                  
+                </select>
+                {selectedDubLang && <span className="relative flex h-3 w-3"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span><span className="relative inline-flex rounded-full h-3 w-3 bg-purple-500"></span></span>}
+              </div>
+            ) : null}
           </div>
 
-          {/* DỊCH PHỤ ĐỀ AI */}
-          <div className="mt-4 bg-gray-800 p-3 rounded-lg flex items-center gap-3 border border-gray-700">
-            <span className="text-sm font-bold text-blue-400">✨ Auto-translate subtitile:</span>
-            <select 
-              className="bg-gray-900 text-white text-sm px-3 py-1.5 rounded outline-none border border-gray-600 disabled:opacity-50"
-              disabled={isTranslatingSub}
-              onChange={(e) => {
-                if(e.target.value) handleAutoTranslateSub(e.target.value);
-                e.target.value = ""; 
-              }}
-            >
-              <option value="">Select language...</option>
-              {SUPPORTED_LANGUAGES.map((lang) => (
-                <option key={lang.code} value={lang.code}>{lang.label}</option>
-              ))}
-            </select>
-            {isTranslatingSub && <span className="text-xs text-yellow-400 animate-pulse">Translating...</span>}
+         {/* ================================================================= */}
+          {/* KHU VỰC CÁC TÍNH NĂNG AI: DỊCH PHỤ ĐỀ & TẠO LỒNG TIẾNG            */}
+          {/* ================================================================= */}
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+            
+            {/* 1. BOX DỊCH PHỤ ĐỀ AI */}
+            <div className="bg-gray-800 p-3 rounded-lg flex flex-col xl:flex-row items-center justify-between gap-3 border border-gray-700">
+              <span className="text-sm font-bold text-blue-400 shrink-0">✨ Auto-translate subtitle:</span>
+              <div className="flex items-center gap-2 w-full xl:w-auto">
+                <select 
+                  className="bg-gray-900 text-white text-sm px-3 py-1.5 rounded outline-none border border-gray-600 disabled:opacity-50 w-full xl:w-auto"
+                  disabled={isTranslatingSub}
+                  onChange={(e) => {
+                    if(e.target.value) handleAutoTranslateSub(e.target.value);
+                    e.target.value = ""; 
+                  }}
+                >
+                  <option value="">Select language...</option>
+                  {SUPPORTED_LANGUAGES.map((lang) => (
+                    <option key={lang.code} value={lang.code}>{lang.label}</option>
+                  ))}
+                </select>
+                {isTranslatingSub && <span className="text-xs text-yellow-400 animate-pulse shrink-0">Translating...</span>}
+              </div>
+            </div>
+
+            {/* 2. BOX TẠO LỒNG TIẾNG AI (Chỉ hiện khi đã có phụ đề) */}
+            {episode.subtitles && episode.subtitles.length > 0 && (
+              <div className="bg-gray-800 p-3 rounded-lg flex flex-col xl:flex-row items-center justify-between gap-3 border border-gray-700">
+                <span className="text-sm font-bold text-pink-400 shrink-0 flex items-center gap-1">
+                  🎙️ Generate AI Voiceover:
+                </span>
+                <div className="flex items-center gap-2 w-full xl:w-auto">
+                  <select 
+                    className="bg-gray-900 text-white text-sm px-3 py-1.5 rounded outline-none border border-gray-600 disabled:opacity-50 w-full xl:w-auto"
+                    disabled={isGeneratingDub}
+                    onChange={(e) => {
+                      const selectedLang = e.target.value;
+                      if (selectedLang) {
+                        const targetSub = episode.subtitles?.find(s => s.label === selectedLang);
+                        if (targetSub) {
+                          handleGenerateDub(selectedLang, targetSub.url);
+                        }
+                      }
+                      e.target.value = ""; 
+                    }}
+                  >
+                    <option value="">Select sub to dub...</option>
+                    {/* Chỉ hiển thị các sub CHƯA được lồng tiếng */}
+                    {episode.subtitles
+                      .filter(sub => !(episode.dubbedLanguages || []).includes(sub.label))
+                      .map((sub) => (
+                        <option key={sub.id} value={sub.label}>
+                          {sub.label}
+                        </option>
+                      ))
+                    }
+                  </select>
+                  
+                  {isGeneratingDub && (
+                    <span className="text-[10px] text-pink-400 animate-pulse flex items-center gap-1 shrink-0">
+                      <svg className="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                      1-2 mins...
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+
           </div>
         </div>
+        {/* ======================= KẾT THÚC CỘT TRÁI (VIDEO) ======================= */}
+
+        
 
         {/* CỘT PHẢI: KHU VỰC MANGA ĐỒNG BỘ */}
         {showSplitScreen && (
           <div className="w-full lg:w-[40%] flex flex-col h-[70vh] lg:h-[calc(100vh-100px)] bg-gray-900 rounded-xl border border-gray-800 shadow-2xl overflow-hidden sticky top-[80px]">
-            
-            {/* Header Manga Panel */}
             <div className="bg-gray-800 p-4 border-b border-gray-700 flex flex-wrap justify-between items-center gap-2">
               <span className="font-bold text-purple-400 uppercase tracking-wide text-sm">📖 Manga</span>
-              
-              
             </div>
             
-            {/* Vùng cuộn đọc truyện (Độc lập không trôi trang) */}
             <div className="flex-1 overflow-y-auto p-4 custom-scrollbar bg-[#0f0f11]">
               {linkedChapters.map((chapter) => (
                 <div key={chapter.id} className="mb-10">
-                  
-                  {/* ======================================================= */}
-                  {/* KHU VỰC TIÊU ĐỀ CHƯƠNG & NÚT LINK ĐÃ ĐƯỢC THIẾT KẾ LẠI */}
-                  {/* ======================================================= */}
                   <div className="flex items-center justify-between gap-4 mb-6 relative">
                      <div className="h-px bg-gray-700 flex-1"></div>
-                     
                      <div className="flex flex-col items-center">
                        <h3 className="text-gray-300 font-bold text-sm tracking-wider uppercase">
                          {chapter.title}
                        </h3>
-                       {/* NÚT ĐIỀU HƯỚNG VÀO CHÍNH XÁC CHƯƠNG NÀY */}
                        <Link 
                          href={`/manga/${chapter.mangaId}/chapter/${chapter.id}`}
                          target="_blank"
@@ -296,13 +557,10 @@ export default function WatchEpisodePage() {
                          Read in Full Screen ↗
                        </Link>
                      </div>
-                     
                      <div className="h-px bg-gray-700 flex-1"></div>
                   </div>
-                  {/* ======================================================= */}
 
                   {chapter.images.map((imgUrl, index) => (
-                    // Chỉ hiển thị ảnh thô, không kèm nút dịch
                     <div key={index} className="w-full mb-4">
                       <img 
                         src={imgUrl} 
@@ -317,7 +575,6 @@ export default function WatchEpisodePage() {
           </div>
         )}
       </div>
-      {/* ================================================================= */}
 
       <div className="max-w-6xl mx-auto px-4">
         {/* DANH SÁCH CÁC TẬP PHIM */}

@@ -103,8 +103,8 @@ function TranslateableImage({
         `}
       >
         {isTranslating ? "✨ Đang quét..." : 
-         blocks.length > 0 ? (showTranslation ? "👁️ Ẩn bản dịch" : "👁️ Hiện bản dịch") : 
-         "✨ Dịch trang này"}
+         blocks.length > 0 ? (showTranslation ? "👁️ Hide translation" : "👁️ Show translation") : 
+         "✨ Translate with AI"}
       </button>
 
       {/* ➕ CHỈ RENDER BẢN DỊCH KHI SHOWTRANSLATION = TRUE */}
@@ -122,15 +122,12 @@ function TranslateableImage({
             transform: 'scale(1.15)', 
             boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)', 
             
-            // =====================================
-            // CÁC DÒNG ĐÃ ĐƯỢC TINH CHỈNH LẠI
-            // =====================================
-            padding: '4px', // Khoảng cách viền vừa phải để chữ không bị sát mép
-            fontSize: 'clamp(0.4rem, 1vw, 0.85rem)', // Đã thu nhỏ: Min 0.4rem, tự động theo màn hình 1vw, Max 0.85rem
-            lineHeight: '1.35', // Dãn dòng ra một chút để các dấu (như ề, ố, ặ) không đụng nhau
-            fontWeight: '500', // Đã giảm từ 800 (siêu đậm) xuống 500 (vừa phải/dễ đọc)
-            fontFamily: "'Segoe UI', Roboto, Helvetica, Arial, sans-serif", // Bộ font quốc dân, chống lỗi dấu Tiếng Việt 100%
-            wordBreak: 'break-word' // Bắt buộc tự động xuống dòng, không bao giờ bị tràn ra ngoài khung
+            padding: '4px', 
+            fontSize: 'clamp(0.4rem, 1vw, 0.85rem)', 
+            lineHeight: '1.35', 
+            fontWeight: '500', 
+            fontFamily: "'Segoe UI', Roboto, Helvetica, Arial, sans-serif", 
+            wordBreak: 'break-word' 
           }}
         >
           {block.translatedText}

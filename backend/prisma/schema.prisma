@@ -68,11 +68,11 @@ model Episode {
   anime            Anime             @relation(fields: [animeId], references: [id], onDelete: Cascade)
   subtitles        Subtitle[] // Một tập phim có thể có nhiều phụ đề (Việt, Anh, Nhật...)
   createdAt        DateTime          @default(now())
-  timelineMappings TimelineMapping[]
   comments         Comment[]
   animeHistories   AnimeHistory[]
   mappedChapterIds String[] @default([])
   episodeNumber    Int?
+  dubbedLanguages String[] @default([])
 }
 
 model Subtitle {
@@ -92,23 +92,13 @@ model Chapter {
   mangaId String
   manga   Manga  @relation(fields: [mangaId], references: [id], onDelete: Cascade)
 
-  mappings TimelineMapping[]
 
   createdAt      DateTime       @default(now())
   comments       Comment[]
   mangaHistories MangaHistory[]
 }
 
-// Tính năng Anime-Manga Synchronization (Crowdsourcing)
-model TimelineMapping {
-  id        String @id @default(uuid())
-  episodeId String
-  chapterId String
-  status    String @default("PENDING") // PENDING, APPROVED, REJECTED
 
-  episode Episode @relation(fields: [episodeId], references: [id])
-  chapter Chapter @relation(fields: [chapterId], references: [id])
-}
 
 // Bảng lưu điểm đánh giá truyện
 model Rating {
