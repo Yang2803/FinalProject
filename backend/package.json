@@ -21,13 +21,18 @@
     "axios": "^1.17.0",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.3",
+    "cheerio": "^1.2.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "msedge-tts": "^2.0.5",
+    "node-html-parser": "^7.1.0",
     "node-webvtt": "^1.9.4",
     "nodemailer": "^8.0.7",
     "pg": "^8.20.0",
+    "puppeteer": "^25.1.0",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
     "tesseract.js": "^7.0.0"
   },
   "devDependencies": {

@@ -11,6 +11,7 @@ import uploadRoutes from './routes/upload.routes';
 import chatRoutes from './routes/chat.routes';
 import searchRoutes from './routes/search.routes';
 import dubRoutes from './routes/dub.routes';
+import adminEpisodeRoutes from './routes/admin-episode.routes';
 
 dotenv.config();
 
@@ -52,6 +53,9 @@ app.use('/', searchRoutes);
 
 //8. Nhóm API Tạo lồng tiếng
 app.use('/', dubRoutes);
+
+//9. Nhóm API Auto-fill thông tin tập phim bằng AI
+app.use('/', adminEpisodeRoutes);
 
 // ============================================
 // ROUTE MẶC ĐỊNH & KHỞI ĐỘNG SERVER

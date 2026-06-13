@@ -57,7 +57,8 @@ router.post('/api/admin/episode', async (req: Request, res: Response): Promise<a
 // API: Đăng bộ Anime mới
 router.post('/api/admin/anime', async (req: Request, res: Response): Promise<any> => {
   try {
-    const { title, description, coverImage, author, status } = req.body;
+    // 🌟 THÊM fandomPrefix VÀO ĐÂY
+    const { title, description, coverImage, fandomPrefix, author, status } = req.body;
 
     if (!title) {
       return res.status(400).json({ message: "Tên phim không được để trống!" });
@@ -68,7 +69,7 @@ router.post('/api/admin/anime', async (req: Request, res: Response): Promise<any
         title,
         description,
         coverImage,
-        // Nếu bạn đã thêm author và status vào schema.prisma thì bổ sung vào đây
+        fandomPrefix, // 🌟 LƯU VÀO DATABASE
         // author, 
         // status 
       }
@@ -133,17 +134,25 @@ router.get('/api/admin/anime/:id', async (req: Request, res: Response): Promise<
   }
 });
 
-// 6. [THÊM MỚI] API: Chỉnh sửa thông tin phim (Sửa Tên, Mô tả, Ảnh bìa)
+// 6. [THÊM MỚI] API: Chỉnh sửa thông tin phim (Sửa Tên, Mô tả, Ảnh bìa, Fandom Prefix)
 router.put('/api/admin/anime/:id', async (req: Request, res: Response): Promise<any> => {
   try {
     const animeId = req.params.id as string;
-    const { title, description, coverImage } = req.body;
+    
+    // 🌟 THÊM fandomPrefix VÀO ĐÂY ĐỂ HỨNG DỮ LIỆU
+    const { title, description, coverImage, fandomPrefix } = req.body;
 
     if (!title) return res.status(400).json({ message: "The anime title cannot be empty!" });
 
     const updatedAnime = await prisma.anime.update({
       where: { id: animeId },
-      data: { title, description, coverImage }
+      // 🌟 THÊM fandomPrefix VÀO ĐÂY ĐỂ LƯU VÀO DATABASE
+      data: { 
+        title, 
+        description, 
+        coverImage,
+        fandomPrefix 
+      }
     });
 
     res.status(200).json({ message: "Update anime information successfully!", anime: updatedAnime });
@@ -182,21 +191,35 @@ router.get('/api/admin/episode-detail/:id', async (req: Request, res: Response):
   }
 });
 
-// 9. API: Cập nhật tập phim (Đổi tên, video, subtitle hoặc Manga Sync)
+// 9. API: Cập nhật tập phim (Đổi tên, video, subtitle, Manga Sync hoặc Cập nhật chi tiết AI)
 router.put('/api/admin/episode/:id', async (req: Request, res: Response): Promise<any> => {
   try {
     const episodeId = req.params.id as string;
-    // ➕ LẤY THÊM DỮ LIỆU TỪ BODY
-    const { title, videoUrl, newSubtitles, episodeNumber, mappedChapterIds } = req.body;
+    
+    // 🌟 1. BỔ SUNG CÁC TRƯỜNG DỮ LIỆU TỪ FRONTEND GỬI LÊN
+    const { 
+      title, 
+      videoUrl, 
+      newSubtitles, 
+      episodeNumber, 
+      mappedChapterIds,
+      adaptedFrom,   // Mới thêm
+      characters,    // Mới thêm
+      plotSummary    // Mới thêm
+    } = req.body;
 
     const updatedEpisode = await prisma.episode.update({
       where: { id: episodeId },
       data: {
-        title,
+        ...(title && { title }), // Chỉ update title nếu có gửi lên (tránh ghi đè null)
         ...(videoUrl && { videoUrl }), 
-        // ➕ CẬP NHẬT THÊM NẾU CÓ THAY ĐỔI
         ...(episodeNumber !== undefined && { episodeNumber: Number(episodeNumber) }),
         ...(mappedChapterIds && { mappedChapterIds }),
+        
+        // 🌟 2. LƯU VÀO DATABASE NẾU CÓ DỮ LIỆU
+        ...(adaptedFrom !== undefined && { adaptedFrom }),
+        ...(characters !== undefined && { characters }), // Prisma mảng text[] nhận thẳng array
+        ...(plotSummary !== undefined && { plotSummary })
       }
     });
 

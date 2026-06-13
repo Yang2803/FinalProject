@@ -39,6 +39,7 @@ model Anime {
   watchListedBy  WatchList[]
   comments       Comment[]
   animeHistories AnimeHistory[]
+  fandomPrefix String    @default("") // Ví dụ: "jujutsu-kaisen", "naruto"
 }
 
 model Manga {
@@ -73,6 +74,9 @@ model Episode {
   mappedChapterIds String[] @default([])
   episodeNumber    Int?
   dubbedLanguages String[] @default([])
+  plotSummary     String?  @db.Text     // Nội dung cốt truyện (Dùng @db.Text để lưu văn bản dài)
+  characters      String[] @default([]) // Mảng chứa danh sách tên nhân vật xuất hiện
+  adaptedFrom     String?               // Lưu thông tin chuyển thể từ chapter nào (Ví dụ: "Chapters 1-2")
 }
 
 model Subtitle {

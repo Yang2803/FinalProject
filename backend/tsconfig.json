@@ -1,5 +1,7 @@
 {
   "compilerOptions": {
+
+    
     // File Layout
     "rootDir": "./",
     "outDir": "./dist",
@@ -9,7 +11,7 @@
     "module": "commonjs",
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
-    "lib": ["es2022"],
+    "lib": ["es2022", "DOM"],
     "types": ["node"],
 
     // Other Outputs

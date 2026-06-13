@@ -15,6 +15,7 @@ interface AnimeDetail {
   title: string;
   description: string | null;
   coverImage: string | null;
+  fandomPrefix: string | null; // ➕ Thêm trường này vào Interface
   episodes: Episode[];
 }
 
@@ -29,6 +30,7 @@ export default function AdminAnimeDetailPage() {
   // States phục vụ tính năng chỉnh sửa thông tin
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState("");
+  const [editFandomPrefix, setEditFandomPrefix] = useState(""); // ➕ State cho Fandom Prefix
   const [editDescription, setEditDescription] = useState("");
   const [newCoverFile, setNewCoverFile] = useState<File | null>(null);
   const [saveLoading, setSaveLoading] = useState(false);
@@ -45,6 +47,7 @@ export default function AdminAnimeDetailPage() {
           const data = await res.json();
           setAnime(data);
           setEditTitle(data.title);
+          setEditFandomPrefix(data.fandomPrefix || ""); // ➕ Nạp data Fandom Prefix từ DB
           setEditDescription(data.description || "");
         } else {
           alert("Không tìm thấy bộ phim này!");
@@ -58,7 +61,7 @@ export default function AdminAnimeDetailPage() {
     };
 
     loadData();
-  }, [animeId, router, refreshKey]); // <--- Khi refreshKey thay đổi, useEffect sẽ tự động chạy lại hàm loadData
+  }, [animeId, router, refreshKey]);
 
   // 2. Hàm Xử lý Lưu thông tin sau khi Sửa
   const handleUpdateAnime = async (e: React.FormEvent) => {
@@ -92,6 +95,7 @@ export default function AdminAnimeDetailPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: editTitle,
+          fandomPrefix: editFandomPrefix, // ➕ Gửi Fandom Prefix lên Backend để lưu
           description: editDescription,
           coverImage: finalCoverUrl
         })
@@ -105,7 +109,7 @@ export default function AdminAnimeDetailPage() {
       alert("Anime information update successful!");
       setIsEditing(false);
       setNewCoverFile(null);
-      setRefreshKey((prev) => prev + 1);// Tải lại dữ liệu mới cập nhật lên UI
+      setRefreshKey((prev) => prev + 1); // Tải lại dữ liệu mới cập nhật lên UI
 
     } catch (error) {
       alert(error instanceof Error ? error.message : "An error occurred");
@@ -121,14 +125,14 @@ export default function AdminAnimeDetailPage() {
     if (!confirmDelete) return;
 
     try {
-      setLoading(true); // Tận dụng state loading để khóa giao diện lúc đang xóa
+      setLoading(true);
       const res = await fetch(`http://localhost:5000/api/admin/anime/${animeId}`, {
         method: "DELETE"
       });
 
       if (res.ok) {
         alert("Đã xóa bộ phim thành công!");
-        router.push("/admin/anime"); // Xóa xong thì điều hướng Admin về lại danh sách
+        router.push("/admin/anime");
       } else {
         const errorData = await res.json();
         alert(`Lỗi: ${errorData.message}`);
@@ -152,7 +156,7 @@ export default function AdminAnimeDetailPage() {
 
       if (res.ok) {
         alert("Đã xóa tập phim!");
-        setRefreshKey(prev => prev + 1); // Load lại danh sách tập phim lập tức
+        setRefreshKey(prev => prev + 1);
       } else {
         const err = await res.json();
         alert(`Lỗi: ${err.message}`);
@@ -176,7 +180,7 @@ export default function AdminAnimeDetailPage() {
     <div className="min-h-screen bg-[#0f0f11] text-white p-8">
       <div className="max-w-5xl mx-auto">
         
-        {/* NÚT BACK VỀ TRANH CHỦ ADMIN */}
+        {/* NÚT BACK VỀ TRANG CHỦ ADMIN */}
         <div className="mb-6">
           <Link href="/admin/anime" className="text-sm text-gray-400 hover:text-purple-400 transition">&larr; Anime Inventory Management</Link>
         </div>
@@ -226,6 +230,15 @@ export default function AdminAnimeDetailPage() {
                       </button>
                     </div>
                   </div>
+                  
+                  {/* Hiển thị Fandom Prefix nếu có */}
+                  {anime.fandomPrefix && (
+                    <div className="mb-4 inline-flex items-center bg-gray-900 border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-gray-400">
+                      <span className="font-bold text-gray-300 mr-2">Fandom Wiki:</span> 
+                      https://<span className="text-blue-400">{anime.fandomPrefix}</span>.fandom.com
+                    </div>
+                  )}
+
                   <p className="text-gray-300 leading-relaxed text-sm whitespace-pre-line bg-gray-900/40 p-4 rounded-xl border border-gray-700/60">
                     {anime.description || "There is no synopsis for this film yet."}
                   </p>
@@ -244,6 +257,29 @@ export default function AdminAnimeDetailPage() {
                       onChange={(e) => setEditTitle(e.target.value)}
                       className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-sm outline-none text-white focus:border-blue-500"
                     />
+                  </div>
+
+                  {/* 🌟 FORM NHẬP FANDOM PREFIX */}
+                  <div>
+                    <label className="block text-xs text-gray-400 font-bold mb-1">Fandom Prefix (Dùng cho Auto-fill Data)</label>
+                    <div className="flex bg-gray-900 border border-gray-700 rounded-lg overflow-hidden focus-within:border-blue-500 transition">
+                      <span className="bg-gray-800 text-gray-500 text-sm px-3 py-2.5 border-r border-gray-700 select-none">
+                        https://
+                      </span>
+                      <input 
+                        type="text" 
+                        value={editFandomPrefix}
+                        onChange={(e) => setEditFandomPrefix(e.target.value.toLowerCase().replace(/\s+/g, '-'))}
+                        placeholder="Ví dụ: jujutsu-kaisen, naruto..."
+                        className="w-full bg-transparent p-2.5 text-sm outline-none text-white"
+                      />
+                      <span className="bg-gray-800 text-gray-500 text-sm px-3 py-2.5 border-l border-gray-700 select-none hidden sm:block">
+                        .fandom.com
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-gray-500 mt-1 italic">
+                      * Bắt buộc phải có để tính năng 🪄 Auto-fill via AI ở trong trang Chi tiết Tập phim có thể hoạt động.
+                    </p>
                   </div>
 
                   <div>
@@ -306,14 +342,28 @@ export default function AdminAnimeDetailPage() {
                     >
                       <div className="flex items-center gap-3">
                         <span className="text-xs font-bold text-gray-500 w-6">#{idx + 1}</span>
-                        <span className="font-semibold text-gray-200 text-sm">{ep.title}</span>
+                        
+                        <Link 
+                          href={`/admin/anime/${animeId}/episode/${ep.id}`}
+                          className="font-semibold text-blue-400 hover:text-purple-400 hover:underline underline-offset-2 text-sm transition"
+                        >
+                          {ep.title}
+                        </Link>
+
                         <span className="text-xs text-gray-600 hidden md:inline-block">
                           ({new Date(ep.createdAt).toLocaleDateString('vi-VN')})
                         </span>
                       </div>
                       
-                      {/* CÁC NÚT THAO TÁC: Chỉ hiện rõ khi hover */}
                       <div className="flex gap-2 opacity-50 group-hover:opacity-100 transition-opacity">
+                        
+                        <Link 
+                          href={`/admin/anime/${animeId}/episode/${ep.id}`}
+                          className="bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold px-3 py-1.5 rounded transition"
+                        >
+                          ⚙️ Details
+                        </Link>
+
                         <Link 
                           href={`/admin/anime/${animeId}/episode/${ep.id}/edit`}
                           className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-3 py-1.5 rounded transition"
