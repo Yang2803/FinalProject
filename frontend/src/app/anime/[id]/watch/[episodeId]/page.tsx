@@ -59,45 +59,56 @@ export default function WatchEpisodePage() {
 
   // --- STATE DỊCH SUBTITLE (ANIME) ---
   const [isTranslatingSub, setIsTranslatingSub] = useState(false);
+  const [translateProgress, setTranslateProgress] = useState(0);
 
   // --- STATE TẠO LỒNG TIẾNG (GENERATE DUB) ---
   const [isGeneratingDub, setIsGeneratingDub] = useState(false);
+  const [dubProgress, setDubProgress] = useState(0);
 
   // Hàm gọi API yêu cầu Backend sinh file MP3 lồng tiếng
   const handleGenerateDub = async (targetLang: string, subtitleUrl: string) => {
     if (!episode || !targetLang || !subtitleUrl) return;
     
-    // Cảnh báo UX: Quá trình này sẽ mất thời gian vì AI phải đọc hết cả tập phim
-    const confirmMsg = `Hệ thống sẽ bắt đầu tạo lồng tiếng AI cho ngôn ngữ [${targetLang}]. Quá trình này có thể mất 1 - 2 phút tùy độ dài tập phim. Bạn có muốn tiếp tục?`;
+    const confirmMsg = `Hệ thống sẽ bắt đầu tạo lồng tiếng AI cho ngôn ngữ [${targetLang}]. Quá trình này có thể mất 1 - 2 phút. Bạn có muốn tiếp tục?`;
     if (!window.confirm(confirmMsg)) return;
 
     setIsGeneratingDub(true);
+    setDubProgress(0);
+
+    // 🌟 THUẬT TOÁN TIẾN ĐỘ GIẢ LẬP (Chạy mỗi 1 giây)
+    const progressInterval = setInterval(() => {
+      setDubProgress(prev => {
+        if (prev >= 99) return 99; // Khựng lại ở 99% đợi API
+        if (prev < 40) return prev + Math.floor(Math.random() * 3) + 2; // Tăng 2-4%
+        if (prev < 80) return prev + 1; // Tăng 1%
+        return prev + 0.2; // Tăng rất chậm 0.2%
+      });
+    }, 1000);
+
     try {
       const res = await fetch("http://localhost:5000/api/anime/generate-dub", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          episodeId: episode.id, 
-          subtitleUrl: subtitleUrl, 
-          targetLang: targetLang 
-        })
+        body: JSON.stringify({ episodeId: episode.id, subtitleUrl, targetLang })
       });
 
       if (res.ok) {
-        alert("🎉 Đã tạo lồng tiếng thành công! Bạn có thể bật nghe ngay bây giờ.");
+        clearInterval(progressInterval); // Dừng giả lập
+        setDubProgress(100); // 🌟 Kéo full 100%
         
-        // Cập nhật lại State để UI chọn lồng tiếng (Playback) hiện ra ngay lập tức
-        setEpisode(prev => {
-          if (!prev) return prev;
-          const currentDubs = prev.dubbedLanguages || [];
-          if (!currentDubs.includes(targetLang)) {
-            return { ...prev, dubbedLanguages: [...currentDubs, targetLang] };
-          }
-          return prev;
-        });
-
-        // Tự động chuyển Player sang ngôn ngữ vừa tạo
-        setSelectedDubLang(targetLang);
+        // Đợi 500ms cho UI thanh progress chạy mượt tới đích rồi mới báo Alert
+        setTimeout(() => {
+          alert("🎉 Đã tạo lồng tiếng thành công! Bạn có thể bật nghe ngay bây giờ.");
+          setEpisode(prev => {
+            if (!prev) return prev;
+            const currentDubs = prev.dubbedLanguages || [];
+            if (!currentDubs.includes(targetLang)) {
+              return { ...prev, dubbedLanguages: [...currentDubs, targetLang] };
+            }
+            return prev;
+          });
+          setSelectedDubLang(targetLang);
+        }, 500);
       } else {
         alert("❌ Có lỗi xảy ra trong quá trình tạo lồng tiếng.");
       }
@@ -105,7 +116,12 @@ export default function WatchEpisodePage() {
       console.error("Generate dub error:", error);
       alert("❌ Lỗi kết nối đến máy chủ!");
     } finally {
-      setIsGeneratingDub(false);
+      clearInterval(progressInterval);
+      // Đợi 2s rồi mới dọn dẹp UI tiến trình
+      setTimeout(() => {
+        setIsGeneratingDub(false);
+        setDubProgress(0);
+      }, 2000);
     }
   };
 
@@ -334,29 +350,52 @@ export default function WatchEpisodePage() {
   // HÀM GỌI API DỊCH AI CHO PHỤ ĐỀ (VIDEO)
   const handleAutoTranslateSub = async (targetLang: string) => {
     if (!episode || !targetLang) return;
+    
     setIsTranslatingSub(true);
+    setTranslateProgress(0);
+
+    // 🌟 THUẬT TOÁN TIẾN ĐỘ GIẢ LẬP (Nhanh hơn vì dịch Text lẹ hơn Audio)
+    const progressInterval = setInterval(() => {
+      setTranslateProgress(prev => {
+        if (prev >= 99) return 99;
+        if (prev < 60) return prev + Math.floor(Math.random() * 5) + 5; 
+        if (prev < 90) return prev + 2; 
+        return prev + 1; 
+      });
+    }, 600);
+
     try {
       const res = await fetch("http://localhost:5000/api/anime/translate-sub", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ episodeId, targetLang })
       });
+      
       if (res.ok) {
         const data = await res.json();
-        setEpisode(prev => {
-          if (!prev) return prev;
-          const exists = prev.subtitles?.find(s => s.id === data.subtitle.id);
-          if (exists) return prev;
-          return { ...prev, subtitles: [...(prev.subtitles || []), data.subtitle] };
-        });
-        alert(`Đã hoàn tất dịch sang ${targetLang}! Vui lòng bật phụ đề trong Player (CC).`);
+        clearInterval(progressInterval);
+        setTranslateProgress(100); // 🌟 Kéo full 100%
+
+        setTimeout(() => {
+          setEpisode(prev => {
+            if (!prev) return prev;
+            const exists = prev.subtitles?.find(s => s.id === data.subtitle.id);
+            if (exists) return prev;
+            return { ...prev, subtitles: [...(prev.subtitles || []), data.subtitle] };
+          });
+          alert(`✨ Đã hoàn tất dịch sang ${targetLang}! Vui lòng bật phụ đề trong Player (CC).`);
+        }, 400);
       } else {
-        alert("Có lỗi xảy ra trong quá trình dịch thuật.");
+        alert("❌ Có lỗi xảy ra trong quá trình dịch thuật.");
       }
     } catch (error) {
       console.error("Translate error:", error);
     } finally {
-      setIsTranslatingSub(false);
+      clearInterval(progressInterval);
+      setTimeout(() => {
+        setIsTranslatingSub(false);
+        setTranslateProgress(0);
+      }, 2000);
     }
   };
 
@@ -466,7 +505,7 @@ export default function WatchEpisodePage() {
             {/* 1. BOX DỊCH PHỤ ĐỀ AI */}
             <div className="bg-gray-800 p-3 rounded-lg flex flex-col xl:flex-row items-center justify-between gap-3 border border-gray-700">
               <span className="text-sm font-bold text-blue-400 shrink-0">✨ Auto-translate subtitle:</span>
-              <div className="flex items-center gap-2 w-full xl:w-auto">
+              <div className="flex items-center gap-3 w-full xl:w-auto">
                 <select 
                   className="bg-gray-900 text-white text-sm px-3 py-1.5 rounded outline-none border border-gray-600 disabled:opacity-50 w-full xl:w-auto"
                   disabled={isTranslatingSub}
@@ -480,7 +519,21 @@ export default function WatchEpisodePage() {
                     <option key={lang.code} value={lang.code}>{lang.label}</option>
                   ))}
                 </select>
-                {isTranslatingSub && <span className="text-xs text-yellow-400 animate-pulse shrink-0">Translating...</span>}
+                
+                {/* 🌟 UI HIỂN THỊ % DỊCH THUẬT */}
+                {isTranslatingSub && (
+                  <div className="flex flex-col items-end gap-1 shrink-0 min-w-[80px]">
+                    <span className="text-[10px] text-blue-400 font-bold animate-pulse">
+                      Translating... {Math.floor(translateProgress)}%
+                    </span>
+                    <div className="w-full h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-blue-500 transition-all duration-300 ease-out" 
+                        style={{ width: `${translateProgress}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -490,7 +543,7 @@ export default function WatchEpisodePage() {
                 <span className="text-sm font-bold text-pink-400 shrink-0 flex items-center gap-1">
                   🎙️ Generate AI Voiceover:
                 </span>
-                <div className="flex items-center gap-2 w-full xl:w-auto">
+                <div className="flex items-center gap-3 w-full xl:w-auto">
                   <select 
                     className="bg-gray-900 text-white text-sm px-3 py-1.5 rounded outline-none border border-gray-600 disabled:opacity-50 w-full xl:w-auto"
                     disabled={isGeneratingDub}
@@ -506,7 +559,6 @@ export default function WatchEpisodePage() {
                     }}
                   >
                     <option value="">Select sub to dub...</option>
-                    {/* Chỉ hiển thị các sub CHƯA được lồng tiếng */}
                     {episode.subtitles
                       .filter(sub => !(episode.dubbedLanguages || []).includes(sub.label))
                       .map((sub) => (
@@ -517,11 +569,20 @@ export default function WatchEpisodePage() {
                     }
                   </select>
                   
+                  {/* 🌟 UI HIỂN THỊ % LỒNG TIẾNG */}
                   {isGeneratingDub && (
-                    <span className="text-[10px] text-pink-400 animate-pulse flex items-center gap-1 shrink-0">
-                      <svg className="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                      1-2 mins...
-                    </span>
+                    <div className="flex flex-col items-end gap-1 shrink-0 min-w-[80px]">
+                      <span className="text-[10px] text-pink-400 font-bold animate-pulse flex items-center gap-1">
+                        <svg className="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        {Math.floor(dubProgress)}%
+                      </span>
+                      <div className="w-full h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-pink-500 transition-all duration-300 ease-out" 
+                          style={{ width: `${dubProgress}%` }}
+                        ></div>
+                      </div>
+                    </div>
                   )}
                 </div>
               </div>
