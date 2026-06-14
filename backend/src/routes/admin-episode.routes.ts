@@ -28,12 +28,13 @@ router.post('/api/admin/episode/auto-fill', async (req, res) => {
     // GIAI ĐOẠN 1: DÒ TÌM ĐA TẦNG VÀ GIỮ VỮNG BEST MATCH TITLE
     // =========================================================
     browser = await puppeteer.launch({ 
-      headless: false, // Hiển thị trình duyệt để lách luật và làm Demo
+      headless: true, // Hiển thị trình duyệt để lách luật và làm Demo
       defaultViewport: null,
       args: [
         '--no-sandbox', 
         '--disable-setuid-sandbox', 
-        '--window-size=1024,768'
+        '--window-size=1024,768',
+        '--disable-blink-features=AutomationControlled'
       ] 
     });
     const page = await browser.newPage();
