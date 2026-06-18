@@ -15,26 +15,30 @@ export default function UploadEpisodePage() {
   const params = useParams();
   const animeId = params.id as string; 
   
-  // State quản lý form
+  // State quản lý form cơ bản
   const [animeTitle, setAnimeTitle] = useState("Đang tải dữ liệu phim...");
   const [episodeTitle, setEpisodeTitle] = useState("");
   const [episodeNumber, setEpisodeNumber] = useState<number | "">(""); 
   
+  // 🌟 1. STATE MỚI CHO 3 TRƯỜNG DỮ LIỆU CÀO TỪ FANDOM
+  const [adaptedFrom, setAdaptedFrom] = useState("");
+  const [characters, setCharacters] = useState("");
+  const [plotSummary, setPlotSummary] = useState("");
+  const [isAutoFilling, setIsAutoFilling] = useState(false);
+
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [subtitleInputs, setSubtitleInputs] = useState<SubtitleInput[]>([]);
   const [loading, setLoading] = useState(false);
-
-  // Theo dõi tiến độ Upload (%)
   const [uploadProgress, setUploadProgress] = useState(0);
 
-  // State lưu Manga ID để phục vụ việc liên kết
+  // State Manga Mapping
   const [mangaId, setMangaId] = useState<string | null>(null);
   const [mappedIds, setMappedIds] = useState<string[]>([]);
   const [isMapping, setIsMapping] = useState(false);
   const [allMangas, setAllMangas] = useState<{id: string, title: string}[]>([]);
   const [availableChapters, setAvailableChapters] = useState<{id: string, title: string}[]>([]);
 
-  // 1. Tự động lấy tên Anime và Manga ID liên kết
+  // Lấy tên Anime
   useEffect(() => {
     fetch(`http://localhost:5000/api/admin/anime/${animeId}`)
       .then(res => res.json())
@@ -49,7 +53,7 @@ export default function UploadEpisodePage() {
       .catch(() => setAnimeTitle("Lỗi kết nối server"));
   }, [animeId]);
 
-  // 2. Lấy danh sách Manga
+  // Lấy danh sách Manga
   useEffect(() => {
     fetch("http://localhost:5000/api/manga") 
       .then(res => res.json())
@@ -60,15 +64,13 @@ export default function UploadEpisodePage() {
       .catch(err => console.error("Lỗi tải danh sách Manga:", err));
   }, []);
 
-  // ➕ 3. HÀM MỚI: Tự động tải danh sách Chapter khi Manga ID thay đổi
+  // Lấy Chapters
   useEffect(() => {
-    // Bọc logic vào một hàm async để tránh lỗi "synchronous setState"
     const fetchChapters = async () => {
       if (!mangaId) {
-        setAvailableChapters([]); // Lúc này gọi an toàn vì nó nằm trong hàm async
+        setAvailableChapters([]); 
         return;
       }
-      
       try {
         const res = await fetch(`http://localhost:5000/api/admin/manga/${mangaId}/chapters`);
         const data = await res.json();
@@ -77,12 +79,9 @@ export default function UploadEpisodePage() {
         console.error("Lỗi tải chapters:", err);
       }
     };
-
-    // Gọi hàm thực thi
     fetchChapters();
   }, [mangaId]);
 
-  // ➕ 4. HÀM MỚI: Xử lý khi click chọn/bỏ chọn Chapter thủ công
   const toggleChapterSelection = (chapterId: string) => {
     if (mappedIds.includes(chapterId)) {
       setMappedIds(mappedIds.filter(id => id !== chapterId));
@@ -112,7 +111,7 @@ export default function UploadEpisodePage() {
       const res = await fetch("http://localhost:5000/api/admin/auto-map-chapters", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ animeName: animeTitle, episodeNumber: Number(episodeNumber), mangaId })
+        body: JSON.stringify({ animeName: animeTitle, episodeNumber: Number(episodeNumber), mangaId, adaptedFrom })
       });
       const data = await res.json();
       
@@ -134,28 +133,59 @@ export default function UploadEpisodePage() {
     }
   };
 
-  // Tải file lên và theo dõi % bằng XMLHttpRequest
+  // 🌟 HÀM MỚI: XỬ LÝ NÚT AUTO-FILL (Đã đồng bộ 100% logic với trang Edit)
+  const handleAutoFill = async () => {
+    if (!episodeNumber) {
+      alert("Vui lòng điền số tập phim trước khi tự động quét dữ liệu!");
+      return;
+    }
+
+    setIsAutoFilling(true);
+    try {
+      // 1. Sửa lại đúng đường dẫn API
+      const res = await fetch("http://localhost:5000/api/admin/episode/auto-fill", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        // 2. Gửi đúng biến animeId (Lấy từ params) thay vì animeTitle
+        body: JSON.stringify({ animeId, episodeNumber: Number(episodeNumber) })
+      });
+
+      const result = await res.json();
+
+      // 3. Xử lý dữ liệu trả về theo đúng cấu trúc { success, data }
+      if (res.ok && result.success) {
+        const { plotSummary, characters, adaptedFrom } = result.data;
+        
+        // Cập nhật State
+        setPlotSummary(plotSummary || "");
+        setAdaptedFrom(adaptedFrom || "");
+        setCharacters(characters ? (Array.isArray(characters) ? characters.join(", ") : characters) : "");
+        
+        alert(`✨ Đã tự động điền thông tin dựa trên dữ liệu trang: "${result.sourceTitle}"!`);
+      } else {
+        alert(`❌ Lỗi: ${result.error || "Không thể tự động điền."}`);
+      }
+    } catch (error) {
+      console.error("Lỗi Auto-fill:", error);
+      alert("❌ Gặp sự cố khi kết nối tới máy chủ.");
+    } finally {
+      setIsAutoFilling(false);
+    }
+  };
+
   const uploadFileWithProgress = (url: string, file: Blob): Promise<void> => {
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       xhr.open("PUT", url, true);
-
-      // Theo dõi tiến trình tải lên
       xhr.upload.onprogress = (event) => {
         if (event.lengthComputable) {
-          const percentComplete = Math.round((event.loaded / event.total) * 100);
-          setUploadProgress(percentComplete); // Cập nhật State %
+          setUploadProgress(Math.round((event.loaded / event.total) * 100)); 
         }
       };
-
       xhr.onload = () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          resolve();
-        } else {
-          reject(new Error(`Upload failed with status ${xhr.status}`));
-        }
+        if (xhr.status >= 200 && xhr.status < 300) resolve();
+        else reject(new Error(`Upload failed with status ${xhr.status}`));
       };
-
       xhr.onerror = () => reject(new Error("Network error during upload"));
       xhr.send(file);
     });
@@ -167,7 +197,7 @@ export default function UploadEpisodePage() {
     if (episodeNumber === "") return alert("Please enter the episode number!");
 
     setLoading(true);
-    setUploadProgress(0); // Reset thanh tiến độ về 0%
+    setUploadProgress(0); 
 
     try {
       // --- PHẦN A: UPLOAD VIDEO ---
@@ -181,8 +211,6 @@ export default function UploadEpisodePage() {
       if (!urlRes.ok) throw new Error(`Video Permission Error: ${urlData.message}`);
 
       const videoBlob = new Blob([videoFile], { type: safeVideoType });
-
-      // GỌI HÀM XHR ĐỂ UPLOAD VÀ LẤY %
       await uploadFileWithProgress(urlData.uploadUrl, videoBlob);
       const finalVideoUrl = urlData.publicUrl;
 
@@ -221,7 +249,11 @@ export default function UploadEpisodePage() {
           episodeNumber: Number(episodeNumber), 
           videoUrl: finalVideoUrl,
           subtitles: uploadedSubtitles,
-          mappedChapterIds: mappedIds 
+          mappedChapterIds: mappedIds,
+          // 🌟 3. BỔ SUNG GỬI 3 TRƯỜNG DỮ LIỆU LÊN DATABASE
+          adaptedFrom,
+          characters,
+          plotSummary
         })
       });
 
@@ -238,7 +270,7 @@ export default function UploadEpisodePage() {
       }
     } finally {
       setLoading(false);
-      setUploadProgress(0); // Reset khi xong
+      setUploadProgress(0); 
     }
   };
 
@@ -250,11 +282,12 @@ export default function UploadEpisodePage() {
             <h1 className="text-2xl font-black text-purple-400">Upload New Episode</h1>
             <p className="text-gray-400 text-sm mt-1">Anime: <span className="text-white font-bold">{animeTitle}</span></p>
           </div>
-          <Link href="/admin/anime" className="text-sm text-gray-400 hover:text-white">&larr; Back to Anime List</Link>
+          <Link href={`/admin/anime/${animeId}`} className="text-sm text-gray-400 hover:text-white">&larr; Back to Anime</Link>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           
+          {/* KHU VỰC THÔNG TIN CƠ BẢN & NÚT AUTO-FILL */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div className="col-span-1">
               <label className="block text-sm font-semibold text-gray-300 mb-2">Ep Number (*)</label>
@@ -267,7 +300,18 @@ export default function UploadEpisodePage() {
             </div>
             
             <div className="col-span-1 md:col-span-3">
-              <label className="block text-sm font-semibold text-gray-300 mb-2">Episode Title (*)</label>
+              <label className="flex justify-between items-center text-sm font-semibold text-gray-300 mb-2">
+                <span>Episode Title (*)</span>
+                {/* 🌟 NÚT AUTO-FILL */}
+                <button
+                  type="button"
+                  onClick={handleAutoFill}
+                  disabled={isAutoFilling || episodeNumber === ""}
+                  className="bg-fuchsia-600 hover:bg-fuchsia-500 disabled:bg-gray-700 text-white text-xs font-bold px-3 py-1 rounded shadow-lg transition"
+                >
+                  {isAutoFilling ? "🪄 Đang cào data..." : "🪄 Auto-fill via AI"}
+                </button>
+              </label>
               <input
                 type="text" required placeholder="Example: A New Beginning"
                 value={episodeTitle} onChange={(e) => setEpisodeTitle(e.target.value)}
@@ -276,6 +320,37 @@ export default function UploadEpisodePage() {
             </div>
           </div>
 
+          {/* 🌟 4. GIAO DIỆN 3 TRƯỜNG DỮ LIỆU CÀO VỀ */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-gray-900/50 p-4 rounded-xl border border-gray-700">
+            <div className="col-span-1 md:col-span-2">
+              <label className="block text-sm font-semibold text-gray-400 mb-2">Adapted From (Manga Chapter)</label>
+              <input
+                type="text" placeholder="Ví dụ: Chapter 1 (p. 2-10)"
+                value={adaptedFrom} onChange={(e) => setAdaptedFrom(e.target.value)}
+                className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-sm text-white outline-none focus:border-purple-500"
+              />
+            </div>
+
+            <div className="col-span-1 md:col-span-2">
+              <label className="block text-sm font-semibold text-gray-400 mb-2">Characters (Phân cách bằng dấu phẩy)</label>
+              <input
+                type="text" placeholder="Naruto Uzumaki, Sasuke Uchiha..."
+                value={characters} onChange={(e) => setCharacters(e.target.value)}
+                className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-sm text-white outline-none focus:border-purple-500"
+              />
+            </div>
+
+            <div className="col-span-1 md:col-span-2">
+              <label className="block text-sm font-semibold text-gray-400 mb-2">Plot Details (Cốt truyện chi tiết)</label>
+              <textarea
+                rows={4} placeholder="Nhập tóm tắt nội dung tập phim..."
+                value={plotSummary} onChange={(e) => setPlotSummary(e.target.value)}
+                className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-sm text-white outline-none focus:border-purple-500 custom-scrollbar"
+              />
+            </div>
+          </div>
+
+          {/* UPLOAD VIDEO FILE */}
           <div>
             <label className="block text-sm font-semibold text-gray-300 mb-2">Video file (Accepts .mp4, .mkv) (*)</label>
             <input
@@ -287,7 +362,7 @@ export default function UploadEpisodePage() {
             />
           </div>
 
-          {/* KHU VỰC LIÊN KẾT MANGA - GIAO DIỆN NÚT BẤM MỚI */}
+          {/* KHU VỰC LIÊN KẾT MANGA */}
           <div className="border border-indigo-900/50 bg-indigo-900/10 p-5 rounded-xl space-y-4">
              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
@@ -399,7 +474,6 @@ export default function UploadEpisodePage() {
                   <span className="text-sm font-black text-white">{uploadProgress}%</span>
                 </div>
                 
-                {/* Thanh Progress Bar */}
                 <div className="w-full bg-gray-900 rounded-full h-4 overflow-hidden relative border border-gray-700">
                   <div 
                     className="bg-gradient-to-r from-purple-600 to-blue-500 h-4 rounded-full transition-all duration-300 ease-out"

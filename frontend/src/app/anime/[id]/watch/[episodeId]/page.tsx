@@ -275,7 +275,7 @@ export default function WatchEpisodePage() {
             // Thuật toán Co giãn tốc độ động (Dynamic Playback Rate)
             if (audioDuration > cueDuration) {
               let neededSpeed = audioDuration / cueDuration;
-              if (neededSpeed > 1.4) neededSpeed = 1.4;
+              if (neededSpeed > 1.7) neededSpeed = 1.7; // Giới hạn tốc độ tối đa để tránh méo tiếng quá nhiều
               audioEl.playbackRate = neededSpeed;
             } else {
               audioEl.playbackRate = 1.0;

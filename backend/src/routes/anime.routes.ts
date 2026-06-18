@@ -23,23 +23,56 @@ router.get('/api/admin/anime/list-select', async (req: Request, res: Response) =
 });
 
 // 2. API: Tạo tập phim mới kèm theo mảng phụ đề và liên kết Manga
+
+// 🌟 HÀM HELPER: Nhúng chuỗi văn bản (bất kể ngôn ngữ) thành Vector 768 chiều
+async function generateEmbedding(text: string): Promise<number[]> {
+  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
+  const model = genAI.getGenerativeModel({ model: "gemini-embedding-001" });
+  const result = await model.embedContent(text);
+  return result.embedding.values;
+}
+
+// 2. API: Tạo tập phim mới kèm theo mảng phụ đề, liên kết Manga và Tọa độ Vector Plot
 router.post('/api/admin/episode', async (req: Request, res: Response): Promise<any> => {
   try {
-    // ➕ LẤY THÊM episodeNumber VÀ mappedChapterIds TỪ FRONTEND GỬI LÊN
-    const { animeId, title, videoUrl, subtitles, episodeNumber, mappedChapterIds } = req.body;
+    const { 
+      animeId, 
+      title, 
+      videoUrl, 
+      subtitles, 
+      episodeNumber, 
+      mappedChapterIds,
+      adaptedFrom,
+      characters, 
+      plotSummary 
+    } = req.body;
 
     if (!animeId || !title || !videoUrl || episodeNumber === undefined) {
       return res.status(400).json({ message: "Vui lòng điền đủ thông tin bắt buộc!" });
     }
 
+    // CHUYỂN ĐỔI CHUỖI CHARACTERS THÀNH MẢNG (ARRAY)
+    let characterArray: string[] = [];
+    if (typeof characters === 'string' && characters.trim().length > 0) {
+      characterArray = characters
+        .split(",")
+        .map(name => name.trim())
+        .filter(name => name.length > 0);
+    } else if (Array.isArray(characters)) {
+      characterArray = characters;
+    }
+
+    // BƯỚC 1: Tạo dữ liệu văn bản thuần túy trước để lấy ID tập phim
     const newEpisode = await prisma.episode.create({
       data: {
         animeId,
         title,
         videoUrl,
-        // ➕ LƯU VÀO DATABASE
         episodeNumber: Number(episodeNumber), 
-        mappedChapterIds: mappedChapterIds || [], // Nếu không có thì mặc định là mảng rỗng
+        mappedChapterIds: mappedChapterIds || [], 
+        adaptedFrom: adaptedFrom || "",
+        plotSummary: plotSummary || "",
+        characters: characterArray, 
         subtitles: {
           create: subtitles 
         }
@@ -47,38 +80,38 @@ router.post('/api/admin/episode', async (req: Request, res: Response): Promise<a
       include: { subtitles: true }
     });
 
-    res.status(201).json({ message: "New episode uploaded successfully!", episode: newEpisode });
+    // BƯỚC 2: TỰ ĐỘNG SINH VECTOR EMBEDDING VÀ LƯU VÀO CỘT UNSUPPORTED
+    if (plotSummary && plotSummary.trim().length > 0) {
+      try {
+        // Gọi AI của Google để tính toán chuỗi số tọa độ ngữ nghĩa
+        const vectorValues = await generateEmbedding(plotSummary);
+        
+        // Định dạng mảng số thành chuỗi cấu trúc mảng PostgreSQL: "[0.123, -0.456, ...]"
+        const vectorStr = `[${vectorValues.join(',')}]`; 
+        
+        // Ép kiểu chuỗi số về dạng dữ liệu dữ liệu dạng ::vector và nạp vào Postgres
+        await prisma.$executeRawUnsafe(
+          `UPDATE "Episode" SET embedding = $1::vector WHERE id = $2`,
+          vectorStr,
+          newEpisode.id
+        );
+        
+        console.log(`✨ Đã nạp thành công Vector Embedding cho Tập số ${episodeNumber}.`);
+      } catch (embedError) {
+        // Bọc try-catch riêng ở đây để nếu AI Key hết hạn hoặc lỗi mạng, 
+        // tập phim vẫn được tải lên thành công (không làm hỏng luồng chính của hệ thống).
+        console.error("Lỗi trong quá trình sinh hoặc nạp Vector Embedding:", embedError);
+      }
+    }
+
+    res.status(201).json({ 
+      message: "New episode uploaded successfully with Vector Space activated!", 
+      episode: newEpisode 
+    });
+
   } catch (error) {
     console.error("Lỗi đăng tập phim:", error);
     res.status(500).json({ message: "Lỗi server khi lưu tập phim." });
-  }
-});
-
-// API: Đăng bộ Anime mới
-router.post('/api/admin/anime', async (req: Request, res: Response): Promise<any> => {
-  try {
-    // 🌟 THÊM fandomPrefix VÀO ĐÂY
-    const { title, description, coverImage, fandomPrefix, author, status } = req.body;
-
-    if (!title) {
-      return res.status(400).json({ message: "Tên phim không được để trống!" });
-    }
-
-    const newAnime = await prisma.anime.create({
-      data: {
-        title,
-        description,
-        coverImage,
-        fandomPrefix, // 🌟 LƯU VÀO DATABASE
-        // author, 
-        // status 
-      }
-    });
-
-    res.status(201).json({ message: "New anime added successfully!", anime: newAnime });
-  } catch (error) {
-    console.error("Lỗi khi thêm Anime:", error);
-    res.status(500).json({ message: "Lỗi server khi thêm phim mới." });
   }
 });
 
@@ -196,34 +229,59 @@ router.put('/api/admin/episode/:id', async (req: Request, res: Response): Promis
   try {
     const episodeId = req.params.id as string;
     
-    // 🌟 1. BỔ SUNG CÁC TRƯỜNG DỮ LIỆU TỪ FRONTEND GỬI LÊN
+    // 1. BÓC TÁCH CÁC TRƯỜNG DỮ LIỆU TỪ FRONTEND
     const { 
       title, 
       videoUrl, 
       newSubtitles, 
       episodeNumber, 
       mappedChapterIds,
-      adaptedFrom,   // Mới thêm
-      characters,    // Mới thêm
-      plotSummary    // Mới thêm
+      adaptedFrom,   
+      characters,    
+      plotSummary    
     } = req.body;
 
+    // 2. CẬP NHẬT DỮ LIỆU VĂN BẢN VÀO PRISMA TRƯỚC
     const updatedEpisode = await prisma.episode.update({
       where: { id: episodeId },
       data: {
-        ...(title && { title }), // Chỉ update title nếu có gửi lên (tránh ghi đè null)
+        ...(title && { title }), 
         ...(videoUrl && { videoUrl }), 
         ...(episodeNumber !== undefined && { episodeNumber: Number(episodeNumber) }),
         ...(mappedChapterIds && { mappedChapterIds }),
-        
-        // 🌟 2. LƯU VÀO DATABASE NẾU CÓ DỮ LIỆU
         ...(adaptedFrom !== undefined && { adaptedFrom }),
-        ...(characters !== undefined && { characters }), // Prisma mảng text[] nhận thẳng array
+        ...(characters !== undefined && { characters }), 
         ...(plotSummary !== undefined && { plotSummary })
       }
     });
 
-    // Xử lý phụ đề (Giữ nguyên như cũ)
+    // 🌟 3. XỬ LÝ LẠI TỌA ĐỘ VECTOR NẾU PLOT SUMMARY BỊ THAY ĐỔI
+    if (plotSummary !== undefined) {
+      if (plotSummary.trim().length > 0) {
+        // NẾU CÓ NỘI DUNG: Gọi AI sinh Vector mới và ghi đè vào DB
+        try {
+          const vectorValues = await generateEmbedding(plotSummary);
+          const vectorStr = `[${vectorValues.join(',')}]`;
+          
+          await prisma.$executeRawUnsafe(
+            `UPDATE "Episode" SET embedding = $1::vector WHERE id = $2`,
+            vectorStr,
+            episodeId
+          );
+          console.log(`✨ Đã cập nhật lại Vector 3072 chiều cho tập phim ID: ${episodeId}`);
+        } catch (embedError) {
+          console.error("Lỗi nạp Vector Embedding khi Edit:", embedError);
+        }
+      } else {
+        // NẾU BỊ XÓA TRẮNG: Reset cột vector về NULL cho sạch Database
+        await prisma.$executeRawUnsafe(
+          `UPDATE "Episode" SET embedding = NULL WHERE id = $1`,
+          episodeId
+        );
+      }
+    }
+
+    // 4. XỬ LÝ PHỤ ĐỀ MỚI (NẾU CÓ GỬI LÊN)
     if (newSubtitles && newSubtitles.length > 0) {
       await prisma.subtitle.deleteMany({ where: { episodeId: episodeId } });
       await prisma.subtitle.createMany({
@@ -397,45 +455,103 @@ router.post('/api/anime/translate-sub', async (req: Request, res: Response): Pro
 
 
 //API Tự động liên kết Tập Anime với Chapter Manga bằng AI (Dùng Gemini 2.5 Flash)
+
+// =========================================================================
+// HÀM PHỤ TRỢ: CHUYÊN GIA BÓC TÁCH SỐ CHAPTER TỪ CHUỖI TEXT CỦA WIKI
+// =========================================================================
+function extractChapterNumbers(text: string): number[] {
+  if (!text || typeof text !== 'string') return [];
+  // Bỏ qua nếu Fandom ghi "Không rõ", "TBA", "Unknown"
+  if (text.toLowerCase().includes('không rõ') || text.toLowerCase().includes('tba') || text.toLowerCase().includes('unknown')) {
+    return [];
+  }
+
+  const chapters = new Set<number>();
+  
+  // 1. Dọn rác: Xóa sạch mọi thứ nằm trong dấu ngoặc đơn (Ví dụ: "(p. 4 - 25)")
+  const cleanText = text.replace(/\([^)]*\)/g, ' '); 
+
+  // 2. Bộ Regex thông minh: 
+  // Bắt các chữ "Chapter", "Chap", "Ch", theo sau là 1 con số, và có thể có dấu gạch ngang kéo dài (vd: 4-6)
+  const regex = /(?:chapter|chap|ch)\w*\.?\s*(\d+)(?:\s*(?:-|–|to)\s*(\d+))?/gi;
+  let match;
+
+  while ((match = regex.exec(cleanText)) !== null) {
+    const start = parseInt(match[1]!); // Số bắt đầu
+    const end = match[2] ? parseInt(match[2]) : start; // Số kết thúc (nếu có dấu -)
+
+    // Chống vòng lặp vô hạn và map dữ liệu từ start đến end
+    if (start && end && start <= end && end - start < 100) { 
+      for (let i = start; i <= end; i++) {
+        chapters.add(i);
+      }
+    } else if (start) {
+      chapters.add(start);
+    }
+  }
+
+  return Array.from(chapters);
+}
+
+
+// =========================================================================
+// API TỰ ĐỘNG LIÊN KẾT (SMART MAP: REGEX FIRST -> AI FALLBACK)
+// =========================================================================
 router.post('/api/admin/auto-map-chapters', async (req: Request, res: Response): Promise<any> => {
   try {
-    // Frontend sẽ gửi lên Tên Anime, Tập số mấy, và ID của bộ Manga trong DB
-    const { animeName, episodeNumber, mangaId } = req.body;
+    const { animeName, episodeNumber, mangaId, adaptedFrom } = req.body;
+    let chapterNumbers: number[] = [];
+    let mappingSource = "Hệ thống Bóc tách Văn bản (Regex)";
 
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
-    const model = genAI.getGenerativeModel({ 
-      model: "gemini-2.5-flash",
-      generationConfig: { responseMimeType: "application/json" } 
-    });
-
-    // 1. Dùng AI để tìm ra số của Chapter
-    const prompt = `
-      You are an anime/manga database expert. 
-      The anime is "${animeName}". 
-      Which manga chapter numbers correspond exactly to episode ${episodeNumber} of this anime?
-      Return ONLY a JSON array of integers representing the chapter numbers. 
-      For example, if it covers chapters 4 and 5, return: [4, 5]. 
-      If it's a filler episode with no manga chapters, return: [].
-    `;
-
-    const aiResult = await model.generateContent(prompt);
-    const chapterNumbers: number[] = JSON.parse(aiResult.response.text());
-
-    if (chapterNumbers.length === 0) {
-      return res.status(200).json({ mappedChapterIds: [], message: "Đây là tập Filler (Ngoại truyện), không có Manga." });
+    // -------------------------------------------------------------
+    // GIAI ĐOẠN 1: THỬ TRÍCH XUẤT TỪ TRƯỜNG "ADAPTED FROM"
+    // -------------------------------------------------------------
+    if (adaptedFrom) {
+      chapterNumbers = extractChapterNumbers(adaptedFrom);
     }
 
-    // 2. Tự động khớp số Chapter AI tìm được với ID trong Database của bạn
-    // Giả sử cột title của Chapter lưu dạng "Chapter 1", "Chương 2"...
-    const mappedChapterIds: string[] = [];
+    // -------------------------------------------------------------
+    // GIAI ĐOẠN 2: NẾU THẤT BẠI (Rỗng), GỌI AI RA CỨU GIÁ
+    // -------------------------------------------------------------
+    if (chapterNumbers.length === 0) {
+      mappingSource = "Trí tuệ nhân tạo (Gemini AI)";
+      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
+      const model = genAI.getGenerativeModel({ 
+        model: "gemini-2.5-flash",
+        generationConfig: { responseMimeType: "application/json" } 
+      });
 
+      const prompt = `
+        You are an anime/manga database expert. 
+        The anime is "${animeName}". 
+        Which manga chapter numbers correspond exactly to episode ${episodeNumber} of this anime?
+        Return ONLY a JSON array of integers representing the chapter numbers. 
+        For example, if it covers chapters 4 and 5, return: [4, 5]. 
+        If it's a filler episode with no manga chapters, return: [].
+      `;
+
+      const aiResult = await model.generateContent(prompt);
+      chapterNumbers = JSON.parse(aiResult.response.text());
+    }
+
+    // -------------------------------------------------------------
+    // GIAI ĐOẠN 3: LƯU TRỮ VÀ KHỚP VỚI DATABASE
+    // -------------------------------------------------------------
+    if (chapterNumbers.length === 0) {
+      return res.status(200).json({ 
+        mappedChapterIds: [], 
+        message: `Đây là tập Filler (Ngoại truyện), không có Manga. (Nguồn: ${mappingSource})` 
+      });
+    }
+
+    const mappedChapterIds: string[] = [];
     for (const chapNum of chapterNumbers) {
       // Tìm chap trong DB thuộc bộ Manga đó, có chứa số chapter
       const chapterInDb = await prisma.chapter.findFirst({
         where: {
           mangaId: mangaId,
           title: {
-            contains: chapNum.toString() // Tìm chap có chứa số này
+            contains: chapNum.toString()
           }
         }
       });
@@ -448,7 +564,7 @@ router.post('/api/admin/auto-map-chapters', async (req: Request, res: Response):
     res.status(200).json({ 
       mappedChapterIds, 
       foundNumbers: chapterNumbers,
-      message: "Tìm liên kết thành công!" 
+      message: `Tìm liên kết thành công qua: ${mappingSource}!` 
     });
 
   } catch (error) {

@@ -1,9 +1,11 @@
 generator client {
   provider = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
   provider = "postgresql"
+  extensions = [vector] // Khai báo dùng pgvector
 }
 
 model User {
@@ -77,6 +79,7 @@ model Episode {
   plotSummary     String?  @db.Text     // Nội dung cốt truyện (Dùng @db.Text để lưu văn bản dài)
   characters      String[] @default([]) // Mảng chứa danh sách tên nhân vật xuất hiện
   adaptedFrom     String?               // Lưu thông tin chuyển thể từ chapter nào (Ví dụ: "Chapters 1-2")
+  embedding        Unsupported("vector(3072)")?
 }
 
 model Subtitle {
@@ -256,3 +259,4 @@ model AiChatMessage {
   content   String   @db.Text
   createdAt DateTime @default(now())
 }
+

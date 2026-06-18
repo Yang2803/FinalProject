@@ -1,10 +1,11 @@
 import express, { Request, Response } from 'express';
-import { GoogleGenerativeAI } from "@google/generative-ai";
-import prisma from '../config/db'; // Đường dẫn tới file Prisma của bạn
+// 🌟 1. CẬP NHẬT IMPORT: Lấy thêm FunctionDeclarationSchemaType từ SDK
+import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
+import prisma from '../config/db'; 
 
 const router = express.Router();
 
-// 1. API Lấy danh sách các Phiên chat của 1 User (Dùng cho Sidebar)
+// 1. API Lấy danh sách các Phiên chat
 router.get('/api/chat/sessions/:userId', async (req: Request, res: Response) => {
   try {
     const sessions = await prisma.aiChatSession.findMany({
@@ -43,7 +44,7 @@ router.post('/api/chat/send', async (req: Request, res: Response): Promise<any> 
       const newSession = await prisma.aiChatSession.create({
         data: {
           userId: userId,
-          title: message.substring(0, 30) + "..." // Lấy 30 chữ đầu làm tên Session
+          title: message.substring(0, 30) + "..." 
         }
       });
       currentSessionId = newSession.id;
@@ -54,29 +55,67 @@ router.post('/api/chat/send', async (req: Request, res: Response): Promise<any> 
       data: { sessionId: currentSessionId, role: "user", content: message }
     });
 
-    // C. LẤY LỊCH SỬ CHAT TỪ DB ĐỂ TRUYỀN CHO AI (Giúp AI có trí nhớ)
+    // C. LẤY LỊCH SỬ CHAT TỪ DB ĐỂ TRUYỀN CHO AI
     const history = await prisma.aiChatMessage.findMany({
       where: { sessionId: currentSessionId },
       orderBy: { createdAt: 'asc' }
     });
 
-    // D. CHUẨN BỊ DỮ LIỆU BỐI CẢNH TỪ HỆ THỐNG (Ghép sẵn thành chuẩn Markdown)
+    // D. CHUẨN BỊ DỮ LIỆU BỐI CẢNH 
     const animes = await prisma.anime.findMany({ select: { id: true, title: true } });
     const mangas = await prisma.manga.findMany({ select: { id: true, title: true } });
     
-    // Đã thay đổi: Ghép sẵn thành định dạng [Tên Phim](/anime/id)
     const systemAnimes = animes.map(a => `- [${a.title}](/anime/${a.id})`).join("\n");
     const systemMangas = mangas.map(m => `- [${m.title}](/manga/${m.id})`).join("\n");
 
-    // E. GỌI GEMINI (VỚI PROMPT TIẾNG ANH ĐÃ ĐƯỢC NÂNG CẤP)
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
-    const aiModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+    // =====================================================================
+    // 🌟 2. KHAI BÁO TOOL (VŨ KHÍ MỚI CHO GEMINI)
+    // =====================================================================
+    const tools: any = [{
+      functionDeclarations: [{
+        name: "findEpisodesByCharacter",
+        description: "Dùng để tìm danh sách các tập phim mà một nhân vật anime cụ thể xuất hiện.",
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            characterName: {
+              type: SchemaType.STRING,
+              description: "Tên nhân vật cần tìm. Ví dụ: Gojo, Yuji Itadori, Naruto"
+            }
+          },
+          required: ["characterName"]
+        }
+      },
+    
+    {
+          name: "searchEpisodeByPlot",
+          description: "Tìm kiếm thông tin tập phim dựa trên cốt truyện, sự kiện hoặc trận chiến mà User hỏi.",
+          parameters: {
+            type: SchemaType.OBJECT,
+            properties: {
+              searchQuery: {
+                type: SchemaType.STRING,
+                description: "BẮT BUỘC: Dịch ý chính của câu hỏi sang Tiếng Anh và chuyển thành câu khẳng định. Ví dụ: User hỏi 'Yuji lần đầu gặp Nobara ở đâu?', bạn phải trả về 'Yuji meets Nobara for the first time'. User hỏi 'Yuta chiến đấu với Uro', trả về 'Yuta fights Uro'."
+              }
+            },
+            required: ["searchQuery"]
+          }
+        }]
+    }];
+
+    // Gắn Tool vào cấu hình của AI Model
+    const aiModel = genAI.getGenerativeModel({ 
+      model: "gemini-2.5-flash",
+      tools: tools 
+    });
 
     const systemInstruction = `
       You are a highly intelligent Otaku/Anime assistant for the "Smart Anime Platform".
       Your primary task is to recommend, discuss, and analyze Anime and Manga based on user preferences.
 
-      HERE IS THE SYSTEM'S CURRENT DATABASE (Pre-formatted as Markdown Links):
+      HERE IS THE SYSTEM'S CURRENT DATABASE:
       [AVAILABLE ANIME]
       ${systemAnimes || "No anime available"}
 
@@ -84,24 +123,25 @@ router.post('/api/chat/send', async (req: Request, res: Response): Promise<any> 
       ${systemMangas || "No manga available"}
 
       CRITICAL RULES YOU MUST FOLLOW:
-      1. If you recommend a series from the lists above, you MUST use the EXACT markdown link provided in the list. 
-         - DO NOT modify the URL inside the parentheses.
-         - DO NOT translate the text inside the parentheses. 
-         - DO NOT output raw text like "(Link: /anime/...)". ONLY output the hidden markdown link.
+      1. If you recommend a series from the lists above, you MUST use the EXACT markdown link provided. 
          - Correct Example: "Cậu có thể xem [Jujutsu Kaisen](/anime/12345) ngay nhé!"
-      2. If you recommend a series that IS NOT in the list, explicitly inform the user that it's not available in the system (e.g., "Bộ này hiện chưa có trên hệ thống của chúng mình." or "This series is currently not available on our system.") and suggest external legal platforms (Netflix, Crunchyroll, MangaPlus) using standard external HTTP links.
-      3. NEVER translate Anime/Manga titles into Vietnamese (e.g., keep "One Piece", absolutely do not write "Một Mảnh").
+      2. If you recommend a series that IS NOT in the list, explicitly inform the user that it's not available in the system and suggest external legal platforms.
+      3. NEVER translate Anime/Manga titles into Vietnamese.
       4. Your tone should be enthusiastic, friendly, and relatable to the anime community (use emojis). Use bullet points for readability.
-      5. DYNAMIC LANGUAGE BEHAVIOR: You MUST detect the language used by the user in their prompt and respond in that EXACT SAME LANGUAGE. If the user asks in English, reply entirely in English. If the user asks in Vietnamese, reply entirely in Vietnamese.
+      5. DYNAMIC LANGUAGE BEHAVIOR: Detect the language used by the user and respond in that EXACT SAME LANGUAGE.
+      --- TOOL USAGE & RAG CONSTRAINTS ---
+      6. CHARACTER SEARCH: If the user asks which episodes a specific character appears in, you MUST use the "findEpisodesByCharacter" tool.
+      7. PLOT/BATTLE SEARCH: If the user asks about specific events, plots, or battles (e.g., "Yuta vs Uro"), you MUST use the "searchEpisodeByPlot" tool.
+         - DEPENDENCY RULE A: If the tool returns text starting with "SYSTEM_DATA:", you MUST base your answer ENTIRELY and STRICTLY on the provided data. Do not invent episodes.
+         - DEPENDENCY RULE B: If the tool returns "NO_DATA_FOUND", you are ALLOWED to answer using your internal knowledge. HOWEVER, you MUST explicitly append this EXACT string at the very end of your response:
+           "⚠️ Lưu ý: Thông tin này được lấy từ nguồn bên ngoài, hiện chưa có trong cơ sở dữ liệu của hệ thống và chưa được kiểm chứng."
     `;
 
-
-    // Khởi tạo phiên chat với Gemini, truyền System Prompt và Lịch sử cũ
+    // Khởi tạo phiên chat
     const chat = aiModel.startChat({
       history: [
         { role: "user", parts: [{ text: systemInstruction }] },
-        { role: "model", parts: [{ text: "Đã hiểu! Tôi sẽ tuân thủ tuyệt đối các quy tắc và trả lời bằng Tiếng Việt." }] },
-        // Bỏ qua tin nhắn cuối cùng vì đó chính là tin nhắn user vừa gửi
+        { role: "model", parts: [{ text: "Đã hiểu! Tôi sẽ tuân thủ tuyệt đối các quy tắc và sử dụng Tool khi cần thiết." }] },
         ...history.slice(0, -1).map(msg => ({
           role: msg.role === "user" ? "user" : "model",
           parts: [{ text: msg.content }]
@@ -109,10 +149,114 @@ router.post('/api/chat/send', async (req: Request, res: Response): Promise<any> 
       ]
     });
 
-    // F. NHẬN KẾT QUẢ TỪ AI VÀ LƯU VÀO DB
-    const aiResult = await chat.sendMessage(message);
-    const responseText = aiResult.response.text();
+// =====================================================================
+    // 🌟 3. THỰC THI CHUỖI LOGIC HỎI/ĐÁP & TRUY XUẤT DATABASE
+    // =====================================================================
+    // Gửi tin nhắn lần 1: Đợi xem AI trả lời bình thường hay muốn dùng Tool
+    let aiResult = await chat.sendMessage(message);
+    let responseText = "";
 
+    // Bắt sóng xem AI có yêu cầu gọi Tool nào không
+    const call = aiResult.response.functionCalls()?.[0];
+
+    if (call && call.name === "findEpisodesByCharacter") {
+      // --- LOGIC XỬ LÝ TÌM THEO NHÂN VẬT (GIỮ NGUYÊN CỦA CẬU) ---
+      const charName = (call.args as any).characterName as string;
+
+      const allEpisodes = await prisma.episode.findMany({
+        select: { episodeNumber: true, title: true, characters: true, anime: { select: { title: true } } }
+      });
+
+      const safeCharName = charName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(`\\b${safeCharName}\\b`, 'i');
+
+      const matchedEps = allEpisodes.filter(ep => 
+        ep.characters.some(c => regex.test(c))
+      );
+
+      let dbResultStr = "";
+      if (matchedEps.length > 0) {
+        dbResultStr = matchedEps.map(ep => `- Phim ${ep.anime.title} | Tập ${ep.episodeNumber}: ${ep.title}`).join("\n");
+      } else {
+        dbResultStr = "Hệ thống không tìm thấy tập phim nào có sự xuất hiện của nhân vật này.";
+      }
+
+      aiResult = await chat.sendMessage([{
+        functionResponse: {
+          name: "findEpisodesByCharacter",
+          response: { result: dbResultStr }
+        }
+      }]);
+
+    } 
+    // 🌟 KHỐI LỆNH MỚI: XỬ LÝ VECTOR SEARCH CHO TÌM KIẾM CỐT TRUYỆN
+    else if (call && call.name === "searchEpisodeByPlot") {
+      const searchQuery = (call.args as any).searchQuery as string;
+      
+      try {
+        // Bước 1: Gọi model Embedding để biến câu hỏi của User thành Tọa độ Vector
+        const embedModel = genAI.getGenerativeModel({ model: "gemini-embedding-001" });
+        const embedResult = await embedModel.embedContent(searchQuery);
+        const queryVector = embedResult.embedding.values;
+        const vectorStr = `[${queryVector.join(',')}]`;
+
+        // Bước 2: Dùng lệnh SQL thuần (Raw SQL) để tính khoảng cách Cosine (<=>) 
+        // Giới hạn lấy 3 tập phim có nội dung sát nghĩa nhất và khoảng cách < 0.6
+        const matchedEpisodes = await prisma.$queryRawUnsafe<any[]>(`
+          SELECT 
+            "id", 
+            "title", 
+            "episodeNumber", 
+            "plotSummary",
+            "animeId",
+            embedding <=> '${vectorStr}'::vector AS distance
+          FROM "Episode"
+          WHERE embedding IS NOT NULL
+          ORDER BY distance ASC
+          LIMIT 3
+        `);
+
+        // Bước 3: Lọc các kết quả đủ độ chính xác (Ví dụ: distance < 0.6 là khá chuẩn)
+        const validMatches = matchedEpisodes.filter(ep => ep.distance < 0.7);
+
+        let dbResultStr = "";
+        
+        if (validMatches.length > 0) {
+          // Trả về kèm tiền tố SYSTEM_DATA: để AI tuân thủ Luật A
+          dbResultStr = "SYSTEM_DATA:\n" + validMatches.map(ep => 
+            `- Tập ${ep.episodeNumber}: ${ep.title}\n  Nội dung tóm tắt: ${ep.plotSummary}`
+          ).join("\n\n");
+        } else {
+          // Trả về cờ NO_DATA_FOUND để AI kích hoạt Luật B (Báo cáo nguồn ngoài)
+          dbResultStr = "NO_DATA_FOUND";
+        }
+
+        // Bước 4: Trả dữ liệu Database lại cho AI xào nấu
+        aiResult = await chat.sendMessage([{
+          functionResponse: {
+            name: "searchEpisodeByPlot",
+            response: { result: dbResultStr }
+          }
+        }]);
+
+      } catch (vectorError) {
+        console.error("Lỗi Vector Search:", vectorError);
+        // Fallback: Lỗi kết nối hoặc AI hết hạn thì cứ báo là không có data để web không sập
+        aiResult = await chat.sendMessage([{
+          functionResponse: {
+            name: "searchEpisodeByPlot",
+            response: { result: "NO_DATA_FOUND" }
+          }
+        }]);
+      }
+    }
+
+    // Chốt sổ: Lấy text cuối cùng từ AI (dù có xài Tool hay không)
+    responseText = aiResult.response.text();
+
+    // =====================================================================
+
+    // Lưu kết quả vào DB
     const savedAiMessage = await prisma.aiChatMessage.create({
       data: { sessionId: currentSessionId, role: "model", content: responseText }
     });

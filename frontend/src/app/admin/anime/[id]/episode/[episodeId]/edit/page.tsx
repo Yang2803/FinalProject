@@ -34,6 +34,9 @@ export default function EditEpisodePage() {
   const [allMangas, setAllMangas] = useState<{id: string, title: string}[]>([]);
   const [availableChapters, setAvailableChapters] = useState<{id: string, title: string}[]>([]);
 
+  // 🌟 STATE "TÀNG HÌNH": Chỉ dùng để chứa dữ liệu chạy Auto Map, không hiển thị ra UI
+  const [adaptedFrom, setAdaptedFrom] = useState("");
+
   // State quản lý phụ đề
   const [oldSubtitles, setOldSubtitles] = useState<OldSubtitle[]>([]);
   const [subtitleInputs, setSubtitleInputs] = useState<SubtitleInput[]>([]);
@@ -41,7 +44,7 @@ export default function EditEpisodePage() {
   const [loadingData, setLoadingData] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // ➕ STATE MỚI: Theo dõi tiến độ Upload (%)
+  // Theo dõi tiến độ Upload (%)
   const [uploadProgress, setUploadProgress] = useState(0);
 
   // 1. Tải dữ liệu ban đầu (Anime, Tập phim, Danh sách Manga)
@@ -62,6 +65,9 @@ export default function EditEpisodePage() {
           if (epData.episodeNumber !== undefined) setEpisodeNumber(epData.episodeNumber);
           if (epData.mappedChapterIds) setMappedIds(epData.mappedChapterIds);
           if (epData.subtitles) setOldSubtitles(epData.subtitles);
+          
+          // 🌟 LẤY DỮ LIỆU TỪ DATABASE VÀ LƯU VÀO STATE NGẦM
+          if (epData.adaptedFrom) setAdaptedFrom(epData.adaptedFrom);
         } else {
           alert("Không tìm thấy tập phim!");
           router.push(`/admin/anime/${animeId}`);
@@ -82,7 +88,7 @@ export default function EditEpisodePage() {
     fetchAllData();
   }, [episodeId, animeId, router]);
 
-  // ➕ 2. Tự động tải danh sách Chapter khi Manga ID thay đổi (Đã fix lỗi async/await)
+  // 2. Tự động tải danh sách Chapter khi Manga ID thay đổi
   useEffect(() => {
     const fetchChapters = async () => {
       if (!mangaId) {
@@ -130,7 +136,8 @@ export default function EditEpisodePage() {
       const res = await fetch("http://localhost:5000/api/admin/auto-map-chapters", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ animeName: animeTitle, episodeNumber: Number(episodeNumber), mangaId })
+        // 🌟 BƠM BIẾN TÀNG HÌNH adaptedFrom VÀO PAYLOAD ĐỂ GỬI LÊN BACKEND CHUẨN XÁC NHƯ BÊN UPLOAD
+        body: JSON.stringify({ animeName: animeTitle, episodeNumber: Number(episodeNumber), mangaId, adaptedFrom })
       });
       const data = await res.json();
       
@@ -152,7 +159,7 @@ export default function EditEpisodePage() {
     }
   };
 
-  // ➕ HÀM MỚI: Tải file lên và theo dõi % bằng XMLHttpRequest
+  // Tải file lên và theo dõi % bằng XMLHttpRequest
   const uploadFileWithProgress = (url: string, file: Blob): Promise<void> => {
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
