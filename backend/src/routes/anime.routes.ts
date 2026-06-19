@@ -300,6 +300,33 @@ router.put('/api/admin/episode/:id', async (req: Request, res: Response): Promis
   }
 });
 
+//10. API: Tạo bộ Anime mới
+router.post('/api/admin/anime', async (req: Request, res: Response): Promise<any> => {
+  try {
+    // 🌟 1. HỨNG THÊM fandomPrefix TỪ FRONTEND
+    const { title, description, coverImage, fandomPrefix } = req.body;
+
+    if (!title) {
+      return res.status(400).json({ message: "Tên Anime không được để trống!" });
+    }
+
+    // 🌟 2. TRUYỀN VÀO PRISMA ĐỂ LƯU XUỐNG DATABASE
+    const newAnime = await prisma.anime.create({
+      data: {
+        title,
+        description: description || "",
+        coverImage: coverImage || "",
+        fandomPrefix: fandomPrefix || "", // Bổ sung dòng này
+      }
+    });
+
+    res.status(201).json({ message: "Đã thêm bộ Anime mới thành công!", anime: newAnime });
+  } catch (error) {
+    console.error("Lỗi tạo Anime:", error);
+    res.status(500).json({ message: "Lỗi server khi thêm Anime." });
+  }
+});
+
 // ==========================================
 // API ANIME DÀNH CHO USER (PUBLIC)
 // ==========================================
@@ -471,14 +498,14 @@ function extractChapterNumbers(text: string): number[] {
   // 1. Dọn rác: Xóa sạch mọi thứ nằm trong dấu ngoặc đơn (Ví dụ: "(p. 4 - 25)")
   const cleanText = text.replace(/\([^)]*\)/g, ' '); 
 
-  // 2. Bộ Regex thông minh: 
-  // Bắt các chữ "Chapter", "Chap", "Ch", theo sau là 1 con số, và có thể có dấu gạch ngang kéo dài (vd: 4-6)
-  const regex = /(?:chapter|chap|ch)\w*\.?\s*(\d+)(?:\s*(?:-|–|to)\s*(\d+))?/gi;
+  // 🌟 2. BỘ REGEX NÂNG CẤP: Bổ sung thêm cụm `#?` để bắt được cả dấu thăng
+  // Bắt các chữ "Chapter", "Chap", "Ch", theo sau là khoảng trắng hoặc dấu #, rồi đến số
+  const regex = /(?:chapter|chap|ch)\w*\.?\s*#?\s*(\d+)(?:\s*(?:-|–|to)\s*#?\s*(\d+))?/gi;
   let match;
 
   while ((match = regex.exec(cleanText)) !== null) {
     const start = parseInt(match[1]!); // Số bắt đầu
-    const end = match[2] ? parseInt(match[2]) : start; // Số kết thúc (nếu có dấu -)
+    const end = match[2] ? parseInt(match[2]!) : start; // Số kết thúc (nếu có dấu -)
 
     // Chống vòng lặp vô hạn và map dữ liệu từ start đến end
     if (start && end && start <= end && end - start < 100) { 

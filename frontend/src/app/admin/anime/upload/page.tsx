@@ -9,11 +9,13 @@ export default function UploadAnimePage() {
 
   // State quản lý form
   const [title, setTitle] = useState("");
+  // 🌟 1. STATE MỚI: Quản lý Fandom Prefix
+  const [fandomPrefix, setFandomPrefix] = useState(""); 
   const [description, setDescription] = useState("");
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   
-  // ➕ STATE MỚI: Quản lý loading khi AI đang viết tóm tắt
+  // Quản lý loading khi AI đang viết tóm tắt
   const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
 
   // Hàm xử lý chọn file ảnh bìa
@@ -23,7 +25,7 @@ export default function UploadAnimePage() {
     }
   };
 
-  // ➕ HÀM MỚI: Gọi AI viết tóm tắt
+  // Gọi AI viết tóm tắt
   const handleGenerateDescription = async () => {
     if (!title) {
       alert("Vui lòng nhập Tên Anime trước khi dùng AI!");
@@ -88,6 +90,7 @@ export default function UploadAnimePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title,
+          fandomPrefix, // 🌟 2. BỔ SUNG GỬI FANDOM PREFIX LÊN BACKEND
           description,
           coverImage: uploadedCoverUrl,
         }),
@@ -132,6 +135,29 @@ export default function UploadAnimePage() {
               onChange={(e) => setTitle(e.target.value)}
               className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
             />
+          </div>
+
+          {/* 🌟 3. GIAO DIỆN NHẬP FANDOM PREFIX ĐÃ ĐƯỢC ĐỒNG BỘ STYLING */}
+          <div>
+            <label className="block text-sm font-bold text-gray-300 mb-2">Fandom Prefix (Dùng cho Auto-fill Data)</label>
+            <div className="flex bg-gray-900 border border-gray-700 rounded-xl overflow-hidden focus-within:border-blue-500 transition">
+              <span className="bg-gray-800 text-gray-500 text-sm px-4 py-3 border-r border-gray-700 select-none flex items-center">
+                https://
+              </span>
+              <input 
+                type="text" 
+                value={fandomPrefix}
+                onChange={(e) => setFandomPrefix(e.target.value.toLowerCase().replace(/\s+/g, '-'))}
+                placeholder="Ví dụ: jujutsu-kaisen, naruto..."
+                className="w-full bg-transparent p-3 text-sm outline-none text-white"
+              />
+              <span className="bg-gray-800 text-gray-500 text-sm px-4 py-3 border-l border-gray-700 select-none hidden sm:flex items-center">
+                .fandom.com
+              </span>
+            </div>
+            <p className="text-xs text-gray-500 mt-2 italic">
+              * Bắt buộc phải có để tính năng 🪄 Auto-fill via AI ở trong trang Chi tiết Tập phim có thể hoạt động.
+            </p>
           </div>
 
           {/* Chọn ảnh bìa */}

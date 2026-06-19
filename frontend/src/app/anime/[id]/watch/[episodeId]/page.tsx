@@ -475,7 +475,7 @@ export default function WatchEpisodePage() {
               <div className="bg-purple-900/30 border border-purple-500/50 p-3 rounded-lg flex items-center gap-3 shrink-0">
                 <span className="text-sm font-bold text-purple-400 flex items-center gap-1">
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clipRule="evenodd"></path></svg>
-                  AI Dub:
+                  Auto Dub:
                 </span>
                 <select 
                   value={selectedDubLang}
@@ -541,7 +541,7 @@ export default function WatchEpisodePage() {
             {episode.subtitles && episode.subtitles.length > 0 && (
               <div className="bg-gray-800 p-3 rounded-lg flex flex-col xl:flex-row items-center justify-between gap-3 border border-gray-700">
                 <span className="text-sm font-bold text-pink-400 shrink-0 flex items-center gap-1">
-                  🎙️ Generate AI Voiceover:
+                  🎙️ Generate Dub Voiceover:
                 </span>
                 <div className="flex items-center gap-3 w-full xl:w-auto">
                   <select 

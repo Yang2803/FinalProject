@@ -309,7 +309,7 @@ export default function UploadEpisodePage() {
                   disabled={isAutoFilling || episodeNumber === ""}
                   className="bg-fuchsia-600 hover:bg-fuchsia-500 disabled:bg-gray-700 text-white text-xs font-bold px-3 py-1 rounded shadow-lg transition"
                 >
-                  {isAutoFilling ? "🪄 Đang cào data..." : "🪄 Auto-fill via AI"}
+                  {isAutoFilling ? "🪄 Đang lấy data..." : "🪄 Auto-fill"}
                 </button>
               </label>
               <input
@@ -391,14 +391,14 @@ export default function UploadEpisodePage() {
                   disabled={isMapping || !episodeNumber || !mangaId}
                   className="bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-700 text-white text-sm font-bold px-4 py-2 rounded-lg transition shrink-0 shadow-lg shadow-indigo-500/20"
                 >
-                  {isMapping ? "✨ AI đang phân tích..." : "✨ Auto Map bằng AI"}
+                  {isMapping ? "✨ Đang phân tích..." : "✨ Auto Map"}
                 </button>
              </div>
              
              {/* Danh sách các nút Chapter */}
              <div className="mt-4 border-t border-indigo-900/50 pt-4">
                 <label className="block text-sm text-indigo-300 mb-3 font-medium">
-                  Các chapter tương ứng: <span className="text-xs text-gray-400 italic">(Nhấn để chọn thủ công hoặc dùng nút AI ở trên)</span>
+                  Các chapter tương ứng: <span className="text-xs text-gray-400 italic">(Nhấn để chọn thủ công hoặc dùng nút Auto Map ở trên)</span>
                 </label>
                 
                 {availableChapters.length === 0 ? (
