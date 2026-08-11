@@ -481,13 +481,12 @@ router.post('/api/anime/translate-sub', async (req: Request, res: Response): Pro
 });
 
 
-//API Tự động liên kết Tập Anime với Chapter Manga bằng AI (Dùng Gemini 2.5 Flash)
-
 // =========================================================================
 // HÀM PHỤ TRỢ: CHUYÊN GIA BÓC TÁCH SỐ CHAPTER TỪ CHUỖI TEXT CỦA WIKI
 // =========================================================================
 function extractChapterNumbers(text: string): number[] {
   if (!text || typeof text !== 'string') return [];
+  
   // Bỏ qua nếu Fandom ghi "Không rõ", "TBA", "Unknown"
   if (text.toLowerCase().includes('không rõ') || text.toLowerCase().includes('tba') || text.toLowerCase().includes('unknown')) {
     return [];
@@ -498,29 +497,45 @@ function extractChapterNumbers(text: string): number[] {
   // 1. Dọn rác: Xóa sạch mọi thứ nằm trong dấu ngoặc đơn (Ví dụ: "(p. 4 - 25)")
   const cleanText = text.replace(/\([^)]*\)/g, ' '); 
 
-  // 🌟 2. BỘ REGEX NÂNG CẤP: Bổ sung thêm cụm `#?` để bắt được cả dấu thăng
-  // Bắt các chữ "Chapter", "Chap", "Ch", theo sau là khoảng trắng hoặc dấu #, rồi đến số
-  const regex = /(?:chapter|chap|ch)\w*\.?\s*#?\s*(\d+)(?:\s*(?:-|–|to)\s*#?\s*(\d+))?/gi;
-  let match;
+  // 🌟 2. CHIẾN THUẬT MỚI: Bắt trọn ổ toàn bộ chuỗi số đứng sau "Chapter"
+  // Regex này bắt chữ Chapter, theo sau là danh sách số có thể chứa phẩy, dấu gạch ngang, chữ and...
+  // Ví dụ: Bắt trọn cụm "1, 2", "1 - 5", "1, 2 and 3", "#1, #2"
+  const blockRegex = /(?:chapter|chap|ch)\w*\.?\s*((?:#?\s*\d+\s*(?:,|&|and|-|–|to)\s*)*#?\s*\d+)/gi;
+  let blockMatch;
 
-  while ((match = regex.exec(cleanText)) !== null) {
-    const start = parseInt(match[1]!); // Số bắt đầu
-    const end = match[2] ? parseInt(match[2]!) : start; // Số kết thúc (nếu có dấu -)
-
-    // Chống vòng lặp vô hạn và map dữ liệu từ start đến end
-    if (start && end && start <= end && end - start < 100) { 
-      for (let i = start; i <= end; i++) {
-        chapters.add(i);
+  while ((blockMatch = blockRegex.exec(cleanText)) !== null) {
+    const numberString = blockMatch[1]!; // Lấy được cục text chứa số (vd: "1, 2" hoặc "1 - 3")
+    
+    // 3. Tách nhỏ cục text này dựa trên dấu phẩy (,), dấu (&), hoặc chữ (and)
+    const parts = numberString.split(/\s*(?:,|&|and)\s*/i);
+    
+    for (const part of parts) {
+      // 4a. Kiểm tra xem phần tử này có phải là khoảng (range) không (vd: "1 - 3" hoặc "#1 to #5")
+      const rangeMatch = part.match(/(\d+)\s*(?:-|–|to)\s*#?\s*(\d+)/i);
+      
+      if (rangeMatch) {
+        const start = parseInt(rangeMatch[1]!);
+        const end = parseInt(rangeMatch[2]!);
+        
+        // Trải dài các số từ start đến end và add vào Set
+        if (start && end && start <= end && end - start < 100) { 
+          for (let i = start; i <= end; i++) {
+            chapters.add(i);
+          }
+        }
+      } else {
+        // 4b. Nếu không phải khoảng, nó là một số đơn (vd: "1" hoặc "#2")
+        const singleMatch = part.match(/(\d+)/);
+        if (singleMatch) {
+          chapters.add(parseInt(singleMatch[1]!));
+        }
       }
-    } else if (start) {
-      chapters.add(start);
     }
   }
 
-  return Array.from(chapters);
+  // Trả về mảng đã được sắp xếp tăng dần cho gọn gàng (VD: [1, 2, 3])
+  return Array.from(chapters).sort((a, b) => a - b);
 }
-
-
 // =========================================================================
 // API TỰ ĐỘNG LIÊN KẾT (SMART MAP: REGEX FIRST -> AI FALLBACK)
 // =========================================================================

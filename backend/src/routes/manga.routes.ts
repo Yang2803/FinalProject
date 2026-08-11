@@ -5,13 +5,20 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const router = express.Router();
 
+async function generateEmbedding(text: string): Promise<number[]> {
+  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
+  const model = genAI.getGenerativeModel({ model: "gemini-embedding-001" });
+  const result = await model.embedContent(text);
+  return result.embedding.values;
+}
+
 // ================= API ADMIN (MANGA & CHAPTER) =================
 
 router.post('/api/admin/manga', async (req: Request, res: Response): Promise<any> => {
   /* ... Paste ruột API Thêm Manga mới ... */
   try {
     // 1. Nhận dữ liệu từ Frontend gửi lên, bao gồm cả userId để check quyền
-    const { title, description, author, coverImage, status, userId } = req.body;
+    const { title, description, author, coverImage, status, userId, fandomPrefix } = req.body;
 
     if (!title || !userId) {
       return res.status(400).json({ message: "Thiếu thông tin bắt buộc (Tiêu đề hoặc ID người dùng)!" });
@@ -32,6 +39,7 @@ router.post('/api/admin/manga', async (req: Request, res: Response): Promise<any
         author,
         coverImage,
         status,
+        fandomPrefix: fandomPrefix || "",
       },
     });
 
@@ -46,7 +54,8 @@ router.get('/api/admin/manga', async (req: Request, res: Response): Promise<any>
   /* ... Paste ruột API Lấy danh sách toàn bộ Manga (Admin) ... */
   try {
     const mangas = await prisma.manga.findMany({
-      orderBy: { createdAt: 'desc' } // Sắp xếp truyện mới nhất lên đầu
+      orderBy: { createdAt: 'desc' }, // Sắp xếp truyện mới nhất lên đầu
+      include: { _count: { select: { chapters: true } } }
     });
     res.status(200).json(mangas);
   } catch (error) {
@@ -80,11 +89,11 @@ router.put('/api/admin/manga/:id', async (req: Request, res: Response): Promise<
   /* ... Paste ruột API Cập nhật thông tin truyện ... */
   try {
     const id = req.params.id as string;
-    const { title, author, coverImage, status, description } = req.body;
+    const { title, author, coverImage, status, description, fandomPrefix } = req.body;
 
     const updatedManga = await prisma.manga.update({
       where: { id },
-      data: { title, author, coverImage, status, description }
+      data: { title, author, coverImage, status, description, fandomPrefix }
     });
 
     res.status(200).json({ message: "Update manga information successfully!", manga: updatedManga });
@@ -110,21 +119,52 @@ router.delete('/api/admin/manga/:id', async (req: Request, res: Response): Promi
 });
 
 router.post('/api/admin/chapter', async (req: Request, res: Response): Promise<any> => {
-  /* ... Paste ruột API Thêm Chapter mới cho một Manga ... */
   try {
-    const { mangaId, title, images } = req.body;
+    // 🌟 1. HỨNG THÊM DỮ LIỆU TỪ FRONTEND
+    const { mangaId, title, chapterNumber, characters, plotSummary, images } = req.body;
 
     if (!mangaId || !title || !images || images.length === 0) {
       return res.status(400).json({ message: "Thiếu thông tin hoặc chưa có ảnh!" });
     }
 
+    // 🌟 2. XỬ LÝ CHUỖI CHARACTERS THÀNH ARRAY
+    let characterArray: string[] = [];
+    if (typeof characters === 'string' && characters.trim().length > 0) {
+      characterArray = characters.split(",").map(name => name.trim()).filter(name => name.length > 0);
+    } else if (Array.isArray(characters)) {
+      characterArray = characters;
+    }
+
+    // 🌟 3. LƯU VÀO DATABASE
     const newChapter = await prisma.chapter.create({
       data: {
-        title: title,
-        images: images,
-        mangaId: mangaId // Nối chương này vào đúng Manga đã chọn
+        mangaId,
+        title,
+        images,
+        chapterNumber: chapterNumber ? Number(chapterNumber) : null,
+        characters: characterArray,
+        plotSummary: plotSummary || ""
       }
     });
+
+    // ==========================================
+    // 🌟 4. TỰ ĐỘNG SINH VECTOR EMBEDDING VÀ LƯU VÀO DB
+    // ==========================================
+    if (plotSummary && plotSummary.trim().length > 0) {
+      try {
+        const vectorValues = await generateEmbedding(plotSummary);
+        const vectorStr = `[${vectorValues.join(',')}]`; 
+        
+        await prisma.$executeRawUnsafe(
+          `UPDATE "Chapter" SET embedding = $1::vector WHERE id = $2`,
+          vectorStr,
+          newChapter.id
+        );
+        console.log(`✨ Đã nạp thành công Vector Embedding cho Chapter mới.`);
+      } catch (embedError) {
+        console.error("Lỗi nạp Vector Embedding:", embedError);
+      }
+    }
 
     res.status(201).json({ message: "New chapter added successfully!", chapter: newChapter });
   } catch (error) {
@@ -149,19 +189,63 @@ router.get('/api/admin/chapter/:id', async (req: Request, res: Response): Promis
 router.put('/api/admin/chapter/:id', async (req: Request, res: Response): Promise<any> => {
   try {
     const id = req.params.id as string;
-    const { title, images } = req.body; // Nhận biến images từ Frontend
+    // 🌟 1. Hứng thêm các biến mới từ Frontend
+    const { title, chapterNumber, characters, plotSummary, images } = req.body; 
 
     if (!title) {
       return res.status(400).json({ message: "Tên chương không được để trống!" });
     }
 
+    // 🌟 2. Xử lý chuỗi characters thành Array
+    let characterArray: string[] | undefined = undefined;
+    if (characters !== undefined) {
+      if (typeof characters === 'string' && characters.trim().length > 0) {
+        characterArray = characters.split(",").map(name => name.trim()).filter(name => name.length > 0);
+      } else if (Array.isArray(characters)) {
+        characterArray = characters;
+      } else {
+        characterArray = []; 
+      }
+    }
+
+    // 🌟 3. Cập nhật dữ liệu
     const updatedChapter = await prisma.chapter.update({
       where: { id },
       data: { 
         title,
-        ...(images && { images }) // Nếu frontend có gửi mảng ảnh mới thì cập nhật, không thì thôi
+        ...(chapterNumber !== undefined && { chapterNumber: chapterNumber ? Number(chapterNumber) : null }),
+        ...(characterArray !== undefined && { characters: characterArray }),
+        ...(plotSummary !== undefined && { plotSummary }),
+        ...(images && { images }) 
       }
     });
+
+    // ==========================================
+    // 🌟 4. XỬ LÝ LẠI TỌA ĐỘ VECTOR NẾU PLOT SUMMARY BỊ THAY ĐỔI
+    // ==========================================
+    if (plotSummary !== undefined) {
+      if (plotSummary.trim().length > 0) {
+        try {
+          const vectorValues = await generateEmbedding(plotSummary);
+          const vectorStr = `[${vectorValues.join(',')}]`;
+          
+          await prisma.$executeRawUnsafe(
+            `UPDATE "Chapter" SET embedding = $1::vector WHERE id = $2`,
+            vectorStr,
+            id
+          );
+          console.log(`✨ Đã cập nhật lại Vector 3072 chiều cho Chapter ID: ${id}`);
+        } catch (embedError) {
+          console.error("Lỗi nạp Vector Embedding khi Edit:", embedError);
+        }
+      } else {
+        // Reset về NULL nếu admin xóa trắng tóm tắt
+        await prisma.$executeRawUnsafe(
+          `UPDATE "Chapter" SET embedding = NULL WHERE id = $1`,
+          id
+        );
+      }
+    }
 
     res.status(200).json({ message: "Chapter update successful!", chapter: updatedChapter });
   } catch (error) {
@@ -238,7 +322,8 @@ router.get('/api/manga', async (req: Request, res: Response): Promise<any> => {
   /* ... Paste ruột API Lấy danh sách toàn bộ Manga (Public) ... */
   try {
     const mangas = await prisma.manga.findMany({
-      orderBy: { createdAt: 'desc' } // Mới nhất lên đầu
+      orderBy: { createdAt: 'desc' }, // Mới nhất lên đầu
+      include: { _count: { select: { chapters: true } } }
     });
     res.status(200).json(mangas);
   } catch (error) {

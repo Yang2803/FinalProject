@@ -3,11 +3,14 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
-// Khai báo kiểu dữ liệu cho Manga
+// 🌟 Bổ sung _count cho Manga
 interface Manga {
   id: string;
   title: string;
   coverImage: string | null;
+  _count?: {
+    chapters: number;
+  };
 }
 
 // Khai báo kiểu dữ liệu cho Anime
@@ -150,6 +153,12 @@ export default function Home() {
                       )}
                       {/* Overlay mờ khi hover */}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                      
+                      {/* 🌟 Badge Số Chapter */}
+                      <div className="absolute top-2 left-2 bg-green-600/90 backdrop-blur-sm text-white font-bold text-xs px-2 py-1 rounded">
+                        {manga._count?.chapters || 0} Chapters
+                      </div>
+
                     </div>
                     <div className="p-4">
                       <h3 className="font-bold text-gray-200 truncate group-hover:text-green-400 transition">{manga.title}</h3>

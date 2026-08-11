@@ -10,6 +10,8 @@ export default function UploadMangaPage() {
   const router = useRouter();
 
   const [title, setTitle] = useState("");
+  // 🌟 1. STATE MỚI: Quản lý Fandom Prefix
+  const [fandomPrefix, setFandomPrefix] = useState("");
   const [description, setDescription] = useState("");
   const [author, setAuthor] = useState("");
   const [mangaStatus, setMangaStatus] = useState("ONGOING");
@@ -20,7 +22,7 @@ export default function UploadMangaPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // ➕ STATE MỚI: Quản lý loading khi AI đang viết tóm tắt
+  // Quản lý loading khi AI đang viết tóm tắt
   const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
 
   useEffect(() => {
@@ -40,7 +42,7 @@ export default function UploadMangaPage() {
     }
   };
 
-  // ➕ HÀM MỚI: Gọi API để AI tự động viết tóm tắt dựa trên Title
+  // Gọi API để AI tự động viết tóm tắt dựa trên Title
   const handleGenerateDescription = async () => {
     if (!title) {
       alert("Vui lòng nhập Tên Manga trước khi dùng AI!");
@@ -110,6 +112,7 @@ export default function UploadMangaPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title,
+          fandomPrefix, // 🌟 2. BỔ SUNG GỬI FANDOM PREFIX LÊN BACKEND
           description,
           author,
           coverImage: uploadedCoverUrl, 
@@ -122,7 +125,8 @@ export default function UploadMangaPage() {
 
       if (res.ok) {
         setMessage(data.message);
-        setTitle(""); setDescription(""); setAuthor(""); setCoverFile(null);
+        // 🌟 3. RESET LẠI STATE FANDOM PREFIX KHI UPLOAD THÀNH CÔNG
+        setTitle(""); setDescription(""); setAuthor(""); setFandomPrefix(""); setCoverFile(null);
         const fileInput = document.getElementById('cover-upload') as HTMLInputElement;
         if (fileInput) fileInput.value = '';
         
@@ -158,6 +162,29 @@ export default function UploadMangaPage() {
             <input type="text" required placeholder="e.g., Bungou Stray Dogs" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full px-4 py-2 bg-gray-700 rounded-md focus:ring focus:ring-blue-500 outline-none" />
           </div>
 
+          {/* 🌟 4. GIAO DIỆN NHẬP FANDOM PREFIX */}
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Fandom Prefix (Dùng cho Auto-fill Data)</label>
+            <div className="flex bg-gray-700 border border-gray-600 rounded-md overflow-hidden focus-within:ring focus-within:ring-blue-500 transition">
+              <span className="bg-gray-800 text-gray-400 text-sm px-3 py-2 border-r border-gray-600 select-none flex items-center">
+                https://
+              </span>
+              <input 
+                type="text" 
+                value={fandomPrefix}
+                onChange={(e) => setFandomPrefix(e.target.value.toLowerCase().replace(/\s+/g, '-'))}
+                placeholder="e.g., bungostraydogs, jujutsu-kaisen..."
+                className="w-full bg-transparent p-2 text-sm outline-none text-white"
+              />
+              <span className="bg-gray-800 text-gray-400 text-sm px-3 py-2 border-l border-gray-600 select-none hidden sm:flex items-center">
+                .fandom.com
+              </span>
+            </div>
+            <p className="text-xs text-gray-500 mt-1 italic">
+              * Bắt buộc phải có để tính năng 🪄 Auto-fill via AI ở trong trang Manga Chapter hoạt động.
+            </p>
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">Author</label>
             <input type="text" placeholder="e.g., Asagiri Kafka" value={author} onChange={(e) => setAuthor(e.target.value)} className="w-full px-4 py-2 bg-gray-700 rounded-md focus:ring focus:ring-blue-500 outline-none" />
@@ -175,7 +202,6 @@ export default function UploadMangaPage() {
             {coverFile && <p className="text-xs text-green-400 mt-2">Selected file: {coverFile.name}</p>}
           </div>
 
-          {/* ➕ TÍCH HỢP NÚT AI VÀO KHU VỰC TÓM TẮT */}
           <div>
             <div className="flex justify-between items-center mb-1">
               <label className="block text-sm font-medium text-gray-300">Content Summary</label>

@@ -1,11 +1,9 @@
 import express, { Request, Response } from 'express';
-// 🌟 1. CẬP NHẬT IMPORT: Lấy thêm FunctionDeclarationSchemaType từ SDK
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import prisma from '../config/db'; 
 
 const router = express.Router();
 
-// 1. API Lấy danh sách các Phiên chat
 router.get('/api/chat/sessions/:userId', async (req: Request, res: Response) => {
   try {
     const sessions = await prisma.aiChatSession.findMany({
@@ -18,7 +16,6 @@ router.get('/api/chat/sessions/:userId', async (req: Request, res: Response) => 
   }
 });
 
-// 2. API Lấy chi tiết các tin nhắn trong 1 Phiên chat
 router.get('/api/chat/session/:sessionId', async (req: Request, res: Response) => {
   try {
     const messages = await prisma.aiChatMessage.findMany({
@@ -31,7 +28,6 @@ router.get('/api/chat/session/:sessionId', async (req: Request, res: Response) =
   }
 });
 
-// 3. API Chính: Gửi tin nhắn, Gọi Gemini, và Lưu Database
 router.post('/api/chat/send', async (req: Request, res: Response): Promise<any> => {
   try {
     const { userId, sessionId, message } = req.body;
@@ -39,7 +35,6 @@ router.post('/api/chat/send', async (req: Request, res: Response): Promise<any> 
 
     let currentSessionId = sessionId;
 
-    // A. NẾU LÀ CHAT MỚI -> TẠO SESSION TRƯỚC
     if (!currentSessionId) {
       const newSession = await prisma.aiChatSession.create({
         data: {
@@ -50,18 +45,15 @@ router.post('/api/chat/send', async (req: Request, res: Response): Promise<any> 
       currentSessionId = newSession.id;
     }
 
-    // B. LƯU TIN NHẮN CỦA USER VÀO DB
     await prisma.aiChatMessage.create({
       data: { sessionId: currentSessionId, role: "user", content: message }
     });
 
-    // C. LẤY LỊCH SỬ CHAT TỪ DB ĐỂ TRUYỀN CHO AI
     const history = await prisma.aiChatMessage.findMany({
       where: { sessionId: currentSessionId },
       orderBy: { createdAt: 'asc' }
     });
 
-    // D. CHUẨN BỊ DỮ LIỆU BỐI CẢNH 
     const animes = await prisma.anime.findMany({ select: { id: true, title: true } });
     const mangas = await prisma.manga.findMany({ select: { id: true, title: true } });
     
@@ -71,46 +63,53 @@ router.post('/api/chat/send', async (req: Request, res: Response): Promise<any> 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
 
     // =====================================================================
-    // 🌟 2. KHAI BÁO TOOL (VŨ KHÍ MỚI CHO GEMINI)
+    // 🌟 1. CẬP NHẬT TOOL: BỔ SUNG BỘ LỌC MEDIA TYPE
     // =====================================================================
     const tools: any = [{
       functionDeclarations: [{
-        name: "findEpisodesByCharacter",
-        description: "Dùng để tìm danh sách các tập phim mà một nhân vật anime cụ thể xuất hiện.",
+        name: "findCharacterAppearances",
+        description: "Tìm danh sách các tập phim (Anime) và chương truyện (Manga) mà nhân vật xuất hiện.",
         parameters: {
           type: SchemaType.OBJECT,
           properties: {
             characterName: {
               type: SchemaType.STRING,
               description: "Tên nhân vật cần tìm. Ví dụ: Gojo, Yuji Itadori, Naruto"
+            },
+            mediaType: {
+              type: SchemaType.STRING,
+              description: "PHÂN LOẠI YÊU CẦU: Trả về 'anime' nếu câu hỏi có chữ (tập, phim, anime). Trả về 'manga' nếu có chữ (chapter, chương, truyện, manga). Trả về 'both' nếu không nói rõ."
             }
           },
-          required: ["characterName"]
+          required: ["characterName", "mediaType"]
         }
       },
-    
-    {
-          name: "searchEpisodeByPlot",
-          description: "Tìm kiếm thông tin tập phim dựa trên cốt truyện, sự kiện hoặc trận chiến mà User hỏi.",
-          parameters: {
-            type: SchemaType.OBJECT,
-            properties: {
-              searchQuery: {
-                type: SchemaType.STRING,
-                description: "BẮT BUỘC: Dịch ý chính của câu hỏi sang Tiếng Anh và chuyển thành câu khẳng định. Ví dụ: User hỏi 'Yuji lần đầu gặp Nobara ở đâu?', bạn phải trả về 'Yuji meets Nobara for the first time'. User hỏi 'Yuta chiến đấu với Uro', trả về 'Yuta fights Uro'."
-              }
+      {
+        name: "searchStoryByPlot",
+        description: "Tìm kiếm thông tin tập phim hoặc chương truyện dựa trên cốt truyện, sự kiện.",
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            searchQuery: {
+              type: SchemaType.STRING,
+              description: "BẮT BUỘC: Dịch ý chính của câu hỏi sang Tiếng Anh. Ví dụ: 'Yuji lần đầu gặp Nobara ở đâu?' -> 'Yuji meets Nobara for the first time'."
             },
-            required: ["searchQuery"]
-          }
-        }]
+            mediaType: {
+              type: SchemaType.STRING,
+              description: "PHÂN LOẠI YÊU CẦU: Trả về 'anime' nếu câu hỏi có chữ (tập, phim, anime). Trả về 'manga' nếu có chữ (chapter, chương, truyện, manga). Trả về 'both' nếu không nói rõ."
+            }
+          },
+          required: ["searchQuery", "mediaType"]
+        }
+      }]
     }];
 
-    // Gắn Tool vào cấu hình của AI Model
     const aiModel = genAI.getGenerativeModel({ 
       model: "gemini-2.5-flash",
       tools: tools 
     });
 
+    // 🌟 Cập nhật lại System Instruction để AI biết nó đang xài Tool mới
     const systemInstruction = `
       You are a highly intelligent Otaku/Anime assistant for the "Smart Anime Platform".
       Your primary task is to recommend, discuss, and analyze Anime and Manga based on user preferences.
@@ -130,14 +129,13 @@ router.post('/api/chat/send', async (req: Request, res: Response): Promise<any> 
       4. Your tone should be enthusiastic, friendly, and relatable to the anime community (use emojis). Use bullet points for readability.
       5. DYNAMIC LANGUAGE BEHAVIOR: Detect the language used by the user and respond in that EXACT SAME LANGUAGE.
       --- TOOL USAGE & RAG CONSTRAINTS ---
-      6. CHARACTER SEARCH: If the user asks which episodes a specific character appears in, you MUST use the "findEpisodesByCharacter" tool.
-      7. PLOT/BATTLE SEARCH: If the user asks about specific events, plots, or battles (e.g., "Yuta vs Uro"), you MUST use the "searchEpisodeByPlot" tool.
-         - DEPENDENCY RULE A: If the tool returns text starting with "SYSTEM_DATA:", you MUST base your answer ENTIRELY and STRICTLY on the provided data. Do not invent episodes.
+      6. CHARACTER SEARCH: If the user asks which episodes/chapters a specific character appears in, you MUST use the "findCharacterAppearances" tool.
+      7. PLOT/BATTLE SEARCH: If the user asks about specific events, plots, or battles, you MUST use the "searchStoryByPlot" tool.
+         - DEPENDENCY RULE A: If the tool returns text starting with "SYSTEM_DATA:", you MUST base your answer ENTIRELY and STRICTLY on the provided data. Do not invent episodes/chapters.
          - DEPENDENCY RULE B: If the tool returns "NO_DATA_FOUND", you are ALLOWED to answer using your internal knowledge. HOWEVER, you MUST explicitly append this EXACT string at the very end of your response:
            "⚠️ Lưu ý: Thông tin này được lấy từ nguồn bên ngoài, hiện chưa có trong cơ sở dữ liệu của hệ thống và chưa được kiểm chứng."
     `;
 
-    // Khởi tạo phiên chat
     const chat = aiModel.startChat({
       history: [
         { role: "user", parts: [{ text: systemInstruction }] },
@@ -149,114 +147,113 @@ router.post('/api/chat/send', async (req: Request, res: Response): Promise<any> 
       ]
     });
 
-// =====================================================================
-    // 🌟 3. THỰC THI CHUỖI LOGIC HỎI/ĐÁP & TRUY XUẤT DATABASE
     // =====================================================================
-    // Gửi tin nhắn lần 1: Đợi xem AI trả lời bình thường hay muốn dùng Tool
+    // 🌟 2. XỬ LÝ LÔ-GÍC KÉP CHO TỪNG TOOL KÈM ĐIỀU KIỆN LỌC
+    // =====================================================================
     let aiResult = await chat.sendMessage(message);
     let responseText = "";
-
-    // Bắt sóng xem AI có yêu cầu gọi Tool nào không
     const call = aiResult.response.functionCalls()?.[0];
 
-    if (call && call.name === "findEpisodesByCharacter") {
-      // --- LOGIC XỬ LÝ TÌM THEO NHÂN VẬT (GIỮ NGUYÊN CỦA CẬU) ---
+    // 🟢 XỬ LÝ: TÌM KIẾM NHÂN VẬT
+    if (call && call.name === "findCharacterAppearances") {
       const charName = (call.args as any).characterName as string;
-
-      const allEpisodes = await prisma.episode.findMany({
-        select: { episodeNumber: true, title: true, characters: true, anime: { select: { title: true } } }
-      });
-
+      const mediaType = (call.args as any).mediaType as string; 
+      
       const safeCharName = charName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const regex = new RegExp(`\\b${safeCharName}\\b`, 'i');
 
-      const matchedEps = allEpisodes.filter(ep => 
-        ep.characters.some(c => regex.test(c))
-      );
+      let combinedResults: string[] = [];
 
-      let dbResultStr = "";
-      if (matchedEps.length > 0) {
-        dbResultStr = matchedEps.map(ep => `- Phim ${ep.anime.title} | Tập ${ep.episodeNumber}: ${ep.title}`).join("\n");
-      } else {
-        dbResultStr = "Hệ thống không tìm thấy tập phim nào có sự xuất hiện của nhân vật này.";
+      // CHỈ quét bảng Anime nếu người dùng hỏi anime hoặc không nói rõ
+      if (mediaType === 'anime' || mediaType === 'both') {
+        const allEpisodes = await prisma.episode.findMany({
+          select: { episodeNumber: true, title: true, characters: true, anime: { select: { title: true } } },
+          orderBy: { episodeNumber: 'asc' } // 🌟 SỬA LỖI 1: Ép Prisma sắp xếp từ nhỏ đến lớn
+        });
+        const matchedEps = allEpisodes.filter(ep => ep.characters.some(c => regex.test(c)));
+        
+        // Format của Anime: "Tập 1: Tên tập phim"
+        combinedResults.push(...matchedEps.map(ep => `- [Anime] ${ep.anime.title} | Tập ${ep.episodeNumber}: ${ep.title}`));
       }
 
-      aiResult = await chat.sendMessage([{
-        functionResponse: {
-          name: "findEpisodesByCharacter",
-          response: { result: dbResultStr }
-        }
-      }]);
+      // CHỈ quét bảng Manga nếu người dùng hỏi manga hoặc không nói rõ
+      if (mediaType === 'manga' || mediaType === 'both') {
+        const allChapters = await prisma.chapter.findMany({
+          select: { chapterNumber: true, title: true, characters: true, manga: { select: { title: true } } },
+          orderBy: { chapterNumber: 'asc' } // 🌟 SỬA LỖI 1: Ép Prisma sắp xếp chapter từ nhỏ đến lớn
+        });
+        const matchedChaps = allChapters.filter(chap => chap.characters.some(c => regex.test(c)));
+        
+        // 🌟 SỬA LỖI 2: Chỉ lấy chap.title (Vì title đã chứa sẵn chữ "Chapter X")
+        combinedResults.push(...matchedChaps.map(chap => `- [Manga] ${chap.manga.title} | ${chap.title}`));
+      }
 
-    } 
-    // 🌟 KHỐI LỆNH MỚI: XỬ LÝ VECTOR SEARCH CHO TÌM KIẾM CỐT TRUYỆN
-    else if (call && call.name === "searchEpisodeByPlot") {
+      let dbResultStr = combinedResults.length > 0 
+        ? combinedResults.join("\n") 
+        : "Hệ thống không tìm thấy kết quả phù hợp.";
+
+      aiResult = await chat.sendMessage([{
+        functionResponse: { name: "findCharacterAppearances", response: { result: dbResultStr } }
+      }]);
+    }
+    
+    // 🟢 XỬ LÝ: TÌM KIẾM CỐT TRUYỆN BẰNG VECTOR RAG
+    else if (call && call.name === "searchStoryByPlot") {
       const searchQuery = (call.args as any).searchQuery as string;
+      const mediaType = (call.args as any).mediaType as string;
       
       try {
-        // Bước 1: Gọi model Embedding để biến câu hỏi của User thành Tọa độ Vector
         const embedModel = genAI.getGenerativeModel({ model: "gemini-embedding-001" });
         const embedResult = await embedModel.embedContent(searchQuery);
         const queryVector = embedResult.embedding.values;
         const vectorStr = `[${queryVector.join(',')}]`;
 
-        // Bước 2: Dùng lệnh SQL thuần (Raw SQL) để tính khoảng cách Cosine (<=>) 
-        // Giới hạn lấy 3 tập phim có nội dung sát nghĩa nhất và khoảng cách < 0.6
-        const matchedEpisodes = await prisma.$queryRawUnsafe<any[]>(`
-          SELECT 
-            "id", 
-            "title", 
-            "episodeNumber", 
-            "plotSummary",
-            "animeId",
-            embedding <=> '${vectorStr}'::vector AS distance
-          FROM "Episode"
-          WHERE embedding IS NOT NULL
-          ORDER BY distance ASC
-          LIMIT 3
-        `);
+        let matchedData: any[] = [];
 
-        // Bước 3: Lọc các kết quả đủ độ chính xác (Ví dụ: distance < 0.6 là khá chuẩn)
-        const validMatches = matchedEpisodes.filter(ep => ep.distance < 0.7);
-
-        let dbResultStr = "";
-        
-        if (validMatches.length > 0) {
-          // Trả về kèm tiền tố SYSTEM_DATA: để AI tuân thủ Luật A
-          dbResultStr = "SYSTEM_DATA:\n" + validMatches.map(ep => 
-            `- Tập ${ep.episodeNumber}: ${ep.title}\n  Nội dung tóm tắt: ${ep.plotSummary}`
-          ).join("\n\n");
-        } else {
-          // Trả về cờ NO_DATA_FOUND để AI kích hoạt Luật B (Báo cáo nguồn ngoài)
-          dbResultStr = "NO_DATA_FOUND";
+        if (mediaType === 'anime' || mediaType === 'both') {
+          const matchedEpisodes = await prisma.$queryRawUnsafe<any[]>(`
+            SELECT e."title", e."episodeNumber" AS "number", e."plotSummary", a."title" AS "seriesTitle", 'Anime' AS "mediaType", e.embedding <=> '${vectorStr}'::vector AS distance
+            FROM "Episode" e JOIN "Anime" a ON e."animeId" = a.id
+            WHERE e.embedding IS NOT NULL ORDER BY distance ASC LIMIT 3
+          `);
+          matchedData.push(...matchedEpisodes);
         }
 
-        // Bước 4: Trả dữ liệu Database lại cho AI xào nấu
+        if (mediaType === 'manga' || mediaType === 'both') {
+          const matchedChapters = await prisma.$queryRawUnsafe<any[]>(`
+            SELECT c."title", c."chapterNumber" AS "number", c."plotSummary", m."title" AS "seriesTitle", 'Manga' AS "mediaType", c.embedding <=> '${vectorStr}'::vector AS distance
+            FROM "Chapter" c JOIN "Manga" m ON c."mangaId" = m.id
+            WHERE c.embedding IS NOT NULL ORDER BY distance ASC LIMIT 3
+          `);
+          matchedData.push(...matchedChapters);
+        }
+
+        // Trộn, lọc và sắp xếp
+        const validMatches = matchedData
+          .filter(item => item.distance < 0.7)
+          .sort((a, b) => a.distance - b.distance)
+          .slice(0, 3);
+
+        let dbResultStr = validMatches.length > 0 
+          ? "SYSTEM_DATA:\n" + validMatches.map(item => `- [${item.mediaType}] ${item.seriesTitle} | Số ${item.number}: ${item.title}\n  Nội dung tóm tắt: ${item.plotSummary}`).join("\n\n")
+          : "NO_DATA_FOUND";
+
         aiResult = await chat.sendMessage([{
-          functionResponse: {
-            name: "searchEpisodeByPlot",
-            response: { result: dbResultStr }
-          }
+          functionResponse: { name: "searchStoryByPlot", response: { result: dbResultStr } }
         }]);
 
       } catch (vectorError) {
         console.error("Lỗi Vector Search:", vectorError);
-        // Fallback: Lỗi kết nối hoặc AI hết hạn thì cứ báo là không có data để web không sập
         aiResult = await chat.sendMessage([{
-          functionResponse: {
-            name: "searchEpisodeByPlot",
-            response: { result: "NO_DATA_FOUND" }
-          }
+          functionResponse: { name: "searchStoryByPlot", response: { result: "NO_DATA_FOUND" } }
         }]);
       }
     }
 
-    // Chốt sổ: Lấy text cuối cùng từ AI (dù có xài Tool hay không)
     responseText = aiResult.response.text();
 
     // =====================================================================
 
-    // Lưu kết quả vào DB
     const savedAiMessage = await prisma.aiChatMessage.create({
       data: { sessionId: currentSessionId, role: "model", content: responseText }
     });

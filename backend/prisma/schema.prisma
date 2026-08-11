@@ -61,6 +61,7 @@ model Manga {
   comments       Comment[]
   readingLists   ReadingList[]
   mangaHistories MangaHistory[]
+  fandomPrefix String    @default("")
 }
 
 model Episode {
@@ -98,6 +99,11 @@ model Chapter {
   // Khóa ngoại liên kết với bảng Manga
   mangaId String
   manga   Manga  @relation(fields: [mangaId], references: [id], onDelete: Cascade)
+
+  chapterNumber Float?     // Dùng Float để phòng hờ có Chapter 1.5, 10.1...
+  characters    String[]   // Mảng chứa tên nhân vật
+  plotSummary   String?    // Nội dung tóm tắt
+  embedding    Unsupported("vector(3072)")?
 
 
   createdAt      DateTime       @default(now())

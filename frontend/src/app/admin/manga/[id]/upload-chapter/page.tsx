@@ -4,7 +4,6 @@ import { useState, use, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-// 1. IMPORT DND-KIT (Giống hệt trang Edit)
 import {
   DndContext,
   closestCenter,
@@ -27,13 +26,13 @@ import { CSS } from "@dnd-kit/utilities";
 // CẤU TRÚC DỮ LIỆU CHỨA ẢNH PREVIEW
 // ==========================================
 interface PreviewItem {
-  id: string;       // ID độc nhất cho dnd-kit
-  file: File;       // File gốc để lát nữa upload
-  previewUrl: string; // Link ảo để hiển thị trên màn hình
+  id: string;
+  file: File;
+  previewUrl: string;
 }
 
 // ==========================================
-// COMPONENT: Item kéo thả (Tương tự trang Edit)
+// COMPONENT: Item kéo thả 
 // ==========================================
 function SortablePreviewItem(props: { item: PreviewItem; index: number; onRemove: (id: string) => void }) {
   const { item, index, onRemove } = props;
@@ -85,13 +84,17 @@ export default function UploadChapterPage({ params }: { params: Promise<{ id: st
   const mangaId = resolvedParams.id;
   const router = useRouter();
 
+  // 🌟 1. BỔ SUNG CÁC STATE MỚI ĐỂ HỨNG DATA AUTO-FILL
+  const [chapterNumber, setChapterNumber] = useState("");
   const [chapterTitle, setChapterTitle] = useState("");
-  const [isUploading, setIsUploading] = useState(false);
+  const [characters, setCharacters] = useState("");
+  const [plotSummary, setPlotSummary] = useState("");
   
-  // 2. STATE MỚI: Lưu mảng các object PreviewItem thay vì File[]
+  const [isUploading, setIsUploading] = useState(false);
+  const [isAutoFilling, setIsAutoFilling] = useState(false); // State cho nút AI
+  
   const [imageItems, setImageItems] = useState<PreviewItem[]>([]);
 
-  // Cleanup bộ nhớ: Xóa các link ảo khi component unmount để tránh tràn RAM
   useEffect(() => {
     return () => {
       imageItems.forEach(item => URL.revokeObjectURL(item.previewUrl));
@@ -103,20 +106,15 @@ export default function UploadChapterPage({ params }: { params: Promise<{ id: st
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
-  // 3. XỬ LÝ KHI CHỌN FILE: Tạo link ảo và cấp ID cho từng file
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const filesArray = Array.from(e.target.files);
       const newPreviewItems: PreviewItem[] = filesArray.map((file) => ({
-        id: Math.random().toString(36).substring(2, 9) + Date.now().toString(36), // Tạo ID ngẫu nhiên
+        id: Math.random().toString(36).substring(2, 9) + Date.now().toString(36),
         file: file,
-        previewUrl: URL.createObjectURL(file), // Tạo link ảo để hiển thị
+        previewUrl: URL.createObjectURL(file),
       }));
-      
-      // Nối thêm ảnh mới vào danh sách hiện tại (giúp admin có thể chọn file nhiều lần)
       setImageItems((prev) => [...prev, ...newPreviewItems]);
-      
-      // Reset lại thẻ input để có thể chọn lại cùng 1 file nếu lỡ xóa
       e.target.value = ""; 
     }
   };
@@ -128,12 +126,42 @@ export default function UploadChapterPage({ params }: { params: Promise<{ id: st
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-
     setImageItems((items) => {
       const oldIndex = items.findIndex((item) => item.id === active.id);
       const newIndex = items.findIndex((item) => item.id === over.id);
       return arrayMove(items, oldIndex, newIndex);
     });
+  };
+
+  // 🌟 2. HÀM GỌI API AUTO-FILL MANGA CHAPTER
+  const handleAutoFill = async () => {
+    if (!chapterNumber) {
+      alert("Vui lòng nhập Số Chapter (Chapter Number) trước khi dùng Auto-fill!");
+      return;
+    }
+    
+    setIsAutoFilling(true);
+    try {
+      const res = await fetch("http://localhost:5000/api/admin/chapter/auto-fill", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mangaId, chapterNumber: Number(chapterNumber) })
+      });
+      
+      const resData = await res.json();
+      
+      if (res.ok && resData.success) {
+        setChapterTitle(resData.sourceTitle || `Chapter ${chapterNumber}`);
+        setCharacters(resData.data.characters.join(", "));
+        setPlotSummary(resData.data.plotSummary);
+      } else {
+        alert(resData.error || "Không tìm thấy dữ liệu trên Wiki!");
+      }
+    } catch (error) {
+      alert("Lỗi kết nối đến Server AI.");
+    } finally {
+      setIsAutoFilling(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -146,7 +174,6 @@ export default function UploadChapterPage({ params }: { params: Promise<{ id: st
       const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
       if (!cloudName || !uploadPreset) throw new Error("Cloudinary configuration is missing!");
 
-      // 4. CHỈ LẤY PHẦN 'file' TRONG OBJECT ĐỂ UPLOAD LÊN CLOUDINARY THEO ĐÚNG THỨ TỰ
       const imageUrls = await Promise.all(
         imageItems.map(async (item) => {
           const formData = new FormData();
@@ -163,10 +190,18 @@ export default function UploadChapterPage({ params }: { params: Promise<{ id: st
         })
       );
 
+      // 🌟 3. ĐẨY TOÀN BỘ DATA MỚI XUỐNG BACKEND
       const backendRes = await fetch("http://localhost:5000/api/admin/chapter", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mangaId, title: chapterTitle, images: imageUrls })
+        body: JSON.stringify({ 
+          mangaId, 
+          title: chapterTitle,
+          chapterNumber,
+          characters,
+          plotSummary, 
+          images: imageUrls 
+        })
       }); 
       
       const backendData = await backendRes.json();
@@ -187,70 +222,137 @@ export default function UploadChapterPage({ params }: { params: Promise<{ id: st
   };
 
   return (
-    <div className="p-8 min-h-screen text-white">
-      <div className="max-w-4xl mx-auto bg-gray-800 p-8 rounded-xl shadow-lg">
-        <div className="flex justify-between items-center mb-6 border-b border-gray-700 pb-4">
-          <h1 className="text-3xl font-bold text-blue-400">Upload New Chapter</h1>
-          <Link href={`/admin/manga/${mangaId}`} className="text-gray-400 hover:text-white transition">
+    <div className="p-8 min-h-screen text-white bg-[#0f0f11]">
+      <div className="max-w-4xl mx-auto">
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h1 className="text-3xl font-black text-purple-400">Upload New Chapter</h1>
+          </div>
+          <Link href={`/admin/manga/${mangaId}`} className="text-gray-400 hover:text-white transition text-sm">
             &larr; Back to Manga
           </Link>
         </div>
         
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Chapter Title (*)</label>
-            <input
-              type="text"
-              required
-              value={chapterTitle}
-              onChange={(e) => setChapterTitle(e.target.value)}
-              className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:border-blue-500"
-              placeholder="e.g., Chapter 101"
-            />
-          </div>
+          
+          <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-xl space-y-6">
+            
+            {/* 🌟 CHIA GRID 2 CỘT CHO NUMBER VÀ TITLE */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="md:col-span-1">
+                <label className="block text-xs font-bold text-gray-300 mb-2">Chap Number (*)</label>
+                <input
+                  type="number"
+                  step="any"
+                  required
+                  value={chapterNumber}
+                  onChange={(e) => setChapterNumber(e.target.value)}
+                  className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:border-blue-500 text-sm"
+                  placeholder="Ex: 1"
+                />
+              </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Select Chapter Pages (You can select multiple)</label>
-            <input
-              type="file"
-              multiple
-              accept="image/*"
-              onChange={handleFileChange}
-              className="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-gray-700 file:text-white hover:file:bg-gray-600"
-            />
-          </div>
-
-          {/* 5. KHU VỰC PREVIEW KÉO THẢ */}
-          {imageItems.length > 0 && (
-            <div className="border-t border-gray-700 pt-6">
-              <label className="block text-sm font-medium text-gray-300 mb-2 hover:text-blue-400 transition cursor-default">
-                Preview & Arrange ({imageItems.length} images) - <span className="text-xs text-gray-500 font-normal">Drag to reorder</span>
-              </label>
-              
-              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-gray-900 rounded-lg border border-gray-700 h-64 overflow-y-auto shadow-inner">
-                  <SortableContext items={imageItems.map(i => i.id)} strategy={rectSortingStrategy}>
-                    {imageItems.map((item, index) => (
-                      <SortablePreviewItem
-                        key={item.id}
-                        item={item}
-                        index={index}
-                        onRemove={handleRemoveItem}
-                      />
-                    ))}
-                  </SortableContext>
+              <div className="md:col-span-3">
+                <div className="flex justify-between items-center mb-2">
+                  <label className="block text-xs font-bold text-gray-300">Chapter Title (*)</label>
+                  <button
+                    type="button"
+                    onClick={handleAutoFill}
+                    disabled={isAutoFilling || !chapterNumber}
+                    className="bg-purple-600 hover:bg-purple-500 disabled:bg-gray-600 text-white text-xs font-bold px-3 py-1 rounded transition flex items-center gap-1"
+                  >
+                    {isAutoFilling ? (
+                      <><div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Đang quét...</>
+                    ) : (
+                      "🪄 Auto-fill"
+                    )}
+                  </button>
                 </div>
-              </DndContext>
+                <input
+                  type="text"
+                  required
+                  value={chapterTitle}
+                  onChange={(e) => setChapterTitle(e.target.value)}
+                  className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:border-blue-500 text-sm"
+                  placeholder="Example: A New Beginning"
+                />
+              </div>
             </div>
-          )}
 
-          <button
-            type="submit"
-            disabled={isUploading}
-            className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center mt-6"
-          >
-            {isUploading ? "Processing image upload..." : "Complete Upload"}
-          </button>
+            {/* 🌟 KHU VỰC CHARACTERS & PLOT */}
+            <div className="space-y-6 border-t border-gray-700 pt-6">
+              <div>
+                <label className="block text-xs font-bold text-gray-300 mb-2">Characters (Phân cách bằng dấu phẩy)</label>
+                <input
+                  type="text"
+                  value={characters}
+                  onChange={(e) => setCharacters(e.target.value)}
+                  className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:border-blue-500 text-sm"
+                  placeholder="Yuji Itadori, Megumi Fushiguro..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-300 mb-2">Plot Details (Cốt truyện chi tiết)</label>
+                <textarea
+                  rows={4}
+                  value={plotSummary}
+                  onChange={(e) => setPlotSummary(e.target.value)}
+                  className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:border-blue-500 text-sm resize-none"
+                  placeholder="Nhập tóm tắt nội dung chương truyện..."
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-xl space-y-6">
+            <div>
+              <label className="block text-sm font-bold text-gray-300 mb-2">Select Chapter Pages (*)</label>
+              <input
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={handleFileChange}
+                className="block w-full text-sm text-gray-400 file:mr-4 file:py-2.5 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer"
+              />
+            </div>
+
+            {imageItems.length > 0 && (
+              <div className="border-t border-gray-700 pt-6">
+                <label className="block text-sm font-bold text-gray-300 mb-2">
+                  Preview & Arrange ({imageItems.length} images) - <span className="text-xs text-gray-500 font-normal">Drag to reorder</span>
+                </label>
+                
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-gray-900 rounded-xl border border-gray-700 h-[350px] overflow-y-auto custom-scrollbar">
+                    <SortableContext items={imageItems.map(i => i.id)} strategy={rectSortingStrategy}>
+                      {imageItems.map((item, index) => (
+                        <SortablePreviewItem
+                          key={item.id}
+                          item={item}
+                          index={index}
+                          onRemove={handleRemoveItem}
+                        />
+                      ))}
+                    </SortableContext>
+                  </div>
+                </DndContext>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={isUploading}
+              className="w-full py-4 bg-purple-600 hover:bg-purple-700 text-white font-black text-lg rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center shadow-lg shadow-purple-600/20"
+            >
+              {isUploading ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Processing image upload...
+                </div>
+              ) : "Complete Upload"}
+            </button>
+          </div>
         </form>
       </div>
     </div>
