@@ -28,7 +28,8 @@ model User {
   watchLists        WatchList[]
   animeHistories    AnimeHistory[]
   aiChatSessions    AiChatSession[]
-  communities       Community[]
+  createdCommunities Community[] @relation("CommunityCreator")
+  joinedCommunities  Community[] @relation("CommunityMembers")
   forumPosts        ForumPost[]
   forumVotes        ForumVote[]
   forumComments     ForumComment[]
@@ -277,17 +278,21 @@ enum PostCategory {
 
 // 2. Bảng Nhóm cộng đồng (Sub-forum)
 model Community {
-  id          String  @id @default(uuid())
-  name        String  @unique
-  description String?
-  bannerImage String?
+  id          String      @id @default(uuid())
+  name        String      @unique
+  description String      @db.Text
+  coverImage  String?     // Ảnh bìa của nhóm
+  createdAt   DateTime    @default(now())
 
-  creatorId String
-  creator   User   @relation(fields: [creatorId], references: [id])
+  // Người tạo nhóm (Admin)
+  creatorId   String
+  creator     User        @relation("CommunityCreator", fields: [creatorId], references: [id])
 
-  posts ForumPost[] // Các bài viết thuộc nhóm này
-
-  createdAt DateTime @default(now())
+  // Danh sách thành viên tham gia
+  members     User[]      @relation("CommunityMembers")
+  
+  // Danh sách bài viết trong nhóm
+  posts       ForumPost[]
 }
 
 // 3. Bảng Bài viết chính
@@ -304,8 +309,8 @@ model ForumPost {
   authorId String
   author   User   @relation(fields: [authorId], references: [id])
 
-  communityId String? // Có thể null nếu đăng ở ngoài Global Feed
-  community   Community? @relation(fields: [communityId], references: [id])
+  communityId String?
+  community   Community? @relation(fields: [communityId], references: [id], onDelete: Cascade)
 
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
@@ -364,3 +369,4 @@ model ForumCommentVote {
 
   @@unique([userId, commentId]) // Mỗi user chỉ vote 1 lần cho 1 comment
 }
+

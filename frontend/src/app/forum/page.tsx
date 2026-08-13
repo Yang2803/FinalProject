@@ -23,6 +23,7 @@ interface ForumPostItem {
   createdAt: string;
   author?: Author;
   authorId: string;
+  community?: { id: string; name: string } | null;
 }
 
 interface ForumCommentItem {
@@ -39,6 +40,7 @@ export default function ForumFeed() {
   const { data: session } = useSession();
   const searchParams = useSearchParams();
   const currentCategory = searchParams.get("category") || "ALL";
+  const currentTag = searchParams.get("tag"); 
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // 🌟 2. KHAI BÁO TYPE CHUẨN XÁC NÀY
@@ -82,12 +84,11 @@ export default function ForumFeed() {
 
         if (isMounted) setLoadingPosts(true);
         // 🌟 BỔ SUNG: { cache: "no-store" } để cấm Next.js/Trình duyệt lưu cache cũ
-        const res = await fetch(`http://localhost:5000/api/forum/posts?category=${currentCategory}`, {
+        const fetchUrl = `http://localhost:5000/api/forum/posts?category=${currentCategory}${currentTag ? `&tag=${currentTag}` : ''}`;
+        
+        const res = await fetch(fetchUrl, {
           cache: "no-store", 
-          headers: {
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache'
-          }
+          headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
         });
 
         if (res.ok) {
@@ -109,7 +110,7 @@ export default function ForumFeed() {
     return () => {
       isMounted = false; // Cleanup function để tránh lỗi bộ nhớ
     };
-  }, [currentCategory]); // Theo dõi thay đổi của currentCategory
+  }, [currentCategory, currentTag]); // Theo dõi thay đổi của currentCategory
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -384,28 +385,21 @@ export default function ForumFeed() {
 
   return (
     <>
-      {/* ======================================================== */}
-      {/* 🌟 THANH ĐIỀU HƯỚNG TABS */}
-      {/* ======================================================== */}
-      <div className="flex items-center gap-6 mb-6 border-b border-gray-800 pb-3">
-        <Link 
-          href="/forum" 
-          className={`font-bold transition ${currentCategory === 'ALL' ? 'text-yellow-400 border-b-2 border-yellow-400 pb-3 -mb-[14px]' : 'text-gray-400 hover:text-gray-200'}`}
-        >
-          All
-        </Link>
-        <Link 
-          href="/forum?category=ANIME" 
-          className={`font-bold transition ${currentCategory === 'ANIME' ? 'text-blue-500 border-b-2 border-blue-500 pb-3 -mb-[14px]' : 'text-gray-400 hover:text-gray-200'}`}
-        >
-          Anime
-        </Link>
-        <Link 
-          href="/forum?category=MANGA" 
-          className={`font-bold transition ${currentCategory === 'MANGA' ? 'text-green-500 border-b-2 border-green-500 pb-3 -mb-[14px]' : 'text-gray-400 hover:text-gray-200'}`}
-        >
-          Manga
-        </Link>
+      {/* 🌟 THANH ĐIỀU HƯỚNG TABS & HIỂN THỊ TAG ĐANG LỌC */}
+      <div className="flex items-center justify-between mb-6 border-b border-gray-800 pb-3">
+        <div className="flex items-center gap-6">
+          <Link href="/forum" className={`font-bold transition ${currentCategory === 'ALL' ? 'text-blue-500 border-b-2 border-blue-500 pb-3 -mb-[14px]' : 'text-gray-400 hover:text-gray-200'}`}>All</Link>
+          <Link href="/forum?category=ANIME" className={`font-bold transition ${currentCategory === 'ANIME' ? 'text-blue-500 border-b-2 border-blue-500 pb-3 -mb-[14px]' : 'text-gray-400 hover:text-gray-200'}`}>Anime</Link>
+          <Link href="/forum?category=MANGA" className={`font-bold transition ${currentCategory === 'MANGA' ? 'text-green-500 border-b-2 border-green-500 pb-3 -mb-[14px]' : 'text-gray-400 hover:text-gray-200'}`}>Manga</Link>
+        </div>
+        
+        {/* Cục hiển thị Tag đang được lọc */}
+        {currentTag && (
+          <div className="flex items-center gap-2 bg-blue-900/30 text-blue-400 px-3 py-1.5 rounded-full text-sm font-bold border border-blue-800/50">
+            <span>Đang lọc: #{currentTag}</span>
+            <Link href={`/forum?category=${currentCategory}`} className="hover:text-red-400 ml-1" title="Bỏ lọc">✕</Link>
+          </div>
+        )}
       </div>
 
       {/* KHUNG TẠO BÀI VIẾT (TRIGGER) */}
@@ -444,8 +438,8 @@ export default function ForumFeed() {
           posts.map((post) => (
             <div key={post.id} className="bg-[#1a1d24] rounded-xl border border-gray-800 p-5 shadow-sm hover:border-gray-700 transition">
               
-              {/* Header: Avatar, Name, Time, Category */}
-              <div className="flex items-center gap-3 mb-4">
+              {/* Header bài viết: Avatar, Name, Community, Time, Category */}
+              <div className="flex flex-wrap items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-full bg-gray-700 overflow-hidden flex-shrink-0">
                   {post.author?.image ? (
                     <img src={post.author.image} alt="Avatar" className="w-full h-full object-cover" />
@@ -455,9 +449,29 @@ export default function ForumFeed() {
                     </div>
                   )}
                 </div>
-                <div>
-                  <h4 className="font-bold text-gray-200 text-sm hover:underline cursor-pointer">{post.author?.name || "Người dùng ẩn danh"}</h4>
-                  <p className="text-xs text-gray-500">{new Date(post.createdAt).toLocaleString('vi-VN')}</p>
+                
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {/* 🌟 NẾU CÓ COMMUNITY THÌ HIỆN TÊN CỘNG ĐỒNG CÓ LINK */}
+                    {post.community ? (
+                      <>
+                        <Link 
+                          href={`/forum/communities/${post.community.id}`} 
+                          className="font-bold text-blue-400 text-sm hover:underline"
+                        >
+                          c/{post.community.name}
+                        </Link>
+                        <span className="text-gray-600 text-xs">•</span>
+                        <span className="text-gray-400 text-xs">Đăng bởi {post.author?.name || "Ẩn danh"}</span>
+                      </>
+                    ) : (
+                      /* Nếu bài đăng tự do (không thuộc nhóm nào) */
+                      <h4 className="font-bold text-gray-200 text-sm hover:underline cursor-pointer">
+                        {post.author?.name || "Người dùng ẩn danh"}
+                      </h4>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-0.5">{new Date(post.createdAt).toLocaleString('vi-VN')}</p>
                 </div>
                 
                 <span className={`ml-auto text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider ${
@@ -489,9 +503,11 @@ export default function ForumFeed() {
                   <span className="bg-red-900/50 text-red-400 text-xs px-2.5 py-1 rounded border border-red-500 font-bold">⚠️ Spoiler</span>
                 )}
                 {post.tags?.map((tag: string, index: number) => (
-                  <span key={index} className="text-blue-400 hover:text-blue-300 cursor-pointer text-sm font-medium">
-                    #{tag}
-                  </span>
+                  <Link key={index} href={`/forum?tag=${tag}`}>
+                    <span className="text-blue-400 hover:text-blue-300 cursor-pointer text-sm font-medium">
+                      #{tag}
+                    </span>
+                  </Link>
                 ))}
               </div>
 

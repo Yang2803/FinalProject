@@ -63,17 +63,24 @@ router.post('/api/forum/posts', async (req: Request, res: Response): Promise<any
 // ==========================================
 router.get('/api/forum/posts', async (req: Request, res: Response): Promise<any> => {
   try {
-    const { category } = req.query; // 'ALL', 'ANIME', hoặc 'MANGA'
+    const { category, tag } = req.query; // 🌟 Hứng thêm biến tag từ URL
     
     let filterCondition: any = {};
+    
+    // Nếu có chọn Category (ANIME/MANGA)
     if (category && category !== 'ALL') {
       filterCondition.category = category;
+    }
+
+    // 🌟 Nếu có truyền Tag, dùng lệnh { has: tag } của Prisma để tìm trong mảng
+    if (tag) {
+      filterCondition.tags = { has: tag as string };
     }
 
     const posts = await prisma.forumPost.findMany({
       where: filterCondition,
       orderBy: { createdAt: 'desc' },
-      include: { author: { select: { name: true} }, community: true }
+      include: { author: { select: { name: true } }, community: true }
     });
 
     res.status(200).json(posts);
@@ -264,6 +271,40 @@ router.post('/api/forum/comments/:id/vote', async (req: Request, res: Response):
     });
     res.status(200).json({ upvoteCount: updatedComment.upvoteCount });
   } catch (error) { res.status(500).json({ error: "Lỗi vote comment" }); }
+});
+
+// ==========================================
+// 📈 API 8: Lấy danh sách Trending Tags (Top 5)
+// ==========================================
+router.get('/api/forum/trending-tags', async (req: Request, res: Response): Promise<any> => {
+  try {
+    // Lấy tất cả bài viết và chỉ lấy trường tags
+    const posts = await prisma.forumPost.findMany({
+      select: { tags: true }
+    });
+
+    // Tạo một object (từ điển) để đếm số lần xuất hiện của từng tag
+    const tagCount: Record<string, number> = {};
+    
+    posts.forEach(post => {
+      if (post.tags && Array.isArray(post.tags)) {
+        post.tags.forEach(tag => {
+          tagCount[tag] = (tagCount[tag] || 0) + 1;
+        });
+      }
+    });
+
+    // Chuyển object thành mảng, sắp xếp giảm dần theo số lượng và cắt lấy top 5
+    const trendingTags = Object.entries(tagCount)
+      .sort((a, b) => b[1] - a[1]) // Sắp xếp giảm dần (b - a)
+      .slice(0, 5)                 // Lấy 5 phần tử đầu tiên
+      .map(entry => entry[0]);     // Chỉ lấy tên tag, bỏ phần số lượng đi
+
+    res.status(200).json(trendingTags);
+  } catch (error) {
+    console.error("LỖI TRENDING TAGS:", error);
+    res.status(500).json({ error: "Lỗi tải trending tags" });
+  }
 });
 
 export default router;
