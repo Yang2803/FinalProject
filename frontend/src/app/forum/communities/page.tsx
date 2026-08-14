@@ -13,6 +13,7 @@ interface CommunityItem {
     members: number;
     posts: number;
   };
+  members: { id: string }[];
 }
 
 export default function CommunitiesPage() {
@@ -32,6 +33,9 @@ export default function CommunitiesPage() {
 
   // State cho thanh tìm kiếm
   const [searchQuery, setSearchQuery] = useState("");
+
+  // 🌟 THÊM STATE CHO TÍNH NĂNG LỌC NHÓM ĐÃ THAM GIA
+  const [showJoinedOnly, setShowJoinedOnly] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -146,11 +150,19 @@ export default function CommunitiesPage() {
     }
   };
 
-  // Lọc danh sách cộng đồng theo từ khóa (Tìm cả trong Tên và Mô tả)
-  const filteredCommunities = communities.filter(c => 
-    c.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    c.description.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // 🌟 NÂNG CẤP THUẬT TOÁN LỌC KÉP: Lọc theo Từ khóa + Lọc theo Trạng thái tham gia
+  const filteredCommunities = communities.filter(c => {
+    // 1. Kiểm tra khớp từ khóa tìm kiếm
+    const matchesSearch = c.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          c.description.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    // 2. Kiểm tra user đã tham gia chưa (nếu nút lọc đang bật)
+    const isJoined = c.members?.some(m => m.id === session?.user?.id);
+    const matchesJoined = showJoinedOnly ? isJoined : true;
+
+    // Trả về true nếu thỏa mãn cả 2 điều kiện
+    return matchesSearch && matchesJoined;
+  });
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
@@ -176,20 +188,42 @@ export default function CommunitiesPage() {
       </div>
 
       {/* ======================================================== */}
-      {/* 🌟 THANH TÌM KIẾM */}
+      {/* 🌟 THANH TÌM KIẾM & NÚT LỌC "ĐÃ THAM GIA" */}
       {/* ======================================================== */}
-      <div className="mb-8 relative">
-        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-          <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+      <div className="mb-8 flex flex-col sm:flex-row gap-4">
+        
+        {/* Ô Tìm kiếm */}
+        <div className="relative flex-1">
+          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+            <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+          </div>
+          <input 
+            type="text" 
+            placeholder="Tìm kiếm cộng đồng theo tên hoặc chủ đề..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-[#1a1d24] border border-gray-800 rounded-xl pl-12 pr-4 py-3.5 text-gray-200 outline-none focus:border-blue-500 transition shadow-sm"
+          />
         </div>
-        <input 
-          type="text" 
-          placeholder="Tìm kiếm cộng đồng theo tên hoặc chủ đề..." 
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full bg-[#1a1d24] border border-gray-800 rounded-xl pl-12 pr-4 py-3.5 text-gray-200 outline-none focus:border-blue-500 transition shadow-sm"
-        />
-      </div> {/* 🌟 THẺ ĐÓNG NÀY VỪA ĐƯỢC BỔ SUNG */}
+
+        {/* Nút Lọc (Chỉ hiện khi đã đăng nhập) */}
+        {session?.user && (
+          <button
+            onClick={() => setShowJoinedOnly(!showJoinedOnly)}
+            className={`px-5 py-3.5 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2 shrink-0 border ${
+              showJoinedOnly 
+                ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-500/20' 
+                : 'bg-[#1a1d24] border-gray-800 text-gray-400 hover:text-gray-200 hover:border-gray-700'
+            }`}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            {showJoinedOnly ? "Đang lọc: Đã tham gia" : "Nhóm đã tham gia"}
+          </button>
+        )}
+        
+      </div>
 
       {/* LƯỚI DANH SÁCH COMMUNITY */}
       {loading ? (

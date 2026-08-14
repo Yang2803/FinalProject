@@ -192,6 +192,8 @@ export default function CommunityDetailPage() {
   if (loading) return <div className="flex justify-center items-center min-h-[50vh]"><div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>;
   if (!community) return null;
 
+  
+
   return (
     <div className="max-w-4xl mx-auto px-4 pb-12 relative">
       <Link href="/forum/communities" className="inline-flex items-center gap-2 text-gray-400 hover:text-blue-400 transition mb-4 font-bold text-sm">

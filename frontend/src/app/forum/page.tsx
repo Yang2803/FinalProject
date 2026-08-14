@@ -383,6 +383,42 @@ export default function ForumFeed() {
     } catch (error) { console.error("Lỗi vote comment", error); }
   };
 
+  // Hàm biến đổi format [Text](URL) thành thẻ Link click được
+  const renderFormattedContent = (text: string) => {
+    // Regex tìm đúng cấu trúc [Tên hiển thị](Link web)
+    const linkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
+    const parts = [];
+    let lastIndex = 0;
+    let match;
+    
+    while ((match = linkRegex.exec(text)) !== null) {
+      // Đẩy phần chữ bình thường phía trước link vào mảng
+      if (match.index > lastIndex) {
+        parts.push(text.substring(lastIndex, match.index));
+      }
+      // Đẩy thẻ <a> chứa link vào mảng
+      parts.push(
+        <a 
+          key={match.index} 
+          href={match[2]} 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          className="text-blue-400 hover:text-blue-300 font-bold underline decoration-blue-500/50 underline-offset-2 transition"
+        >
+          {match[1]}
+        </a>
+      );
+      lastIndex = linkRegex.lastIndex;
+    }
+    
+    // Đẩy nốt phần chữ còn lại sau link cuối cùng
+    if (lastIndex < text.length) {
+      parts.push(text.substring(lastIndex));
+    }
+    
+    return parts.length > 0 ? parts : text;
+  };
+
   return (
     <>
       {/* 🌟 THANH ĐIỀU HƯỚNG TABS & HIỂN THỊ TAG ĐANG LỌC */}
@@ -484,7 +520,9 @@ export default function ForumFeed() {
 
               {/* Nội dung bài viết */}
               <h3 className="text-xl font-bold text-gray-100 mb-2">{post.title}</h3>
-              <p className="text-gray-300 text-sm whitespace-pre-wrap mb-4 leading-relaxed">{post.content}</p>
+              <p className="text-gray-300 text-sm whitespace-pre-wrap mb-4 leading-relaxed">
+                  {renderFormattedContent(post.content)}
+              </p>
 
               {/* Hình ảnh/Video đính kèm */}
               {post.mediaUrl && (

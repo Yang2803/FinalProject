@@ -27,7 +27,8 @@ router.get('/api/communities', async (req: Request, res: Response): Promise<any>
   try {
     const communities = await prisma.community.findMany({
       include: {
-        _count: { select: { members: true, posts: true } }
+        _count: { select: { members: true, posts: true } },
+        members: { select: { id: true } }
       },
       orderBy: { createdAt: 'desc' }
     });
