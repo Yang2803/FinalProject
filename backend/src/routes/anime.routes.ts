@@ -104,6 +104,41 @@ router.post('/api/admin/episode', async (req: Request, res: Response): Promise<a
       }
     }
 
+    // ==========================================
+    // 🌟 TỰ ĐỘNG BẮN THÔNG BÁO CHO NGƯỜI THEO DÕI ANIME
+    // ==========================================
+    try {
+      // ⚠️ Đảm bảo tên bảng 'watchList' viết đúng theo file schema.prisma của cậu
+      const usersInWatchList = await prisma.watchList.findMany({
+        where: { animeId: animeId } 
+      });
+
+      if (usersInWatchList.length > 0) {
+        const animeInfo = await prisma.anime.findUnique({
+          where: { id: animeId },
+          select: { title: true }
+        });
+
+        const animeTitleStr = animeInfo?.title || "Một bộ Anime bạn theo dõi";
+
+        const notificationsToInsert = usersInWatchList.map((item: any) => ({
+          userId: item.userId,
+          title: "Tập mới ra lò! 🎬",
+          message: `${animeTitleStr} vừa cập nhật: Tập ${episodeNumber} - ${newEpisode.title}`,
+          linkUrl: `/anime/${animeId}/watch/${newEpisode.id}`, 
+          isRead: false
+        }));
+
+        await prisma.notification.createMany({
+          data: notificationsToInsert
+        });
+        
+        console.log(`✨ Đã gửi thông báo cho ${usersInWatchList.length} người dùng đang xem Anime này!`);
+      }
+    } catch (notiError) {
+      console.error("Lỗi khi gửi thông báo Anime:", notiError);
+    }
+
     res.status(201).json({ 
       message: "New episode uploaded successfully with Vector Space activated!", 
       episode: newEpisode 

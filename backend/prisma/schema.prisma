@@ -370,3 +370,15 @@ model ForumCommentVote {
   @@unique([userId, commentId]) // Mỗi user chỉ vote 1 lần cho 1 comment
 }
 
+// 🌟 Thêm Model này vào schema.prisma
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  // user      User     @relation(fields: [userId], references: [id]) // Bỏ comment nếu cậu có model User
+  title     String   // VD: "Chương mới ra lò!"
+  message   String   // VD: "Jujutsu Kaisen vừa cập nhật Chapter 236"
+  linkUrl   String   // Link để click vào bay thẳng đến truyện
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+

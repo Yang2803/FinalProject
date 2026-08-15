@@ -201,13 +201,79 @@ router.get('/api/forum/posts/:id/comments', async (req: Request, res: Response):
 // 2. Viết comment mới (hoặc Reply)
 router.post('/api/forum/posts/:id/comments', async (req: Request, res: Response): Promise<any> => {
   try {
-    const { content, authorId, parentId } = req.body; // Thêm parentId
+    const { content, authorId, parentId } = req.body; 
+    const postId = req.params.id as string;
+    
+    // 1. Tạo bình luận vào Database
     const comment = await prisma.forumComment.create({
-      data: { content, authorId, postId: req.params.id as string, parentId },
+      data: { content, authorId, postId, parentId },
       include: { author: { select: { name: true } } }
     });
+
+    // ==========================================
+    // 🌟 TỰ ĐỘNG BẮN THÔNG BÁO (REPLY & CHỦ BÀI VIẾT)
+    // ==========================================
+    try {
+      const replierName = comment.author?.name || "Một người dùng";
+      
+      // A. Lấy thông tin bài viết gốc để biết "chủ thớt" là ai và lấy tiêu đề bài viết
+      const post = await prisma.forumPost.findUnique({
+        where: { id: postId },
+        select: { authorId: true, title: true }
+      });
+
+      // Biến lưu ID của người đã nhận thông báo Reply (để tránh gửi trùng lặp cho chủ bài viết)
+      let notifiedReplyUserId: string | null = null;
+
+      // B. XỬ LÝ THÔNG BÁO CHO NGƯỜI BỊ REPLY (Nếu có parentId)
+      if (parentId) {
+        const parentComment = await prisma.forumComment.findUnique({
+          where: { id: parentId },
+          select: { authorId: true }
+        });
+
+        // Chỉ gửi nếu người reply KHÁC với chủ bình luận gốc
+        if (parentComment && parentComment.authorId !== authorId) {
+          notifiedReplyUserId = parentComment.authorId;
+          await prisma.notification.create({
+            data: {
+              userId: parentComment.authorId,
+              title: "Có người phản hồi bạn 💬",
+              message: `${replierName} vừa trả lời bình luận của bạn.`,
+              linkUrl: `/forum/${postId}`,
+              isRead: false
+            }
+          });
+          console.log(`✨ Đã gửi thông báo Reply cho user ID: ${parentComment.authorId}`);
+        }
+      }
+
+      // C. XỬ LÝ THÔNG BÁO CHO CHỦ BÀI VIẾT
+      // - Chỉ gửi khi Post tồn tại
+      // - Người comment KHÁC chủ bài viết (Không tự thông báo cho chính mình)
+      // - Chủ bài viết CHƯA nhận được thông báo Reply ở bước B (Tránh nhận 2 thông báo cùng lúc)
+      if (post && post.authorId !== authorId && post.authorId !== notifiedReplyUserId) {
+        await prisma.notification.create({
+          data: {
+            userId: post.authorId,
+            title: "Bình luận mới 📝",
+            message: `${replierName} vừa bình luận vào bài viết "${post.title}" của bạn.`,
+            linkUrl: `/forum/${postId}`,
+            isRead: false
+          }
+        });
+        console.log(`✨ Đã gửi thông báo Comment cho chủ bài viết ID: ${post.authorId}`);
+      }
+
+    } catch (notiError) {
+      console.error("Lỗi khi xử lý luồng thông báo:", notiError);
+    }
+    // ==========================================
+
     res.status(201).json(comment);
-  } catch (error) { res.status(500).json({ error: "Lỗi đăng comment" }); }
+  } catch (error) { 
+    res.status(500).json({ error: "Lỗi đăng comment" }); 
+  }
 });
 
 // 3. Sửa comment
@@ -304,6 +370,28 @@ router.get('/api/forum/trending-tags', async (req: Request, res: Response): Prom
   } catch (error) {
     console.error("LỖI TRENDING TAGS:", error);
     res.status(500).json({ error: "Lỗi tải trending tags" });
+  }
+});
+
+// ==========================================
+// 📄 API 9: Lấy chi tiết 1 bài viết Forum
+// ==========================================
+router.get('/api/forum/posts/:id', async (req: Request, res: Response): Promise<any> => {
+  try {
+    const postId = req.params.id as string;
+    const post = await prisma.forumPost.findUnique({
+      where: { id: postId },
+      include: { 
+        author: { select: { name: true} }, 
+        community: true 
+      }
+    });
+
+    if (!post) return res.status(404).json({ error: "Bài viết không tồn tại" });
+    
+    res.status(200).json(post);
+  } catch (error) {
+    res.status(500).json({ error: "Lỗi tải chi tiết bài viết" });
   }
 });
 

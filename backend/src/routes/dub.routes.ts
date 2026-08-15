@@ -22,16 +22,39 @@ const s3Client = new S3Client({
   },
 });
 
+// =================================================================
+// 🌟 THÊM HÀM NÀY: Dọn dẹp phụ đề, tự động sửa lỗi thời gian
+// =================================================================
+function sanitizeVtt(vttString: string): string {
+  if (!vttString) return "";
+  
+  return vttString
+    // 1. Sửa lỗi dùng dấu phẩy (,) thay vì dấu chấm (.) ở phần mili-giây
+    .replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2')
+    
+    // 2. Sửa lỗi thiếu múi Giờ (chỉ có Phút:Giây.MiliGiây) -> Thêm 00:
+    .replace(/(^|\n|\s)(\d{2}:\d{2}\.\d{3})/g, '$100:$2')
+    
+    // 3. Sửa lỗi giờ chỉ có 1 chữ số (vd: 1:05:10 -> 01:05:10)
+    .replace(/(^|\n|\s)(\d):(\d{2}:\d{2}\.\d{3})/g, '$10$2:$3');
+}
+
 router.post('/api/anime/generate-dub', async (req, res) => {
   const { episodeId, subtitleUrl, targetLang } = req.body; 
   
   try {
-    // 1. Tải và parse file VTT
+    // 1. Tải file VTT
     const vttResponse = await axios.get(subtitleUrl);
-    const parsedVtt = parse(vttResponse.data); 
+    let vttContent = vttResponse.data;
+    
+    // 🌟 ÁP DỤNG HÀM DỌN DẸP Ở ĐÂY TRƯỚC KHI PARSE
+    vttContent = sanitizeVtt(vttContent);
+
+    // 🌟 THÊM { strict: false }: Báo cho thư viện biết hãy bỏ qua các lỗi định dạng lặt vặt
+    const parsedVtt = parse(vttContent, { strict: false }); 
     
     // 2. Chọn giọng đọc (Voice)
-   // =================================================================
+    // =================================================================
     // BỘ TỪ ĐIỂN ÁNH XẠ ĐỒNG BỘ 100% VỚI SUPPORTED_LANGUAGES Ở FRONTEND
     // =================================================================
     const voiceMappings: Record<string, string> = {
@@ -60,12 +83,11 @@ router.post('/api/anime/generate-dub', async (req, res) => {
     // Mặc định an toàn: Nếu có lỗi rớt mạng hoặc truyền sai, dùng Tiếng Anh
     let voiceName = 'en-US-AriaNeural'; 
 
-    // Thuật toán quét: Kiểm tra xem targetLang (VD: "Vietnamese (Auto)") 
-    // có chứa cái tên gốc (VD: "Vietnamese") hay không.
+    // Thuật toán quét: Kiểm tra xem targetLang có chứa tên gốc không
     for (const [langCode, voiceId] of Object.entries(voiceMappings)) {
       if (targetLang.includes(langCode)) {
         voiceName = voiceId;
-        break; // Tìm thấy phát là chốt đơn, thoát vòng lặp ngay!
+        break; 
       }
     }
     // =================================================================
@@ -82,12 +104,12 @@ router.post('/api/anime/generate-dub', async (req, res) => {
       if (!cleanText.trim()) continue;
 
       try {
-       // Sinh âm thanh dưới dạng Stream. BÓC TÁCH lấy đúng audioStream
+       // Sinh âm thanh dưới dạng Stream
         const { audioStream } = tts.toStream(cleanText);
         
-        // Đóng gói Stream thành Buffer (Khối dữ liệu) để up lên R2
+        // Đóng gói Stream thành Buffer để up lên R2
         const chunks: any[] = [];
-        for await (const chunk of audioStream) { // Thay đổi ở đây
+        for await (const chunk of audioStream) {
           chunks.push(chunk);
         }
         const audioBuffer = Buffer.concat(chunks);
@@ -121,8 +143,8 @@ router.post('/api/anime/generate-dub', async (req, res) => {
 
     res.status(200).json({ message: "Tạo lồng tiếng thành công!" });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Lỗi hệ thống" });
+    console.error("Lỗi khi parse file hoặc tạo lồng tiếng:", error);
+    res.status(500).json({ error: "Lỗi hệ thống khi tạo lồng tiếng" });
   }
 });
 

@@ -166,6 +166,39 @@ router.post('/api/admin/chapter', async (req: Request, res: Response): Promise<a
       }
     }
 
+    // ==========================================
+    // 🌟 5. TỰ ĐỘNG BẮN THÔNG BÁO CHO NGƯỜI THEO DÕI
+    // ==========================================
+    try {
+      const usersInReadingList = await prisma.readingList.findMany({
+        where: { mangaId: mangaId }
+      });
+
+      if (usersInReadingList.length > 0) {
+        const mangaInfo = await prisma.manga.findUnique({
+          where: { id: mangaId },
+          select: { title: true }
+        });
+
+        const mangaTitleStr = mangaInfo?.title || "Một bộ truyện bạn theo dõi";
+
+        const notificationsToInsert = usersInReadingList.map((item: any) => ({
+          userId: item.userId,
+          title: "Chương mới ra lò! 📚",
+          message: `${mangaTitleStr} vừa cập nhật: ${newChapter.title}`,
+          linkUrl: `/manga/${mangaId}/chapter/${newChapter.id}`, 
+          isRead: false
+        }));
+
+        await prisma.notification.createMany({
+          data: notificationsToInsert
+        });
+        console.log(`✨ Đã gửi thông báo cho ${usersInReadingList.length} người dùng!`);
+      }
+    } catch (notiError) {
+      console.error("Lỗi khi gửi thông báo:", notiError);
+    }
+
     res.status(201).json({ message: "New chapter added successfully!", chapter: newChapter });
   } catch (error) {
     console.error("Error adding chapter:", error);
@@ -306,6 +339,37 @@ router.post('/api/manga', async (req: Request, res: Response): Promise<any> => {
         mangaId: manga.id
       }
     });
+
+    // ==========================================
+    // 🌟 5. TỰ ĐỘNG BẮN THÔNG BÁO CHO NGƯỜI THEO DÕI
+    // ==========================================
+    try {
+      // 🌟 Sửa mangaId thành manga.id
+      const usersInReadingList = await prisma.readingList.findMany({
+        where: { mangaId: manga.id } 
+      });
+
+      if (usersInReadingList.length > 0) {
+        // Tận dụng luôn biến manga đã có ở Bước 1 & 2, bỏ qua việc query DB tìm mangaInfo
+        const mangaTitleStr = manga.title || "Một bộ truyện bạn theo dõi";
+
+        const notificationsToInsert = usersInReadingList.map((item: any) => ({
+          userId: item.userId,
+          title: "Chương mới ra lò! 📚",
+          message: `${mangaTitleStr} vừa cập nhật: ${newChapter.title}`,
+          // 🌟 Sửa mangaId thành manga.id
+          linkUrl: `/manga/${manga.id}/chapter/${newChapter.id}`, 
+          isRead: false
+        }));
+
+        await prisma.notification.createMany({
+          data: notificationsToInsert
+        });
+        console.log(`✨ Đã gửi thông báo cho ${usersInReadingList.length} người dùng!`);
+      }
+    } catch (notiError) {
+      console.error("Lỗi khi gửi thông báo:", notiError);
+    }
 
     res.status(201).json({ 
       message: "Save chapter successfully!", 

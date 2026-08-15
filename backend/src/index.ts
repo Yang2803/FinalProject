@@ -15,6 +15,7 @@ import adminEpisodeRoutes from './routes/admin-episode.routes';
 import adminChapterRoutes from './routes/admin-chapter.routes';
 import forumRoutes from './routes/forum.routes';
 import communityRoutes from './routes/community.routes';
+import notificationRoutes from './routes/notification.routes';
 
 dotenv.config();
 
@@ -68,6 +69,9 @@ app.use('/', forumRoutes);
 
 //12. Nhóm API Community
 app.use('/', communityRoutes);
+
+//13. Nhóm API Notification
+app.use('/', notificationRoutes);
 
 // ============================================
 // ROUTE MẶC ĐỊNH & KHỞI ĐỘNG SERVER
