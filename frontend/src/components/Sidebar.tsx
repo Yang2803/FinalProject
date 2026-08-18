@@ -20,6 +20,7 @@ export default function Sidebar() {
     { name: "Explore Manga", href: "/manga", icon: "📚" },
     { name: "AI Search Assistant", href: "/ai-search", icon: "🤖" },
     { name: "Forum", href: "/forum", icon: "💬" },
+    { name: "Watch Party", href: "/party", icon: "🎉" },
   ];
 
   return (
