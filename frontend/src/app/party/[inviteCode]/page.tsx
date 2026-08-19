@@ -140,15 +140,42 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
           }
 
           const isMember = roomData.members.find(m => m.user.id === session.user.id);
+
+          // 🌟 ĐÃ SỬA TẠI ĐÂY: Xử lý hiển thị thông báo từ chối và điều hướng (Không load lại trang)
+          if (isMember?.status === "REJECTED") {
+            alert("Yêu cầu tham gia phòng của bạn đã bị từ chối.");
+            router.push("/party");
+            return;
+          }
+
+          let isNewRequest = false;
+
           if (!isMember && roomData.hostId !== session.user.id) {
             await fetch(`http://localhost:5000/api/party/rooms/${inviteCode}/join`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ userId: session.user.id })
             });
-            window.location.reload();
-            return;
+
+            const newMemberStatus = roomData.isPrivate ? "PENDING" : "JOINED";
+
+            // 🌟 ĐÃ SỬA TẠI ĐÂY: Bỏ window.location.reload() đi, cập nhật state thủ công để UI hiện màn chờ duyệt
+            setRoom({
+              ...roomData,
+              members: [...roomData.members, { 
+                id: "temp_" + session.user.id, 
+                status: newMemberStatus, 
+                user: { 
+                    id: session.user.id, 
+                    name: session.user.name || "Ẩn danh", 
+                    image: session.user.image || null 
+                } 
+              }]
+            });
+            isNewRequest = true;
           }
+
+          
 
           if (!globalSocket) {
             globalSocket = io("http://localhost:5000");
@@ -162,10 +189,16 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
           
           setSocket(globalSocket);
 
+          if (isNewRequest) {
+            globalSocket.emit("new_join_request", { roomId: roomData.id });
+          }
+
           globalSocket.off("receive_video_sync");
           globalSocket.off("receive_message");
           globalSocket.off("receive_video_change");
           globalSocket.off("receive_disband_room");
+          globalSocket.off("receive_join_request");   // 🌟 Thêm dòng này
+          globalSocket.off("receive_approve_result");
 
           globalSocket.on("receive_video_sync", (data: { action: string, currentTime: number }) => {
             if (videoRef.current && roomData.hostId !== session.user.id) {
@@ -200,6 +233,36 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
             window.location.reload(); 
           });
 
+          globalSocket.off("receive_join_request");   
+          globalSocket.off("receive_approve_result"); 
+
+          // 🌟 1. LẮNG NGHE YÊU CẦU XIN VÀO PHÒNG
+          globalSocket.on("receive_join_request", () => {
+            // Khi có tín hiệu, TẤT CẢ mọi người (bao gồm trưởng phòng) tải lại danh sách để UI cập nhật ngay lập tức
+            fetch(`http://localhost:5000/api/party/rooms/${inviteCode}`)
+              .then(res => res.json())
+              .then(updatedRoom => setRoom(updatedRoom));
+          });
+
+          // 🌟 2. LẮNG NGHE KẾT QUẢ DUYỆT TỪ TRƯỞNG PHÒNG
+          globalSocket.on("receive_approve_result", (data: { targetUserId: string, action: string }) => {
+            if (data.targetUserId === session?.user?.id) {
+              // Nếu TÔI là người bị réo tên
+              if (data.action === "REJECT") {
+                alert("Yêu cầu tham gia phòng của bạn đã bị từ chối.");
+                window.location.href = "/party"; 
+              } else if (data.action === "APPROVE") {
+                alert("Bạn đã được Trưởng phòng duyệt tham gia!");
+                window.location.reload(); // Tải lại nhẹ 1 lần để vào giao diện chính
+              }
+            } else {
+              // Nếu người khác được duyệt/từ chối, cập nhật lại danh sách bên cột chat
+              fetch(`http://localhost:5000/api/party/rooms/${inviteCode}`)
+                .then(res => res.json())
+                .then(updatedRoom => setRoom(updatedRoom));
+            }
+          });
+
           // 🌟 LẮNG NGHE TÍN HIỆU GIẢI TÁN TỪ TRƯỞNG PHÒNG
           globalSocket.on("receive_disband_room", () => {
             localStorage.removeItem(`party_chat_${roomData.id}`);
@@ -230,7 +293,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
         globalSocket.off("receive_disband_room");
       }
     };
-  }, [inviteCode, session]);
+  }, [inviteCode, session?.user?.id, router]);
 
   const isHost = session?.user?.id === room?.hostId;
 
@@ -301,8 +364,13 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
           ...room,
           members: room.members.map(m => 
             m.user.id === targetUserId ? { ...m, status: action === "APPROVE" ? "JOINED" : "REJECTED" } : m
-          ).filter(m => m.status !== "REJECTED")
+          )
         });
+        
+        // 🌟 SỬA TẠI ĐÂY: Dùng trực tiếp globalSocket để đảm bảo 100% tín hiệu được bắn đi, không bị kẹt bởi React State
+        if (globalSocket) {
+          globalSocket.emit("send_approve_result", { roomId: room.id, targetUserId, action });
+        }
       }
     } catch (error) {}
   };

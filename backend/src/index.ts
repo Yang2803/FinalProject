@@ -110,6 +110,20 @@ io.on("connection", (socket) => {
     });
   });
 
+  // ============================================
+  // 🌟 ĐÃ THÊM TẠI ĐÂY: HỆ THỐNG DUYỆT THÀNH VIÊN REAL-TIME
+  // ============================================
+
+  // Nhận tín hiệu có người gửi yêu cầu xin vào phòng -> Báo cho Trưởng phòng
+  socket.on("new_join_request", (data: { roomId: string }) => {
+    socket.to(data.roomId).emit("receive_join_request", data);
+  });
+
+  // Nhận tín hiệu Trưởng phòng đã duyệt/từ chối -> Báo lại cho người xin vào
+  socket.on("send_approve_result", (data: { roomId: string, targetUserId: string, action: string }) => {
+    socket.to(data.roomId).emit("receive_approve_result", data);
+  });
+
   // 2. NHẬN VÀ PHÁT TIN NHẮN CHAT REALTIME
   socket.on("send_message", (data: { roomId: string, sender: string, text: string }) => {
     // Gửi tin nhắn này cho TẤT CẢ mọi người trong phòng (Ngoại trừ người vừa gửi)

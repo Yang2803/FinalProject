@@ -116,6 +116,11 @@ router.post('/rooms/:inviteCode/join', async (req: Request, res: Response): Prom
       return res.status(404).json({ message: "Phòng không tồn tại hoặc đã đóng." });
     }
 
+    // 🌟 TRƯỞNG PHÒNG THÌ KHÔNG CẦN XIN PHÉP CHÍNH MÌNH
+    if (room.hostId === userId) {
+      return res.status(200).json({ message: "Trưởng phòng được vào thẳng.", status: "JOINED", room });
+    }
+
     // Kiểm tra xem user này đã có trong phòng chưa
     const existingMember = await prisma.roomMember.findUnique({
       where: {
@@ -124,7 +129,24 @@ router.post('/rooms/:inviteCode/join', async (req: Request, res: Response): Prom
     });
 
     if (existingMember) {
-      if (existingMember.status === "BANNED") return res.status(403).json({ message: "Bạn đã bị cấm khỏi phòng này." });
+      if (existingMember.status === "BANNED") {
+        return res.status(403).json({ message: "Bạn đã bị cấm khỏi phòng này." });
+      }
+
+      // 🌟 NẾU TỪNG BỊ TỪ CHỐI -> RESET LẠI THÀNH PENDING ĐỂ HỌ XIN LẠI
+      if (existingMember.status === "REJECTED") {
+        const newStatus = room.isPrivate ? "PENDING" : "JOINED";
+        await prisma.roomMember.update({
+          where: { id: existingMember.id },
+          data: { status: newStatus }
+        });
+        return res.status(newStatus === "PENDING" ? 202 : 200).json({ 
+          message: newStatus === "PENDING" ? "Đã gửi lại yêu cầu tham gia." : "Vào phòng thành công!", 
+          status: newStatus, 
+          room 
+        });
+      }
+
       return res.status(200).json({ message: "Bạn đã ở trong phòng.", status: existingMember.status, room });
     }
 
@@ -140,14 +162,14 @@ router.post('/rooms/:inviteCode/join', async (req: Request, res: Response): Prom
     });
 
     if (memberStatus === "PENDING") {
-      res.status(202).json({ message: "Đã gửi yêu cầu tham gia. Vui lòng đợi Trưởng phòng duyệt!", status: "PENDING" });
+      return res.status(202).json({ message: "Đã gửi yêu cầu tham gia. Vui lòng đợi Trưởng phòng duyệt!", status: "PENDING" });
     } else {
-      res.status(200).json({ message: "Vào phòng thành công!", status: "JOINED", room });
+      return res.status(200).json({ message: "Vào phòng thành công!", status: "JOINED", room });
     }
 
   } catch (error) {
     console.error("Lỗi join phòng:", error);
-    res.status(500).json({ message: "Lỗi server khi xin vào phòng." });
+    return res.status(500).json({ message: "Lỗi server khi xin vào phòng." });
   }
 });
 
@@ -157,7 +179,6 @@ router.post('/rooms/:inviteCode/join', async (req: Request, res: Response): Prom
 router.put('/rooms/:roomId/approve', async (req: Request, res: Response): Promise<any> => {
   try {
     const roomId = req.params.roomId as string;
-
     const { hostId, targetUserId, action } = req.body; // action = "APPROVE" hoặc "REJECT"
 
     // Kiểm tra quyền Trưởng phòng
@@ -173,9 +194,11 @@ router.put('/rooms/:roomId/approve', async (req: Request, res: Response): Promis
       });
       res.status(200).json({ message: "Đã duyệt thành viên thành công!" });
     } else {
-      // Nếu Reject, ta có thể xóa luôn bản ghi yêu cầu hoặc đổi thành "BANNED" tùy logic của cậu
-      await prisma.roomMember.delete({
-        where: { roomId_userId: { roomId, userId: targetUserId } }
+      // 🌟 ĐÃ SỬA TẠI ĐÂY: KHÔNG DÙNG DELETE NỮA. 
+      // Update trạng thái thành REJECTED để lưu lịch sử từ chối, chặn Frontend tự auto-join lại.
+      await prisma.roomMember.update({
+        where: { roomId_userId: { roomId, userId: targetUserId } },
+        data: { status: "REJECTED" }
       });
       res.status(200).json({ message: "Đã từ chối thành viên." });
     }
@@ -214,14 +237,50 @@ router.put('/rooms/:roomId/change-video', async (req: Request, res: Response): P
 // ==========================================
 // 🗑️ 6. API: GIẢI TÁN PHÒNG CHIẾU
 // ==========================================
-router.delete('/rooms/:roomId', async (req: Request, res: Response) => {
+router.delete('/rooms/:roomId', async (req: Request, res: Response): Promise<any> => {
   try {
     const roomId = String(req.params.roomId);
-    await prisma.partyRoom.delete({ where: { id: roomId } });
-    res.status(200).json({ message: "Phòng chiếu đã được giải tán thành công!" });
+
+    // 🌟 Dựa theo schema, model của bạn là RoomMember
+    // Xóa tất cả thành viên trong phòng trước để tránh kẹt khóa ngoại
+    await prisma.roomMember.deleteMany({ 
+      where: { roomId: roomId } 
+    });
+
+    // Sau đó mới xóa phòng
+    await prisma.partyRoom.delete({ 
+      where: { id: roomId } 
+    });
+
+    return res.status(200).json({ message: "Phòng chiếu đã được giải tán thành công!" });
   } catch (error) {
-    console.error("Lỗi khi giải tán phòng:", error);
-    res.status(500).json({ message: "Lỗi server khi giải tán phòng." });
+    console.error("Lỗi CHI TIẾT khi giải tán phòng:", error);
+    return res.status(500).json({ message: "Lỗi server khi giải tán phòng." });
+  }
+});
+
+
+// ==========================================
+// 🔍 API: LẤY DANH SÁCH CÁC PHÒNG ĐANG HOẠT ĐỘNG
+// ==========================================
+router.get('/rooms', async (req: Request, res: Response): Promise<any> => {
+  try {
+    const rooms = await prisma.partyRoom.findMany({
+      include: {
+        host: { select: { id: true, name: true} },
+        members: { where: { status: 'JOINED' } }, // Chỉ đếm những người đã duyệt
+        episode: { select: { title: true } },
+        anime: { select: { title: true } }
+      },
+      // 🌟 Khôi phục lại orderBy vì model của bạn ĐÃ CÓ cột createdAt
+      // Database tự sắp xếp sẽ nhanh và tối ưu hơn dùng JS rất nhiều!
+      orderBy: { createdAt: 'desc' } 
+    });
+    
+    return res.status(200).json(rooms);
+  } catch (error) {
+    console.error("Lỗi CHI TIẾT khi lấy danh sách phòng:", error);
+    return res.status(500).json({ message: "Lỗi server khi lấy danh sách phòng.", error: String(error) });
   }
 });
 
