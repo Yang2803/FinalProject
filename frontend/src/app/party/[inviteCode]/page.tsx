@@ -6,6 +6,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { io, Socket } from "socket.io-client";
 
+// 🌟 THÊM TẠI ĐÂY (LIVEKIT): Import các component và style của LiveKit
+import { LiveKitRoom, RoomAudioRenderer, TrackToggle } from "@livekit/components-react";
+import { Track } from "livekit-client";
+import "@livekit/components-styles"; 
+
 // ==========================================
 // ĐỊNH NGHĨA INTERFACES
 // ==========================================
@@ -88,6 +93,9 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
   const [hasInteracted, setHasInteracted] = useState(false);
   const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
+
+  // 🌟 THÊM TẠI ĐÂY (LIVEKIT): State lưu token Voice Chat
+  const [voiceToken, setVoiceToken] = useState("");
 
   // BẪY CLICK TOÀN TRANG
   useEffect(() => {
@@ -197,7 +205,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
           globalSocket.off("receive_message");
           globalSocket.off("receive_video_change");
           globalSocket.off("receive_disband_room");
-          globalSocket.off("receive_join_request");   // 🌟 Thêm dòng này
+          globalSocket.off("receive_join_request");   
           globalSocket.off("receive_approve_result");
 
           globalSocket.on("receive_video_sync", (data: { action: string, currentTime: number }) => {
@@ -294,6 +302,29 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
       }
     };
   }, [inviteCode, session?.user?.id, router]);
+
+  // 🌟 THÊM TẠI ĐÂY (LIVEKIT): TỰ ĐỘNG LẤY TOKEN VOICE CHAT KHI ĐÃ ĐƯỢC VÀO PHÒNG
+  useEffect(() => {
+    if (!room || !session?.user) return;
+    
+    const myMembership = room.members.find(m => m.user.id === session.user.id);
+    
+    if (myMembership?.status === "JOINED" && !voiceToken) {
+      const fetchVoiceToken = async () => {
+        try {
+          const res = await fetch(`http://localhost:5000/api/party/rooms/${room.id}/voice-token?userName=${encodeURIComponent(session.user.name || "Ẩn danh")}`);
+          if (res.ok) {
+            const data = await res.json();
+            setVoiceToken(data.token);
+          }
+        } catch (error) {
+          console.error("Lỗi lấy Voice Token", error);
+        }
+      };
+      fetchVoiceToken();
+    }
+  }, [room, session, voiceToken]);
+
 
   const isHost = session?.user?.id === room?.hostId;
 
@@ -742,6 +773,36 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
 
       {/* 🟢 CỘT PHẢI: KHUNG CHAT & DANH SÁCH THÀNH VIÊN */}
       <div className="w-full md:w-80 flex flex-col gap-4 h-full shrink-0">
+
+        {/* 🌟 THÊM TẠI ĐÂY (LIVEKIT): GIAO DIỆN VOICE CHAT (Chỉ hiện khi đã có Token) */}
+        {voiceToken && (
+          <LiveKitRoom
+            video={false}
+            audio={true}
+            token={voiceToken}
+            serverUrl={process.env.NEXT_PUBLIC_LIVEKIT_URL}
+            connect={true}
+            style={{ flex: 'none', height: 'auto', minHeight: 'fit-content' }}
+            className="bg-[#1a1d24] rounded-xl border border-blue-900/50 p-4 shrink-0 shadow-lg flex flex-col items-center justify-center relative overflow-hidden"
+          >
+            <div className="absolute top-0 left-0 w-1 h-full bg-blue-500 animate-pulse"></div>
+            <h3 className="font-bold text-gray-300 mb-3 text-sm flex items-center gap-2 w-full">
+              <span>🎙️ Voice Chat </span>
+              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse ml-auto"></span>
+            </h3>
+            
+            <div className="flex items-center justify-between w-full bg-gray-900/50 p-3 rounded-lg border border-gray-800">
+              <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">Micro của bạn</span>
+              <TrackToggle 
+                 source={Track.Source.Microphone} 
+                 className="bg-blue-600 hover:bg-blue-500 text-white rounded-full px-4 py-1.5 text-sm font-bold transition"
+              />
+            </div>
+            
+            <RoomAudioRenderer />
+          </LiveKitRoom>
+        )}
+
         <div className="bg-[#1a1d24] rounded-xl border border-gray-800 p-4 shrink-0">
           <h3 className="font-bold text-gray-300 mb-4 flex items-center justify-between">
             <span>Đang xem ({joinedMembers.length})</span>

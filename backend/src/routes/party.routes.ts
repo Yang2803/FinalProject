@@ -1,5 +1,6 @@
 import express, { Request, Response } from 'express';
 import prisma from '../config/db';
+import { AccessToken } from 'livekit-server-sdk';
 
 const router = express.Router();
 
@@ -261,7 +262,7 @@ router.delete('/rooms/:roomId', async (req: Request, res: Response): Promise<any
 
 
 // ==========================================
-// 🔍 API: LẤY DANH SÁCH CÁC PHÒNG ĐANG HOẠT ĐỘNG
+// 🔍 7. API: LẤY DANH SÁCH CÁC PHÒNG ĐANG HOẠT ĐỘNG
 // ==========================================
 router.get('/rooms', async (req: Request, res: Response): Promise<any> => {
   try {
@@ -281,6 +282,41 @@ router.get('/rooms', async (req: Request, res: Response): Promise<any> => {
   } catch (error) {
     console.error("Lỗi CHI TIẾT khi lấy danh sách phòng:", error);
     return res.status(500).json({ message: "Lỗi server khi lấy danh sách phòng.", error: String(error) });
+  }
+});
+
+// ==========================================
+// 🎤 8. API: LẤY TOKEN VOICE CHAT LIVEKIT
+// ==========================================
+router.get('/rooms/:roomId/voice-token', async (req: Request, res: Response): Promise<any> => {
+  try {
+    const roomId = req.params.roomId as string;
+    const userName = (req.query.userName as string) || "Ẩn danh";
+
+    // 🌟 THÊM: Kiểm tra cấu hình .env để tránh sập Server
+    if (!process.env.LIVEKIT_API_KEY || !process.env.LIVEKIT_API_SECRET) {
+      return res.status(500).json({ message: "Máy chủ chưa được cấu hình LiveKit!" });
+    }
+
+    // 🌟 SỬA: Tạo định danh duy nhất chống trùng lặp
+    const uniqueIdentity = `user_${Math.random().toString(36).substring(2, 10)}`;
+
+    const at = new AccessToken(
+      process.env.LIVEKIT_API_KEY,
+      process.env.LIVEKIT_API_SECRET,
+      { 
+        identity: uniqueIdentity, // Mã định danh kỹ thuật (BẮT BUỘC DUY NHẤT)
+        name: userName            // Tên hiển thị thật sự trên giao diện
+      } 
+    );
+
+    at.addGrant({ roomJoin: true, room: roomId, canPublish: true, canSubscribe: true });
+
+    const token = await at.toJwt();
+    res.status(200).json({ token });
+  } catch (error) {
+    console.error("Lỗi tạo LiveKit token:", error);
+    res.status(500).json({ message: "Không thể khởi tạo Voice Chat." });
   }
 });
 
