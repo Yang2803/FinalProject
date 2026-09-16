@@ -10,7 +10,8 @@ export const SUPPORTED_LANGUAGES = [
   { code: "Thai", label: "ไทย (Tiếng Thái)" },
   { code: "Indonesian", label: "Bahasa Indonesia" },
   { code: "Hindi", label: "हिन्दी (Tiếng Hindi)" },
-  { code: "Arabic", label: "العربية (Tiếng Ả Rập)" },
+  { code: "Malay", label: "Bahasa Melayu (Tiếng Mã Lai)" },
+  { code: "Lao", label: "ພາສາລາວ (Tiếng Lào)" },
   
   // Châu Âu & Châu Mỹ
   { code: "English", label: "English (Tiếng Anh)" },
@@ -23,6 +24,14 @@ export const SUPPORTED_LANGUAGES = [
   { code: "Dutch", label: "Nederlands (Tiếng Hà Lan)" },
   { code: "Polish", label: "Polski (Tiếng Ba Lan)" },
   { code: "Turkish", label: "Türkçe (Tiếng Thổ Nhĩ Kỳ)" },
-  { code: "Swedish", label: "Svenska (Tiếng Thụy Điển)" }
+  { code: "Swedish", label: "Svenska (Tiếng Thụy Điển)" },
+  { code: "Ukrainian", label: "Українська (Tiếng Ukraina)" },
+  { code: "Czech", label: "Čeština (Tiếng Séc)" },
+  { code: "Greek", label: "Ελληνικά (Tiếng Hy Lạp)" },
+  { code: "Hungarian", label: "Magyar (Tiếng Hung-ga-ri)" },
+  { code: "Romanian", label: "Română (Tiếng Ru-ma-ni)" },
+  { code: "Danish", label: "Dansk (Tiếng Đan Mạch)" },
+  { code: "Finnish", label: "Suomi (Tiếng Phần Lan)" },
+  { code: "Norwegian", label: "Norsk (Tiếng Na Uy)" },
 ];
 
