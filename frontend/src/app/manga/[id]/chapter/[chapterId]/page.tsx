@@ -133,6 +133,7 @@ function TranslateableImage({
 
 
 export default function MangaReaderPage({ params }: { params: Promise<{ id: string; chapterId: string }> }) {
+  const lastLoggedChapter = useRef<string | null>(null);
   const resolvedParams = use(params);
   const mangaId = resolvedParams.id;
   const chapterId = resolvedParams.chapterId;
@@ -300,6 +301,31 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
     };
     recordHistory();
   }, [session?.user?.id, mangaId, chapterId]);
+// =====================================================================
+  // 🌟 2. LOGIC GHI NHẬN LƯỢT ĐỌC CHO BẢNG XẾP HẠNG (ĐÃ FIX DOUBLE LOG)
+  // =====================================================================
+  useEffect(() => {
+    const logMangaView = async () => {
+      // Bỏ qua nếu thiếu ID, hoặc nếu chapter này đã được ghi nhận lượt xem rồi
+      if (!mangaId || !chapterId || lastLoggedChapter.current === chapterId) return;
+      
+      // Gán ID chapter hiện tại vào cờ ngay lập tức để chặn luồng Strict Mode chạy đúp
+      lastLoggedChapter.current = chapterId;
+
+      try {
+        await fetch(`http://localhost:5000/api/manga/${mangaId}/view`, {
+          method: 'POST',
+        });
+      } catch (error) {
+        console.error("Lỗi khi ghi nhận lượt đọc:", error);
+        // Nếu API lỗi, reset lại cờ để hệ thống có thể thử gọi lại
+        lastLoggedChapter.current = null;
+      }
+    };
+
+    logMangaView();
+  }, [mangaId, chapterId]);
+  // =====================================================================
 
   const handleNextPage = () => {
     if (chapter && currentPage < chapter.images.length) {

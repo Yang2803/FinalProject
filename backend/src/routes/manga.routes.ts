@@ -14,6 +14,83 @@ async function generateEmbedding(text: string): Promise<number[]> {
 
 // ================= API ADMIN (MANGA & CHAPTER) =================
 
+// ==========================================
+// 🏆 1. API: LẤY BẢNG XẾP HẠNG TOP MANGA
+// ==========================================
+router.get('/api/manga/top', async (req: Request, res: Response): Promise<any> => {
+  try {
+    const period = req.query.period as string; // Nhận 'day', 'week', hoặc 'month'
+    
+    // 1. Xác định mốc thời gian bắt đầu lọc
+    const startDate = new Date();
+    if (period === 'day') startDate.setDate(startDate.getDate() - 1);
+    else if (period === 'week') startDate.setDate(startDate.getDate() - 7);
+    else if (period === 'month') startDate.setMonth(startDate.getMonth() - 1);
+    else return res.status(400).json({ message: "Period không hợp lệ. Vui lòng truyền day, week, hoặc month." });
+
+    // 2. Gom nhóm (groupBy) và đếm số log lượt xem trong khoảng thời gian
+    const topViews = await prisma.mangaViewLog.groupBy({
+      by: ['mangaId'],
+      where: { createdAt: { gte: startDate } },
+      _count: { mangaId: true },
+      orderBy: { _count: { mangaId: 'desc' } },
+      take: 10 // Lấy Top 10
+    });
+
+    if (topViews.length === 0) return res.status(200).json([]);
+
+    // 3. Lấy thông tin chi tiết của Top 10 Manga này
+    const mangaIds = topViews.map(v => v.mangaId);
+    const mangas = await prisma.manga.findMany({
+      where: { id: { in: mangaIds } },
+      select: { 
+        id: true, 
+        title: true, 
+        coverImage: true, 
+        _count: { select: { chapters: true } } 
+      }
+    });
+
+    // 4. Map data lại theo đúng thứ tự xếp hạng (vì findMany không giữ thứ tự)
+    const sortedTopMangas = topViews.map(view => {
+      const mangaDetail = mangas.find(m => m.id === view.mangaId);
+      return {
+        ...mangaDetail,
+        periodViews: view._count.mangaId // Gắn thêm field số view để Frontend hiển thị
+      };
+    }).filter(m => m.id); // Loại bỏ các record lỗi (nếu có)
+
+    res.status(200).json(sortedTopMangas);
+  } catch (error) {
+    console.error("Lỗi lấy Top Manga:", error);
+    res.status(500).json({ message: "Lỗi server khi lấy bảng xếp hạng manga." });
+  }
+});
+
+// ==========================================
+// 👁️ 2. API: GHI NHẬN 1 LƯỢT ĐỌC MANGA (LOG VIEW)
+// ==========================================
+router.post('/api/manga/:id/view', async (req: Request, res: Response): Promise<any> => {
+  try {
+    const mangaId = String(req.params.id);
+
+    // Kiểm tra xem truyện có tồn tại không
+    const manga = await prisma.manga.findUnique({ where: { id: mangaId } });
+    if (!manga) return res.status(404).json({ message: "Manga không tồn tại!" });
+
+    // Tạo 1 bản ghi log lượt xem mới
+    await prisma.mangaViewLog.create({
+      data: { mangaId: manga.id }
+    });
+
+    res.status(200).json({ message: "Đã ghi nhận lượt đọc!" });
+  } catch (error) {
+    console.error("Lỗi ghi log lượt đọc Manga:", error);
+    res.status(500).json({ message: "Lỗi server khi ghi nhận lượt xem." });
+  }
+});
+
+
 router.post('/api/admin/manga', async (req: Request, res: Response): Promise<any> => {
   /* ... Paste ruột API Thêm Manga mới ... */
   try {
@@ -630,5 +707,7 @@ router.post('/api/admin/generate-manga-desc', async (req: Request, res: Response
     res.status(500).json({ message: "Lỗi server khi nhờ AI viết tóm tắt." });
   }
 });
+
+
 
 export default router;

@@ -5,6 +5,74 @@ import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 
 const router = express.Router();
 
+
+router.get('/api/anime/top', async (req: Request, res: Response): Promise<any> => {
+  try {
+    const period = req.query.period as string;
+    const startDate = new Date();
+    
+    if (period === 'day') startDate.setDate(startDate.getDate() - 1);
+    else if (period === 'week') startDate.setDate(startDate.getDate() - 7);
+    else if (period === 'month') startDate.setMonth(startDate.getMonth() - 1);
+    else return res.status(400).json({ message: "Period không hợp lệ." });
+
+    const topViews = await prisma.animeViewLog.groupBy({
+      by: ['animeId'],
+      where: { createdAt: { gte: startDate } },
+      _count: { animeId: true },
+      orderBy: { _count: { animeId: 'desc' } },
+      take: 10
+    });
+
+    if (topViews.length === 0) return res.status(200).json([]);
+
+    const animeIds = topViews.map(v => v.animeId);
+    const animes = await prisma.anime.findMany({
+      where: { id: { in: animeIds } },
+      select: { 
+        id: true, 
+        title: true, 
+        coverImage: true, 
+        _count: { select: { episodes: true } }
+      }
+    });
+
+    const sortedTopAnimes = topViews.map(view => {
+      const animeDetail = animes.find(a => a.id === view.animeId);
+      return {
+        ...animeDetail,
+        periodViews: view._count.animeId
+      };
+    }).filter(a => a.id);
+
+    res.status(200).json(sortedTopAnimes);
+  } catch (error) {
+    console.error("Lỗi lấy Top Anime:", error);
+    res.status(500).json({ message: "Lỗi server khi lấy bảng xếp hạng anime." });
+  }
+});
+
+// ==========================================
+// 👁️ 2. API: GHI NHẬN 1 LƯỢT XEM ANIME (LOG VIEW)
+// ==========================================
+router.post('/api/anime/:id/view', async (req: Request, res: Response): Promise<any> => {
+  try {
+    const animeId = String(req.params.id);
+
+    const anime = await prisma.anime.findUnique({ where: { id: animeId } });
+    if (!anime) return res.status(404).json({ message: "Anime không tồn tại!" });
+
+    await prisma.animeViewLog.create({
+      data: { animeId: anime.id }
+    });
+
+    res.status(200).json({ message: "Đã ghi nhận lượt xem!" });
+  } catch (error) {
+    console.error("Lỗi ghi log lượt xem Anime:", error);
+    res.status(500).json({ message: "Lỗi server khi ghi nhận lượt xem." });
+  }
+});
+
 // ==========================================
 // API QUẢN LÝ ANIME & EPISODE (ADMIN)
 // ==========================================
@@ -684,6 +752,8 @@ router.post('/api/admin/generate-anime-desc', async (req: Request, res: Response
     res.status(500).json({ message: "Lỗi server khi nhờ AI viết tóm tắt." });
   }
 });
+
+
 
 
 

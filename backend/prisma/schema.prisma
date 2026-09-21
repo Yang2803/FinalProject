@@ -18,22 +18,22 @@ model User {
   resetToken       String?   @unique
   resetTokenExpiry DateTime?
 
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime?          @updatedAt
-  ratings           Rating[]
-  comments          Comment[]
-  readingLists      ReadingList[]
-  mangaHistories    MangaHistory[]
-  animeRatings      AnimeRating[]
-  watchLists        WatchList[]
-  animeHistories    AnimeHistory[]
-  aiChatSessions    AiChatSession[]
-  createdCommunities Community[] @relation("CommunityCreator")
-  joinedCommunities  Community[] @relation("CommunityMembers")
-  forumPosts        ForumPost[]
-  forumVotes        ForumVote[]
-  forumComments     ForumComment[]
-  forumCommentVotes ForumCommentVote[]
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime?          @updatedAt
+  ratings            Rating[]
+  comments           Comment[]
+  readingLists       ReadingList[]
+  mangaHistories     MangaHistory[]
+  animeRatings       AnimeRating[]
+  watchLists         WatchList[]
+  animeHistories     AnimeHistory[]
+  aiChatSessions     AiChatSession[]
+  createdCommunities Community[]        @relation("CommunityCreator")
+  joinedCommunities  Community[]        @relation("CommunityMembers")
+  forumPosts         ForumPost[]
+  forumVotes         ForumVote[]
+  forumComments      ForumComment[]
+  forumCommentVotes  ForumCommentVote[]
 
   hostedRooms PartyRoom[]  @relation("HostRooms")
   joinedRooms RoomMember[] @relation("MemberRooms")
@@ -52,7 +52,8 @@ model Anime {
   animeHistories AnimeHistory[]
   fandomPrefix   String         @default("") // Ví dụ: "jujutsu-kaisen", "naruto"
 
-  partyRooms  PartyRoom[]
+  partyRooms    PartyRoom[]
+  animeViewLogs AnimeViewLog[]
 }
 
 model Manga {
@@ -73,6 +74,7 @@ model Manga {
   readingLists   ReadingList[]
   mangaHistories MangaHistory[]
   fandomPrefix   String         @default("")
+  mangaViewLogs  MangaViewLog[]
 }
 
 model Episode {
@@ -93,7 +95,7 @@ model Episode {
   adaptedFrom      String? // Lưu thông tin chuyển thể từ chapter nào (Ví dụ: "Chapters 1-2")
   embedding        Unsupported("vector(3072)")?
 
-  partyRooms  PartyRoom[]
+  partyRooms PartyRoom[]
 }
 
 model Subtitle {
@@ -285,21 +287,21 @@ enum PostCategory {
 
 // 2. Bảng Nhóm cộng đồng (Sub-forum)
 model Community {
-  id          String      @id @default(uuid())
-  name        String      @unique
-  description String      @db.Text
-  coverImage  String?     // Ảnh bìa của nhóm
-  createdAt   DateTime    @default(now())
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String   @db.Text
+  coverImage  String? // Ảnh bìa của nhóm
+  createdAt   DateTime @default(now())
 
   // Người tạo nhóm (Admin)
-  creatorId   String
-  creator     User        @relation("CommunityCreator", fields: [creatorId], references: [id])
+  creatorId String
+  creator   User   @relation("CommunityCreator", fields: [creatorId], references: [id])
 
   // Danh sách thành viên tham gia
-  members     User[]      @relation("CommunityMembers")
-  
+  members User[] @relation("CommunityMembers")
+
   // Danh sách bài viết trong nhóm
-  posts       ForumPost[]
+  posts ForumPost[]
 }
 
 // 3. Bảng Bài viết chính
@@ -362,7 +364,7 @@ model ForumComment {
   votes ForumCommentVote[] // Liên kết tới bảng vote
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 }
 
 // 🌟 BẢNG MỚI: Quản lý Vote của Comment
@@ -382,9 +384,9 @@ model Notification {
   id        String   @id @default(uuid())
   userId    String
   // user      User     @relation(fields: [userId], references: [id]) // Bỏ comment nếu cậu có model User
-  title     String   // VD: "Chương mới ra lò!"
-  message   String   // VD: "Jujutsu Kaisen vừa cập nhật Chapter 236"
-  linkUrl   String   // Link để click vào bay thẳng đến truyện
+  title     String // VD: "Chương mới ra lò!"
+  message   String // VD: "Jujutsu Kaisen vừa cập nhật Chapter 236"
+  linkUrl   String // Link để click vào bay thẳng đến truyện
   isRead    Boolean  @default(false)
   createdAt DateTime @default(now())
 }
@@ -394,38 +396,59 @@ model Notification {
 // ==========================================
 
 model PartyRoom {
-  id          String   @id @default(uuid())
-  name        String   // Tên phòng (VD: "Cày cuốc Wano Quốc")
-  inviteCode  String   @unique // Mã mời ngắn 6 ký tự để share link (VD: "X7K9P2")
-  isPrivate   Boolean  @default(false) // true: Cần duyệt, false: Ai cũng vào được
-  status      String   @default("ACTIVE") // Trạng thái: "ACTIVE" (Đang mở), "CLOSED" (Đã đóng)
-  
-  hostId      String   // Trưởng phòng
-  animeId     String?  // Phim đang chiếu (Cho phép null lúc mới tạo phòng)
-  episodeId   String?  // Tập đang chiếu
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         String  @id @default(uuid())
+  name       String // Tên phòng (VD: "Cày cuốc Wano Quốc")
+  inviteCode String  @unique // Mã mời ngắn 6 ký tự để share link (VD: "X7K9P2")
+  isPrivate  Boolean @default(false) // true: Cần duyệt, false: Ai cũng vào được
+  status     String  @default("ACTIVE") // Trạng thái: "ACTIVE" (Đang mở), "CLOSED" (Đã đóng)
+
+  hostId    String // Trưởng phòng
+  animeId   String? // Phim đang chiếu (Cho phép null lúc mới tạo phòng)
+  episodeId String? // Tập đang chiếu
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Mối quan hệ (Relations)
-  host        User         @relation("HostRooms", fields: [hostId], references: [id], onDelete: Cascade)
-  anime       Anime?       @relation(fields: [animeId], references: [id], onDelete: SetNull)
-  episode     Episode?     @relation(fields: [episodeId], references: [id], onDelete: SetNull)
-  members     RoomMember[]
+  host    User         @relation("HostRooms", fields: [hostId], references: [id], onDelete: Cascade)
+  anime   Anime?       @relation(fields: [animeId], references: [id], onDelete: SetNull)
+  episode Episode?     @relation(fields: [episodeId], references: [id], onDelete: SetNull)
+  members RoomMember[]
 }
 
 model RoomMember {
-  id          String   @id @default(uuid())
-  roomId      String
-  userId      String
-  status      String   @default("PENDING") // Các trạng thái: "PENDING" (Chờ duyệt), "JOINED" (Đang trong phòng), "BANNED" (Bị chủ phòng kick)
-  joinedAt    DateTime @default(now())
+  id       String   @id @default(uuid())
+  roomId   String
+  userId   String
+  status   String   @default("PENDING") // Các trạng thái: "PENDING" (Chờ duyệt), "JOINED" (Đang trong phòng), "BANNED" (Bị chủ phòng kick)
+  joinedAt DateTime @default(now())
 
   // Mối quan hệ
-  room        PartyRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  user        User      @relation("MemberRooms", fields: [userId], references: [id], onDelete: Cascade)
+  room PartyRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user User      @relation("MemberRooms", fields: [userId], references: [id], onDelete: Cascade)
 
   // 🌟 Ràng buộc: Một User chỉ có 1 bản ghi trạng thái trong 1 Phòng duy nhất
-  @@unique([roomId, userId]) 
+  @@unique([roomId, userId])
 }
 
+model AnimeViewLog {
+  id        String   @id @default(uuid())
+  animeId   String
+  createdAt DateTime @default(now())
+
+  anime Anime @relation(fields: [animeId], references: [id], onDelete: Cascade)
+
+  @@index([animeId])
+  @@index([createdAt]) // Đánh index để query theo ngày/tuần/tháng cực nhanh
+}
+
+model MangaViewLog {
+  id        String   @id @default(uuid())
+  mangaId   String
+  createdAt DateTime @default(now())
+
+  manga Manga @relation(fields: [mangaId], references: [id], onDelete: Cascade)
+
+  @@index([mangaId])
+  @@index([createdAt])
+}

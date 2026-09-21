@@ -362,6 +362,35 @@ export default function WatchEpisodePage() {
     saveHistory();
   }, [session?.user?.id, animeId, episodeId]);
 
+  
+  // Khai báo cờ chặn gọi API nhiều lần
+  const hasLoggedView = useRef(false);
+
+  // =====================================================================
+  // LOGIC GHI NHẬN LƯỢT XEM CHO BẢNG XẾP HẠNG
+  // =====================================================================
+  useEffect(() => {
+    const logAnimeView = async () => {
+      // Nếu không có ID hoặc cờ đã bật thành true -> Dừng ngay lập tức
+      if (!animeId || !episodeId || hasLoggedView.current) return;
+      
+      // Bật cờ lên ngay trước khi gọi API để chặn luồng Strict Mode thứ 2
+      hasLoggedView.current = true; 
+
+      try {
+        await fetch(`http://localhost:5000/api/anime/${animeId}/view`, {
+          method: 'POST',
+        });
+      } catch (error) {
+        console.error("Lỗi khi ghi nhận lượt xem:", error);
+        // Nếu API lỗi, trả cờ về false để cho phép gọi lại
+        hasLoggedView.current = false; 
+      }
+    };
+    
+    logAnimeView();
+  }, [animeId, episodeId]);
+
   // =====================================================================
   // ➕ 4. LOGIC ĐỒNG BỘ LỒNG TIẾNG & AUDIO DUCKING (NÂNG CẤP CHẠY NGẦM)
   // =====================================================================
