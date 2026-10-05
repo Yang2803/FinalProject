@@ -15,8 +15,6 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// Chú ý: Vì lát nữa ở index.ts ta sẽ gán tiền tố '/api/auth' cho file này
-// Nên ở đây ta chỉ cần viết '/register' thay vì '/api/auth/register'
 router.post('/register', async (req: Request, res: Response): Promise<any> => {
   try {
       const { email, password, name } = req.body;
@@ -67,34 +65,39 @@ router.post('/login', async (req: Request, res: Response): Promise<any> => {
         email: user.email,
         name: user.name,
         role: user.role,
+        image: user.image, // Bổ sung image trả về
       });
     } catch (error) {
       res.status(500).json({ message: 'Lỗi server', error });
     }
 });
 
+// ==========================================
+// 🌟 API ĐƯỢC CẬP NHẬT: Xử lý OAuth (Google)
+// ==========================================
 router.post('/oauth', async (req: Request, res: Response): Promise<any> => {
   try {
-    const { email, name, avatar, provider } = req.body;
+    // Đổi 'avatar' thành 'image' để đồng bộ với Frontend NextAuth và DB Prisma
+    const { email, name, image, provider } = req.body;
 
     if (!email) {
       return res.status(400).json({ message: 'Không lấy được email từ provider' });
     }
 
-    // Kiểm tra xem user đã tồn tại chưa
-    let user = await prisma.user.findUnique({ where: { email } });
-
-    // Nếu chưa có, tiến hành tạo mới tự động
-    if (!user) {
-      user = await prisma.user.create({
-        data: {
-          email,
-          name: name || "User Ẩn Danh",
-          // Bạn có thể thêm trường avatar vào DB để hứng ảnh: avatar: avatar
-          // Không lưu password vì đăng nhập qua mạng xã hội
-        },
-      });
-    }
+    // Sử dụng UPSERT: Cập nhật nếu đã có, hoặc Tạo mới nếu chưa có
+    const user = await prisma.user.upsert({
+      where: { email },
+      update: {
+        name: name || undefined,   // Cập nhật tên nếu Google có thay đổi
+        image: image || undefined, // Cập nhật lại ảnh mới nhất từ Google
+      },
+      create: {
+        email,
+        name: name || "User Ẩn Danh",
+        image: image || null,      // Lưu link ảnh vào DB
+        // Không lưu password vì đăng nhập qua mạng xã hội
+      },
+    });
 
     // Trả về user để Frontend gán vào token
     res.status(200).json({
@@ -102,6 +105,7 @@ router.post('/oauth', async (req: Request, res: Response): Promise<any> => {
       email: user.email,
       name: user.name,
       role: user.role,
+      image: user.image, // 🌟 Trả về image cho NextAuth session
     });
   } catch (error) {
     console.error("Lỗi OAuth:", error);

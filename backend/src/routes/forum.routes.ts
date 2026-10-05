@@ -80,7 +80,7 @@ router.get('/api/forum/posts', async (req: Request, res: Response): Promise<any>
     const posts = await prisma.forumPost.findMany({
       where: filterCondition,
       orderBy: { createdAt: 'desc' },
-      include: { author: { select: { name: true } }, community: true }
+      include: { author: { select: { id: true, name: true, image: true } }, community: true }
     });
 
     res.status(200).json(posts);
@@ -108,7 +108,7 @@ router.put('/api/forum/posts/:id', async (req: Request, res: Response): Promise<
     const updatedPost = await prisma.forumPost.update({
       where: { id: postId },
       data: { title, content, tags, category, isSpoiler, mediaUrl }, // 🌟 Bổ sung mediaUrl
-      include: { author: { select: { name: true } } }
+      include: { author: { select: { id: true, name: true, image: true } } }
     });
 
     res.status(200).json({ message: "Đã cập nhật bài viết!", post: updatedPost });
@@ -191,7 +191,7 @@ router.get('/api/forum/posts/:id/comments', async (req: Request, res: Response):
   try {
     const comments = await prisma.forumComment.findMany({
       where: { postId: req.params.id as string },
-      include: { author: { select: { name: true } } }, // Giữ đúng select name như đã fix
+      include: { author: { select: { id: true, name: true, image: true } } }, // Giữ đúng select name như đã fix
       orderBy: { createdAt: 'asc' }
     });
     res.status(200).json(comments);
@@ -207,7 +207,7 @@ router.post('/api/forum/posts/:id/comments', async (req: Request, res: Response)
     // 1. Tạo bình luận vào Database
     const comment = await prisma.forumComment.create({
       data: { content, authorId, postId, parentId },
-      include: { author: { select: { name: true } } }
+      include: { author: { select: { id: true, name: true, image: true } } }
     });
 
     // ==========================================
@@ -288,7 +288,7 @@ router.put('/api/forum/comments/:id', async (req: Request, res: Response): Promi
     const updatedComment = await prisma.forumComment.update({
       where: { id: commentId },
       data: { content },
-      include: { author: { select: { name: true } } }
+      include: { author: { select: { id: true, name: true, image: true } } }
     });
     res.status(200).json(updatedComment);
   } catch (error) { res.status(500).json({ error: "Lỗi sửa comment" }); }
@@ -382,7 +382,7 @@ router.get('/api/forum/posts/:id', async (req: Request, res: Response): Promise<
     const post = await prisma.forumPost.findUnique({
       where: { id: postId },
       include: { 
-        author: { select: { name: true} }, 
+        author: { select: { id: true, name: true, image: true} }, 
         community: true 
       }
     });

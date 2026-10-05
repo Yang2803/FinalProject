@@ -2,7 +2,6 @@ import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 
-
 const handler = NextAuth({
   providers: [
     GoogleProvider({
@@ -20,7 +19,6 @@ const handler = NextAuth({
         if (!credentials?.email || !credentials?.password) return null;
 
         try {
-          // Gọi sang API Express Backend để kiểm tra
           const res = await fetch("http://localhost:5000/api/auth/login", {
             method: 'POST',
             body: JSON.stringify(credentials),
@@ -29,7 +27,6 @@ const handler = NextAuth({
 
           const user = await res.json();
 
-          // Nếu Backend trả về 200 OK và có user, cho phép đăng nhập
           if (res.ok && user) {
             return user;
           }
@@ -43,20 +40,16 @@ const handler = NextAuth({
   ],
 
   callbacks: {
-    // Hàm này chạy ngay khi user đăng nhập thành công bằng bất kỳ hình thức nào
     async signIn({ user, account, profile }) {
-      // Nếu đăng nhập bằng Google hoặc Facebook
       if (account?.provider === "google") {
         try {
-          // Bắn data sang Express Backend để kiểm tra/lưu vào DB
           const res = await fetch("http://localhost:5000/api/auth/oauth", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              // Sử dụng fallback: Nếu không có email thì lấy ID ghép thành email ảo
-              email: user.email || `fb_${user.id}@smartanime.local`,
+              email: user.email || `google_${user.id}@smartanime.local`,
               name: user.name,
-              avatar: user.image,
+              image: user.image, // 🌟 ĐỔI 'avatar' THÀNH 'image' ĐỂ KHỚP VỚI PRISMA
               provider: account.provider,
             }),
           });
@@ -64,23 +57,24 @@ const handler = NextAuth({
           const dbUser = await res.json();
 
           if (res.ok && dbUser) {
-            // Gán id và role từ DB vào object user của NextAuth để JWT dùng ở bước sau
             user.id = dbUser.id;
-            user.role = dbUser.role; // Đã bỏ 'as any'
-            return true; // Cho phép đăng nhập
+            user.role = dbUser.role;
+            if (dbUser.image) user.image = dbUser.image; // Đồng bộ ảnh từ DB lên lại session
+            return true;
           }
-          return false; // Chặn nếu Backend lỗi
+          return false;
         } catch (error) {
           console.error("Lỗi đồng bộ OAuth với Backend", error);
           return false;
         }
       }
-      return true; // Vẫn cho phép đi tiếp nếu dùng Credentials (đăng nhập thường)
+      return true;
     },
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        token.role = user.role; // Đã bỏ 'as any'
+        token.role = user.role;
+        if (user.image) token.picture = user.image; // Nhét ảnh vào token
       }
       return token;
     },
@@ -88,6 +82,7 @@ const handler = NextAuth({
       if (token && session.user) {
         session.user.id = token.id as string;
         session.user.role = token.role as string;
+        if (token.picture) session.user.image = token.picture as string; // Xuất ảnh ra session
       }
       return session;
     }
