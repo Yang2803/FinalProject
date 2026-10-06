@@ -179,7 +179,7 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
 
     setAttachedLink({ title: titleText, url: mangaUrl });
     
-    if (!postTitle) setPostTitle(`Thảo luận về ${chapter.manga.title} - ${chapter.title}`);
+    if (!postTitle) setPostTitle(`Discuss about ${chapter.manga.title} - ${chapter.title}`);
   };
 
   // --- LOGIC FORUM: CHỌN ẢNH ---

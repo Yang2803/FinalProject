@@ -22,6 +22,7 @@ interface ForumPost {
   tags: string[];
   isSpoiler: boolean;
   upvoteCount: number;
+  downvoteCount: number;
   createdAt: string;
   authorId: string;
   author: Author;
@@ -85,6 +86,34 @@ export default function ForumPostDetailPage({ params }: { params: Promise<{ id: 
 
     if (postId) fetchData();
   }, [postId]);
+
+
+  const handleVote = async (type: 'UP' | 'DOWN') => {
+  if (!session?.user?.id) {
+    alert("Vui lòng đăng nhập để bình chọn!");
+    return;
+  }
+  if (!post) return;
+
+  try {
+    const res = await fetch(`http://localhost:5000/api/forum/posts/${post.id}/vote`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: session.user.id, type })
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      setPost(prev => prev ? {
+        ...prev,
+        upvoteCount: data.upvoteCount,
+        downvoteCount: data.downvoteCount
+      } : prev);
+    }
+  } catch (error) {
+    console.error("Lỗi khi vote bài viết:", error);
+  }
+};
 
   // ==========================================
   // 🌟 CÁC HÀM XỬ LÝ BÌNH LUẬN
@@ -273,6 +302,53 @@ export default function ForumPostDetailPage({ params }: { params: Promise<{ id: 
               ))}
             </div>
           )}
+        </div>
+
+
+        {/* ======================================================== */}
+        {/* 🌟 THANH TƯƠNG TÁC (VOTE CHO BÀI VIẾT CHI TIẾT) */}
+        {/* ======================================================== */}
+        <div className="flex items-center justify-between mt-6 pt-5 border-t border-gray-800/60 mb-8">
+          <div className="flex items-center bg-gray-800/50 rounded-full border border-gray-700/60 p-1 shadow-sm hover:border-gray-600 transition-all">
+            {/* Nút Upvote */}
+            <button 
+              onClick={() => handleVote('UP')} 
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full hover:bg-emerald-500/10 hover:text-emerald-400 text-gray-400 transition-all active:scale-95 group/up"
+              title="Thích"
+            >
+              <svg className="w-4 h-4 stroke-[2.5] group-hover/up:-translate-y-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
+              </svg>
+              <span className={`text-xs font-black ${(post.upvoteCount || 0) > 0 ? 'text-emerald-400' : 'text-gray-400'}`}>
+                {post.upvoteCount || 0}
+              </span>
+            </button>
+
+            {/* Vạch ngăn cách */}
+            <div className="w-[1px] h-3.5 bg-gray-700/70 mx-0.5"></div>
+
+            {/* Nút Downvote */}
+            <button 
+              onClick={() => handleVote('DOWN')} 
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full hover:bg-rose-500/10 hover:text-rose-400 text-gray-400 transition-all active:scale-95 group/down"
+              title="Không thích"
+            >
+              <svg className="w-4 h-4 stroke-[2.5] group-hover/down:translate-y-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+              <span className={`text-xs font-black ${(post.downvoteCount || 0) > 0 ? 'text-rose-400' : 'text-gray-400'}`}>
+                {post.downvoteCount || 0}
+              </span>
+            </button>
+          </div>
+
+          {/* Tổng số bình luận */}
+          <div className="text-xs font-bold text-gray-400 flex items-center gap-1.5">
+            <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
+            <span>{comments.length} thảo luận</span>
+          </div>
         </div>
 
         {/* ======================================================= */}

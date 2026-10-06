@@ -24,3 +24,29 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Chỉ áp dụng riêng cho phần có class custom-sidebar-scroll */
+.custom-sidebar-scroll::-webkit-scrollbar {
+  width: 5px; /* Độ rộng siêu mảnh */
+}
+
+.custom-sidebar-scroll::-webkit-scrollbar-track {
+  background: transparent; /* Nền track trong suốt */
+}
+
+.custom-sidebar-scroll::-webkit-scrollbar-thumb {
+  background: #1e222d; /* Màu tiệp màu nền dark của card */
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.custom-sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background: #3b82f6; /* Đổi màu xanh neon khi rê chuột vào */
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.6);
+}
+
+/* Chuẩn Firefox */
+.custom-sidebar-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #1e222d transparent;
+}

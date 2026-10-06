@@ -12,7 +12,7 @@ interface Author { id?: string; name?: string; image?: string; }
 interface ForumPostItem {
   id: string; title: string; content: string; mediaUrl?: string | null;
   category: "GENERAL" | "ANIME" | "MANGA"; tags: string[]; isSpoiler: boolean;
-  upvoteCount: number; createdAt: string; author?: Author; authorId: string;
+  upvoteCount: number; downvoteCount: number; createdAt: string; author?: Author; authorId: string;
 }
 interface ForumCommentItem {
   id: string; content: string; createdAt: string; author?: Author; authorId: string;
@@ -178,8 +178,29 @@ export default function CommunityDetailPage() {
     } catch (error) { alert("Lỗi kết nối."); } finally { setIsPosting(false); }
   };
   const handleDeletePost = async (postId: string) => { if (!confirm("Xóa bài đăng này?")) return; try { const res = await fetch(`http://localhost:5000/api/forum/posts/${postId}`, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ authorId: session?.user?.id }) }); if (res.ok) { setCommunity(prev => prev ? { ...prev, posts: prev.posts.filter(p => p.id !== postId) } : prev); } } catch (error) { alert("Lỗi xóa!"); } };
-  const handleVote = async (postId: string, type: 'UP' | 'DOWN') => { if (!session?.user?.id) return alert("Đăng nhập để vote!"); try { const res = await fetch(`http://localhost:5000/api/forum/posts/${postId}/vote`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: session.user.id, type }) }); if (res.ok) { const data = await res.json(); setCommunity(prev => prev ? { ...prev, posts: prev.posts.map(p => p.id === postId ? { ...p, upvoteCount: data.upvoteCount } : p) } : prev); } } catch (error) { console.error("Lỗi vote", error); } };
-  
+  const handleVote = async (postId: string, type: 'UP' | 'DOWN') => { 
+    if (!session?.user?.id) return alert("Đăng nhập để vote!"); 
+    try { 
+      const res = await fetch(`http://localhost:5000/api/forum/posts/${postId}/vote`, { 
+        method: "POST", 
+        headers: { "Content-Type": "application/json" }, 
+        body: JSON.stringify({ userId: session.user.id, type }) 
+      }); 
+      if (res.ok) { 
+        const data = await res.json(); 
+        setCommunity(prev => prev ? { 
+          ...prev, 
+          posts: prev.posts.map(p => 
+            p.id === postId 
+              ? { ...p, upvoteCount: data.upvoteCount, downvoteCount: data.downvoteCount } 
+              : p
+          ) 
+        } : prev); 
+      } 
+    } catch (error) { 
+      console.error("Lỗi vote", error); 
+    } 
+  };
   const toggleComments = async (postId: string) => { if (activeCommentPostId === postId) { setActiveCommentPostId(null); } else { setActiveCommentPostId(postId); const res = await fetch(`http://localhost:5000/api/forum/posts/${postId}/comments`); if (res.ok) setComments(await res.json()); } };
   const handlePostComment = async (postId: string, parentId: string | null = null) => { if (!newComment.trim()) return; if (!session?.user?.id) return alert("Đăng nhập để bình luận!"); try { const res = await fetch(`http://localhost:5000/api/forum/posts/${postId}/comments`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content: newComment, authorId: session.user.id, parentId }) }); if (res.ok) { const addedComment = await res.json(); setComments([...comments, addedComment]); setNewComment(""); setReplyingToCommentId(null); } } catch (error) { alert("Lỗi gửi bình luận"); } };
   const submitEditComment = async (commentId: string) => { if (!editCommentContent.trim()) return; try { const res = await fetch(`http://localhost:5000/api/forum/comments/${commentId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content: editCommentContent, authorId: session?.user?.id }) }); if (res.ok) { const updated = await res.json(); setComments(comments.map(c => c.id === commentId ? updated : c)); setEditingCommentId(null); } } catch (error) { alert("Lỗi sửa comment"); } };
@@ -285,10 +306,38 @@ export default function CommunityDetailPage() {
                 {/* THANH TƯƠNG TÁC */}
                 <div className="flex items-center justify-between mt-5 pt-4 border-t border-gray-800/50 text-gray-400">
                   <div className="flex items-center gap-4">
-                    <div className="flex items-center bg-gray-800/50 rounded-full">
-                      <button onClick={() => handleVote(post.id, 'UP')} className="p-2 hover:text-green-500 hover:bg-gray-800 rounded-l-full transition"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" /></svg></button>
-                      <span className="font-bold text-sm px-1 text-gray-300">{post.upvoteCount}</span>
-                      <button onClick={() => handleVote(post.id, 'DOWN')} className="p-2 hover:text-red-500 hover:bg-gray-800 rounded-r-full transition"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg></button>
+                    {/* Cụm Vote tách biệt Up/Down */}
+                    <div className="flex items-center bg-gray-800/50 rounded-full border border-gray-700/60 p-1 shadow-sm hover:border-gray-600 transition-all">
+                      {/* Nút Upvote kèm số lượt */}
+                      <button 
+                        onClick={() => handleVote(post.id, 'UP')} 
+                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-full hover:bg-emerald-500/10 hover:text-emerald-400 text-gray-400 transition-all active:scale-95 group/up"
+                        title="Thích"
+                      >
+                        <svg className="w-4 h-4 stroke-[2.5] group-hover/up:-translate-y-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
+                        </svg>
+                        <span className={`text-xs font-black ${(post.upvoteCount || 0) > 0 ? 'text-emerald-400' : 'text-gray-400'}`}>
+                          {post.upvoteCount || 0}
+                        </span>
+                      </button>
+
+                      {/* Vạch ngăn cách */}
+                      <div className="w-[1px] h-3.5 bg-gray-700/70 mx-0.5"></div>
+
+                      {/* Nút Downvote kèm số lượt */}
+                      <button 
+                        onClick={() => handleVote(post.id, 'DOWN')} 
+                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-full hover:bg-rose-500/10 hover:text-rose-400 text-gray-400 transition-all active:scale-95 group/down"
+                        title="Không thích"
+                      >
+                        <svg className="w-4 h-4 stroke-[2.5] group-hover/down:translate-y-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                        </svg>
+                        <span className={`text-xs font-black ${(post.downvoteCount || 0) > 0 ? 'text-rose-400' : 'text-gray-400'}`}>
+                          {post.downvoteCount || 0}
+                        </span>
+                      </button>
                     </div>
                     <button onClick={() => toggleComments(post.id)} className="flex items-center gap-2 hover:text-blue-400 hover:bg-gray-800/50 px-3 py-2 rounded-full transition text-sm font-medium"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg> Bình luận</button>
                   </div>

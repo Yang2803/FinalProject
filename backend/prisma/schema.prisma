@@ -315,6 +315,7 @@ model ForumPost {
   tags        String[] // Mảng các tag tự do (VD: #Review, #Spoiler)
   isSpoiler   Boolean      @default(false) // Cờ đánh dấu spoiler
   upvoteCount Int          @default(0)
+  downvoteCount Int      @default(0)
 
   authorId String
   author   User   @relation(fields: [authorId], references: [id])

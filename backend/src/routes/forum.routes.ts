@@ -142,42 +142,62 @@ router.delete('/api/forum/posts/:id', async (req: Request, res: Response): Promi
 // ==========================================
 router.post('/api/forum/posts/:id/vote', async (req: Request, res: Response): Promise<any> => {
   try {
-   const postId = req.params.id as string;
+    const postId = req.params.id as string;
     const { userId, type } = req.body; // type = 'UP' hoặc 'DOWN'
 
     const existingVote = await prisma.forumVote.findUnique({
       where: { userId_postId: { userId, postId } }
     });
 
-    let scoreChange = 0;
+    let upIncrement = 0;
+    let downIncrement = 0;
 
     if (existingVote) {
       if (existingVote.type === type) {
-        // Bấm lại nút cũ -> Bỏ vote
+        // Bấm lại nút cũ -> Hủy vote
         await prisma.forumVote.delete({ where: { id: existingVote.id } });
-        scoreChange = type === 'UP' ? -1 : 1;
+        if (type === 'UP') upIncrement = -1;
+        else downIncrement = -1;
       } else {
-        // Đổi từ Up sang Down (hoặc ngược lại) -> Trừ/Cộng 2 điểm
+        // Đổi từ UP sang DOWN hoặc ngược lại
         await prisma.forumVote.update({
           where: { id: existingVote.id },
           data: { type }
         });
-        scoreChange = type === 'UP' ? 2 : -2;
+        if (type === 'UP') {
+          upIncrement = 1;
+          downIncrement = -1;
+        } else {
+          upIncrement = -1;
+          downIncrement = 1;
+        }
       }
     } else {
       // Chưa từng vote -> Tạo mới vote
       await prisma.forumVote.create({ data: { userId, postId, type } });
-      scoreChange = type === 'UP' ? 1 : -1;
+      if (type === 'UP') upIncrement = 1;
+      else downIncrement = 1;
     }
 
-    // Cập nhật lại tổng số điểm
+    // Cập nhật độc lập cả 2 cột trong DB
     const updatedPost = await prisma.forumPost.update({
       where: { id: postId },
-      data: { upvoteCount: { increment: scoreChange } }
+      data: {
+        upvoteCount: { increment: upIncrement },
+        downvoteCount: { increment: downIncrement }
+      },
+      select: {
+        upvoteCount: true,
+        downvoteCount: true
+      }
     });
 
-    res.status(200).json({ upvoteCount: updatedPost.upvoteCount });
+    res.status(200).json({
+      upvoteCount: Math.max(0, updatedPost.upvoteCount),
+      downvoteCount: Math.max(0, updatedPost.downvoteCount)
+    });
   } catch (error) {
+    console.error("Lỗi vote bài viết:", error);
     res.status(500).json({ error: "Lỗi khi vote" });
   }
 });
@@ -392,6 +412,64 @@ router.get('/api/forum/posts/:id', async (req: Request, res: Response): Promise<
     res.status(200).json(post);
   } catch (error) {
     res.status(500).json({ error: "Lỗi tải chi tiết bài viết" });
+  }
+});
+
+// ==========================================
+// 📊 API 10: Lấy toàn bộ dữ liệu thống kê cho Sidebar
+// ==========================================
+router.get('/api/forum/sidebar-stats', async (req: Request, res: Response): Promise<any> => {
+  try {
+    // 1. Top 5 Community có nhiều bài viết nhất
+    const topCommunities = await prisma.community.findMany({
+      take: 5,
+      orderBy: { posts: { _count: 'desc' } },
+      select: {
+        id: true,
+        name: true,
+        _count: { select: { posts: true } }
+      }
+    });
+
+    // 2. Top 5 User đăng bài, comment, và vote nhiều nhất
+    const topPosters = await prisma.user.findMany({
+      take: 5,
+      orderBy: { forumPosts: { _count: 'desc' } },
+      select: { id: true, name: true, image: true, _count: { select: { forumPosts: true } } }
+    });
+
+    const topCommenters = await prisma.user.findMany({
+      take: 5,
+      orderBy: { forumComments: { _count: 'desc' } },
+      select: { id: true, name: true, image: true, _count: { select: { forumComments: true } } }
+    });
+
+    const topVoters = await prisma.user.findMany({
+      take: 5,
+      orderBy: { forumVotes: { _count: 'desc' } },
+      select: { id: true, name: true, image: true, _count: { select: { forumVotes: true } } }
+    });
+
+    // 3. Top 5 Bài viết Hot nhất (Dựa trên số lượng Upvote)
+    const hotPosts = await prisma.forumPost.findMany({
+      take: 5,
+      orderBy: { upvoteCount: 'desc' },
+      select: {
+        id: true,
+        title: true,
+        upvoteCount: true,
+        _count: { select: { forumComments: true } }
+      }
+    });
+
+    res.status(200).json({
+      topCommunities,
+      topUsers: { posters: topPosters, commenters: topCommenters, voters: topVoters },
+      hotPosts
+    });
+  } catch (error) {
+    console.error("LỖI SIDEBAR STATS:", error);
+    res.status(500).json({ error: "Lỗi tải thống kê" });
   }
 });
 

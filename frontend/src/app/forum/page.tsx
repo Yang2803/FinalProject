@@ -29,6 +29,7 @@ interface ForumPostItem {
   tags: string[];
   isSpoiler: boolean;
   upvoteCount: number;
+  downvoteCount: number;
   createdAt: string;
   author?: Author;
   authorId: string;
@@ -302,22 +303,33 @@ export default function ForumFeed() {
     } catch (error) { alert("Lỗi khi xóa!"); }
   };
 
-  // XỬ LÝ VOTE
   const handleVote = async (postId: string, type: 'UP' | 'DOWN') => {
-    if (!session?.user?.id) return alert("Đăng nhập để vote nhé!");
-    try {
-      const res = await fetch(`http://localhost:5000/api/forum/posts/${postId}/vote`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: session.user.id, type })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        // Cập nhật điểm ngay trên UI
-        setPosts(posts.map(p => p.id === postId ? { ...p, upvoteCount: data.upvoteCount } : p));
-      }
-    } catch (error) { console.error("Lỗi vote", error); }
-  };
+  if (!session?.user?.id) {
+    alert("Vui lòng đăng nhập để bình chọn!");
+    return;
+  }
+
+  try {
+    const res = await fetch(`http://localhost:5000/api/forum/posts/${postId}/vote`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: session.user.id, type })
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      setPosts(prevPosts =>
+        prevPosts.map(p =>
+          p.id === postId
+            ? { ...p, upvoteCount: data.upvoteCount, downvoteCount: data.downvoteCount }
+            : p
+        )
+      );
+    }
+  } catch (error) {
+    console.error("Lỗi khi gửi vote:", error);
+  }
+};
 
   // XỬ LÝ BÌNH LUẬN (MỞ/ĐÓNG & FETCH)
   const toggleComments = async (postId: string) => {
@@ -494,13 +506,13 @@ export default function ForumFeed() {
         {loadingPosts ? (
           <div className="flex flex-col items-center justify-center py-20 space-y-4">
             <div className="w-10 h-10 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin shadow-[0_0_15px_rgba(59,130,246,0.5)]"></div>
-            <p className="text-blue-400 font-medium animate-pulse">Đang tải vũ trụ thảo luận...</p>
+            <p className="text-blue-400 font-medium animate-pulse">Discussion Universe is coming...</p>
           </div>
         ) : posts.length === 0 ? (
           <div className="bg-gray-800/20 border border-gray-700/50 rounded-2xl py-20 flex flex-col items-center justify-center text-center backdrop-blur-sm">
             <span className="text-6xl mb-4 opacity-50">🌌</span>
-            <h3 className="text-xl font-bold text-gray-300 mb-2">Vùng không gian tĩnh lặng</h3>
-            <p className="text-gray-500">Chưa có bài đăng nào. Hãy là người đầu tiên khai phá nhé!</p>
+            <h3 className="text-xl font-bold text-gray-300 mb-2">A horizon of silence</h3>
+            <p className="text-gray-500">No posts yet. Be the first to explore!</p>
           </div>
         ) : (
           posts.map((post) => (
@@ -591,23 +603,44 @@ export default function ForumFeed() {
               {/* THANH TƯƠNG TÁC */}
               <div className="flex items-center justify-between mt-7 pt-5 border-t border-gray-800/50 text-gray-400">
                 <div className="flex items-center gap-3 md:gap-5">
-                  {/* Cụm Vote */}
-                  <div className="flex items-center bg-gray-800/40 rounded-full border border-gray-700/50 overflow-hidden shadow-sm hover:border-gray-600 transition-colors">
-                    <button onClick={() => handleVote(post.id, 'UP')} className="p-2.5 hover:text-emerald-400 hover:bg-gray-700/80 transition-colors active:scale-90">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" /></svg>
+                  {/* Cụm Vote mới: Tách riêng Upvote và Downvote */}
+                  <div className="flex items-center bg-gray-800/50 rounded-full border border-gray-700/60 p-1 shadow-sm hover:border-gray-600 transition-all">
+                    {/* Nút Upvote kèm số lượng */}
+                    <button 
+                      onClick={() => handleVote(post.id, 'UP')} 
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full hover:bg-emerald-500/10 hover:text-emerald-400 text-gray-400 transition-all active:scale-95 group/up"
+                      title="Thích"
+                    >
+                      <svg className="w-4 h-4 stroke-[2.5] group-hover/up:translate-y-[-1px] transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
+                      </svg>
+                      <span className={`text-xs font-black ${(post.upvoteCount || 0) > 0 ? 'text-emerald-400' : 'text-gray-400'}`}>
+                        {post.upvoteCount || 0}
+                      </span>
                     </button>
-                    <span className={`font-black text-sm px-2 w-8 text-center ${post.upvoteCount > 0 ? 'text-emerald-400' : post.upvoteCount < 0 ? 'text-red-400' : 'text-gray-300'}`}>
-                      {post.upvoteCount}
-                    </span>
-                    <button onClick={() => handleVote(post.id, 'DOWN')} className="p-2.5 hover:text-red-400 hover:bg-gray-700/80 transition-colors active:scale-90">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+
+                    {/* Đường vạch ngăn cách nhỏ giữa 2 nút */}
+                    <div className="w-[1px] h-4 bg-gray-700/70 mx-0.5"></div>
+
+                    {/* Nút Downvote kèm số lượng */}
+                    <button 
+                      onClick={() => handleVote(post.id, 'DOWN')} 
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full hover:bg-rose-500/10 hover:text-rose-400 text-gray-400 transition-all active:scale-95 group/down"
+                      title="Không thích"
+                    >
+                      <svg className="w-4 h-4 stroke-[2.5] group-hover/down:translate-y-[1px] transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                      </svg>
+                      <span className={`text-xs font-black ${(post.downvoteCount || 0) > 0 ? 'text-rose-400' : 'text-gray-400'}`}>
+                        {post.downvoteCount || 0}
+                      </span>
                     </button>
                   </div>
 
                   {/* Nút Bình Luận */}
                   <button onClick={() => toggleComments(post.id)} className="flex items-center gap-2 text-gray-400 hover:text-blue-400 hover:bg-blue-900/20 border border-transparent hover:border-blue-800/50 px-4 py-2.5 rounded-full transition-all text-sm font-bold shadow-sm active:scale-95">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
-                    Thảo luận
+                    Comment
                   </button>
                 </div>
 
@@ -632,11 +665,11 @@ export default function ForumFeed() {
                   <div className="flex gap-3 mb-8 relative">
                     <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-blue-500 to-purple-500 rounded-full"></div>
                     <input 
-                      type="text" placeholder="Để lại suy nghĩ của bạn..." value={newComment} 
+                      type="text" placeholder="What is your opinions..." value={newComment} 
                       onChange={e => { setNewComment(e.target.value); setReplyingToCommentId(null); }}
                       className="flex-1 bg-gray-900/80 border border-gray-700/50 rounded-full pl-6 pr-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-gray-900 transition-all shadow-inner text-gray-200"
                     />
-                    <button onClick={() => handlePostComment(post.id, null)} className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white px-6 py-3 rounded-full text-sm font-extrabold shadow-[0_0_15px_rgba(59,130,246,0.3)] hover:shadow-[0_0_20px_rgba(59,130,246,0.5)] transition-all">Gửi</button>
+                    <button onClick={() => handlePostComment(post.id, null)} className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white px-6 py-3 rounded-full text-sm font-extrabold shadow-[0_0_15px_rgba(59,130,246,0.3)] hover:shadow-[0_0_20px_rgba(59,130,246,0.5)] transition-all">Send</button>
                   </div>
                   
                   {/* Danh sách Comment */}

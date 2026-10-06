@@ -105,7 +105,7 @@ export default function WatchEpisodePage() {
     // 🌟 LƯU VÀO STATE RIÊNG ĐỂ HIỂN THỊ THẺ ĐẸP MẮT
     setAttachedTimestamp({ title: titleText, url: videoUrl });
     
-    if (!postTitle) setPostTitle(`Thảo luận về cảnh ${timeString} trong ${animeTitle}`);
+    if (!postTitle) setPostTitle(`Discuss about scene ${timeString} in ${animeTitle}`);
   };
 
   // --- LOGIC: CHỌN ẢNH CHO FORUM ---
