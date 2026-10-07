@@ -10,6 +10,7 @@ import { io, Socket } from "socket.io-client";
 import { LiveKitRoom, RoomAudioRenderer, TrackToggle } from "@livekit/components-react";
 import { Track } from "livekit-client";
 import "@livekit/components-styles"; 
+import { RoomTheme, THEME_PRESETS } from "@/types/theme";
 
 // ==========================================
 // ĐỊNH NGHĨA INTERFACES
@@ -33,6 +34,7 @@ interface PartyRoom {
   isPrivate: boolean;
   hostId: string;
   status: string;
+  themeConfig?: RoomTheme | null;
   anime?: { id: string; title: string } | null;
   episode?: { 
     id: string; 
@@ -97,6 +99,14 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
   // 🌟 THÊM TẠI ĐÂY (LIVEKIT): State lưu token Voice Chat
   const [voiceToken, setVoiceToken] = useState("");
 
+  // 🌟 THÊM: State quản lý Theme phòng & Modal đổi theme
+  const [theme, setTheme] = useState<RoomTheme>({
+    accent: "#3b82f6",
+    glow: "rgba(59,130,246,0.45)",
+    bgUrl: ""
+  });
+  const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
+
   // BẪY CLICK TOÀN TRANG
   useEffect(() => {
     const unlockAudio = () => {
@@ -133,6 +143,10 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
         if (res.ok) {
           const roomData: PartyRoom = await res.json();
           setRoom(roomData);
+
+          if (roomData.themeConfig) {
+            setTheme(roomData.themeConfig);
+          }
           
           // 🌟 KHÔI PHỤC LỊCH SỬ CHAT (Chỉ nạp vào nếu chat đang trống)
           setMessages((prev) => {
@@ -207,6 +221,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
           globalSocket.off("receive_disband_room");
           globalSocket.off("receive_join_request");   
           globalSocket.off("receive_approve_result");
+          globalSocket.off("receive_room_theme");
 
           globalSocket.on("receive_video_sync", (data: { action: string, currentTime: number }) => {
             if (videoRef.current && roomData.hostId !== session.user.id) {
@@ -239,6 +254,11 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
 
           globalSocket.on("receive_video_change", () => {
             window.location.reload(); 
+          });
+
+          // 🌟 LẮNG NGHE ĐỔI THEME REALTIME
+          globalSocket.on("receive_room_theme", (newTheme: RoomTheme) => {
+            setTheme(newTheme);
           });
 
           globalSocket.off("receive_join_request");   
@@ -299,6 +319,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
         globalSocket.off("receive_message");
         globalSocket.off("receive_video_change");
         globalSocket.off("receive_disband_room");
+        globalSocket.off("receive_room_theme");
       }
     };
   }, [inviteCode, session?.user?.id, router]);
@@ -555,7 +576,18 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
   const joinedMembers = room.members.filter(m => m.status === "JOINED");
 
   return (
-    <div className="min-h-screen bg-[#0f0f11] text-white flex flex-col md:flex-row p-4 gap-6 h-screen overflow-hidden relative">
+  <div 
+    style={{
+      '--room-accent': theme.accent,
+      '--room-glow': theme.glow,
+      backgroundImage: theme.bgUrl ? `url("${theme.bgUrl}")` : undefined,
+    } as React.CSSProperties}
+    className="min-h-screen bg-[#0f0f11] bg-cover bg-center bg-no-repeat text-white flex flex-col md:flex-row p-4 gap-6 h-screen overflow-hidden relative transition-colors duration-500"
+  >
+    {/* Lớp phủ làm tối nhẹ: hạ độ tối từ black/75 xuống black/40 để nhìn rõ wallpaper */}
+    {theme.bgUrl && (
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px] pointer-events-none z-0" />
+    )}
       
       {isModalOpen && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
@@ -615,7 +647,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
       )}
 
       {/* 🔴 CỘT TRÁI: VIDEO PLAYER */}
-      <div className="flex-1 flex flex-col overflow-y-auto custom-scrollbar pr-2">
+      <div className="flex-1 flex flex-col overflow-y-auto custom-scrollbar pr-2 relative z-10">
         <div className="flex items-center justify-between mb-4 shrink-0">
           <div>
             <h1 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">{room.name}</h1>
@@ -638,8 +670,10 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
           </div>
         )}
 
-        <div className="w-full aspect-video bg-black rounded-2xl border border-gray-800 overflow-hidden relative shadow-2xl mb-4 shrink-0 flex items-center justify-center">
-          
+        <div 
+          className="w-full aspect-video bg-black rounded-2xl border overflow-hidden relative shadow-2xl mb-4 shrink-0 flex items-center justify-center transition-all duration-500"
+          style={{ borderColor: 'var(--room-accent)', boxShadow: '0 0 20px var(--room-glow)' }}
+        >
           {room.episode ? (
             <video 
               ref={videoRef}
@@ -719,8 +753,14 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
         )}
 
         {isHost && (
-          <div className="bg-[#1a1d24] rounded-xl border border-blue-900/50 p-5 shadow-lg relative overflow-hidden shrink-0 mb-6">
-            <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
+        <div 
+          className="bg-[#1a1d24] rounded-xl border p-5 shadow-lg relative overflow-hidden shrink-0 mb-6 transition-all duration-300"
+          style={{ borderColor: 'var(--room-accent)', boxShadow: '0 0 15px var(--room-glow)' }}
+        >
+          <div 
+            className="absolute top-0 left-0 w-1.5 h-full"
+            style={{ backgroundColor: 'var(--room-accent)' }}
+          ></div>
             <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
               <span className="text-xl">👑</span> Bảng điều khiển Trưởng Phòng
             </h3>
@@ -731,6 +771,15 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
                 className="bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 px-5 py-2.5 rounded-lg text-sm font-bold transition"
               >
                 📺 Chọn Anime/Đổi tập khác
+              </button>
+
+              {/* 🌟 NÚT MỞ MODAL ĐỔI THEME */}
+              <button 
+                onClick={() => setIsThemeModalOpen(true)}
+                className="bg-gray-800 hover:bg-gray-700 text-white px-5 py-2.5 rounded-lg text-sm font-bold transition border shadow-sm active:scale-95 flex items-center gap-2"
+                style={{ borderColor: 'var(--room-accent)', color: 'var(--room-accent)' }}
+              >
+                🎨 Tùy biến Theme
               </button>
 
               {/* 🌟 NÚT GIẢI TÁN PHÒNG */}
@@ -772,7 +821,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
       </div>
 
       {/* 🟢 CỘT PHẢI: KHUNG CHAT & DANH SÁCH THÀNH VIÊN */}
-      <div className="w-full md:w-80 flex flex-col gap-4 h-full shrink-0">
+      <div className="w-full md:w-80 flex flex-col gap-4 h-full shrink-0 relative z-10">
 
         {/* 🌟 THÊM TẠI ĐÂY (LIVEKIT): GIAO DIỆN VOICE CHAT (Chỉ hiện khi đã có Token) */}
         {voiceToken && (
@@ -782,10 +831,29 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
             token={voiceToken}
             serverUrl={process.env.NEXT_PUBLIC_LIVEKIT_URL}
             connect={true}
-            style={{ flex: 'none', height: 'auto', minHeight: 'fit-content' }}
-            className="bg-[#1a1d24] rounded-xl border border-blue-900/50 p-4 shrink-0 shadow-lg flex flex-col items-center justify-center relative overflow-hidden"
-          >
-            <div className="absolute top-0 left-0 w-1 h-full bg-blue-500 animate-pulse"></div>
+            options={{
+              audioCaptureDefaults: {
+                autoGainControl: true,    // Tự động bù âm lượng khi nói nhỏ/ở xa mic
+              },
+              publishDefaults: {
+                audioPreset: {
+                  maxBitrate: 64_000,     // Nâng bitrate âm thanh để giọng rõ nét hơn
+                },
+              },
+            }}
+            style={{ 
+              flex: 'none', 
+              height: 'auto', 
+              minHeight: 'fit-content',
+              borderColor: 'var(--room-accent)', 
+              boxShadow: '0 0 15px var(--room-glow)' 
+            }}
+            className="bg-[#1a1d24] rounded-xl border p-4 shrink-0 shadow-lg flex flex-col items-center justify-center relative overflow-hidden transition-all duration-300"
+        >
+          <div 
+            className="absolute top-0 left-0 w-1.5 h-full animate-pulse"
+            style={{ backgroundColor: 'var(--room-accent)' }}
+          ></div>
             <h3 className="font-bold text-gray-300 mb-3 text-sm flex items-center gap-2 w-full">
               <span>🎙️ Voice Chat </span>
               <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse ml-auto"></span>
@@ -799,11 +867,14 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
               />
             </div>
             
-            <RoomAudioRenderer />
+            <RoomAudioRenderer volume={1.0} />
           </LiveKitRoom>
         )}
 
-        <div className="bg-[#1a1d24] rounded-xl border border-gray-800 p-4 shrink-0">
+        <div 
+          className="bg-[#1a1d24] rounded-xl border p-4 shrink-0 transition-all duration-300"
+          style={{ borderColor: 'rgba(255, 255, 255, 0.08)', boxShadow: '0 0 10px var(--room-glow)' }}
+        >
           <h3 className="font-bold text-gray-300 mb-4 flex items-center justify-between">
             <span>Đang xem ({joinedMembers.length})</span>
             <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
@@ -828,7 +899,13 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
         </div>
 
         <div className="bg-[#1a1d24] rounded-xl border border-gray-800 p-4 flex-1 flex flex-col overflow-hidden">
-          <h3 className="font-bold text-gray-300 mb-4 border-b border-gray-800 pb-2 shrink-0">Live Chat</h3>
+          <h3 
+            className="font-bold mb-4 border-b pb-2 shrink-0 flex items-center justify-between"
+            style={{ color: 'var(--room-accent)', borderColor: 'rgba(255,255,255,0.08)' }}
+          >
+            <span>Live Chat</span>
+            <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: 'var(--room-accent)' }}></span>
+          </h3>
           <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 flex flex-col gap-3">
             {messages.length === 0 ? (
               <div className="h-full flex items-center justify-center text-sm text-gray-500 italic text-center">
@@ -842,7 +919,17 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
                   ) : (
                     <div className={`max-w-[85%] flex flex-col ${msg.sender === 'Bạn' ? 'items-end' : 'items-start'}`}>
                       <span className="text-[10px] text-gray-500 mb-0.5 ml-1">{msg.sender}</span>
-                      <div className={`px-3 py-2 rounded-2xl text-sm ${msg.sender === 'Bạn' ? 'bg-blue-600 text-white rounded-br-none' : 'bg-gray-800 text-gray-200 rounded-bl-none'}`}>
+                      <div 
+                        className={`px-3 py-2 rounded-2xl text-sm ${
+                          msg.sender === 'Bạn' 
+                            ? 'text-white rounded-br-none' 
+                            : 'bg-gray-800 text-gray-200 rounded-bl-none'
+                        }`}
+                        style={msg.sender === 'Bạn' ? { 
+                          backgroundColor: 'var(--room-accent)',
+                          boxShadow: '0 0 8px var(--room-glow)' 
+                        } : undefined}
+                      >
                         {msg.text}
                       </div>
                     </div>
@@ -861,12 +948,91 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
               placeholder="Nhập tin nhắn..." 
               className="flex-1 bg-gray-900 border border-gray-800 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 text-white transition" 
             />
-            <button type="submit" disabled={!chatInput.trim()} className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white px-4 py-2 rounded-lg font-bold text-sm transition">
+            <button 
+              type="submit" 
+              disabled={!chatInput.trim()} 
+              className="disabled:opacity-50 text-white px-4 py-2 rounded-lg font-bold text-sm transition shadow-md active:scale-95"
+              style={{ backgroundColor: 'var(--room-accent)', boxShadow: '0 0 10px var(--room-glow)' }}
+            >
               Gửi
             </button>
           </form>
         </div>
       </div>
-    </div>
+      {/* 🌟 MODAL TÙY BIẾN THEME PHÒNG CHO TRƯỞNG PHÒNG */}
+      {isThemeModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="bg-[#14161d] w-full max-w-md rounded-2xl border border-gray-800 p-6 shadow-2xl relative">
+            <div className="flex items-center justify-between mb-4 border-b border-gray-800 pb-3">
+              <h3 className="text-lg font-black text-gray-100 flex items-center gap-2">
+                🎨 Tùy Biến Không Gian Phòng
+              </h3>
+              <button onClick={() => setIsThemeModalOpen(false)} className="text-gray-400 hover:text-white">✕</button>
+            </div>
+
+            {/* Danh sách bảng màu sẵn có */}
+            <div className="mb-4">
+              <label className="block text-xs font-bold text-gray-400 mb-2 uppercase">Chọn Màu Neon</label>
+              <div className="grid grid-cols-2 gap-2">
+                {THEME_PRESETS.map((preset) => (
+                  <button
+                    key={preset.accent}
+                    type="button"
+                    onClick={() => setTheme(prev => ({ ...prev, accent: preset.accent, glow: preset.glow }))}
+                    className={`flex items-center gap-2 p-2 rounded-xl border text-xs font-bold transition-all ${
+                      theme.accent === preset.accent 
+                        ? 'border-white bg-gray-800 scale-105' 
+                        : 'border-gray-800 bg-gray-900/60 text-gray-400 hover:border-gray-700'
+                    }`}
+                  >
+                    <span className="w-3.5 h-3.5 rounded-full shrink-0 shadow-sm" style={{ backgroundColor: preset.accent }} />
+                    <span className="truncate">{preset.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* URL Hình nền */}
+            <div className="mb-6">
+              <label className="block text-xs font-bold text-gray-400 mb-2 uppercase">URL Ảnh Nền (Tùy chọn)</label>
+              <input
+                type="text"
+                placeholder="https://example.com/wallpaper.jpg"
+                value={theme.bgUrl || ''}
+                onChange={(e) => setTheme(prev => ({ ...prev, bgUrl: e.target.value }))}
+                className="w-full bg-gray-900 border border-gray-800 rounded-xl px-3 py-2 text-xs text-gray-200 outline-none focus:border-blue-500"
+              />
+            </div>
+
+            {/* Nút thao tác */}
+            <div className="flex justify-end gap-2">
+              <button 
+                onClick={() => setIsThemeModalOpen(false)} 
+                className="px-4 py-2 text-xs font-bold text-gray-400 hover:text-white"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={() => {
+                  if (globalSocket && room && session?.user?.id) {
+                    globalSocket.emit("update_room_theme", {
+                      roomId: room.id,
+                      hostId: session.user.id,
+                      newTheme: theme
+                    });
+                  }
+                  setIsThemeModalOpen(false);
+                }}
+                className="px-5 py-2 rounded-xl text-xs font-black text-white shadow-md active:scale-95 transition-all"
+                style={{ backgroundColor: 'var(--room-accent)', boxShadow: '0 0 12px var(--room-glow)' }}
+              >
+                Lưu & Áp Dụng Ngay
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+    </div> // Thẻ đóng ngoài cùng của trang
   );
 }

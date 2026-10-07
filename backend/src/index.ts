@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import dotenv from 'dotenv';
 import cors from "cors";
+import prisma from "./config/db";
 
 // 🌟 1. IMPORT MODULE HTTP VÀ SOCKET.IO
 import http from 'http';
@@ -164,6 +165,35 @@ io.on("connection", (socket) => {
   socket.on("disband_room", (roomId: string) => {
     // Ép tất cả các thành viên đang ở trong phòng này (trừ host) nhận lệnh giải tán
     socket.to(roomId).emit("receive_disband_room");
+  });
+
+  // ============================================
+  // 🌟 ĐÃ THÊM: TÙY BIẾN THEME PHÒNG WATCH PARTY
+  // ============================================
+  socket.on("update_room_theme", async (data: { roomId: string; hostId: string; newTheme: any }) => {
+    try {
+      // 1. Kiểm tra quyền Host (Lưu ý: đổi tên model nếu schema đặt khác)
+      const room = await prisma.partyRoom.findUnique({
+        where: { id: data.roomId },
+        select: { hostId: true }
+      });
+
+      if (!room || room.hostId !== data.hostId) {
+        return socket.emit("error_message", "Chỉ trưởng phòng mới có quyền đổi theme!");
+      }
+
+      // 2. Lưu cấu hình theme mới vào Database
+      await prisma.partyRoom.update({
+        where: { id: data.roomId },
+        data: { themeConfig: data.newTheme }
+      });
+
+      // 3. Gửi theme mới đến TẤT CẢ mọi người trong phòng (kể cả host) để cập nhật giao diện
+      io.to(data.roomId).emit("receive_room_theme", data.newTheme);
+      console.log(`🎨 Phòng ${data.roomId} vừa đổi theme:`, data.newTheme.accent);
+    } catch (error) {
+      console.error("Lỗi khi cập nhật theme phòng:", error);
+    }
   });
 
   // 5. XỬ LÝ KHI NGƯỜI DÙNG TẮT TRÌNH DUYỆT ĐỘT NGỘT
