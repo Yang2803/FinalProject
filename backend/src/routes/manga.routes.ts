@@ -584,20 +584,44 @@ router.post('/api/manga/translate-page', async (req: Request, res: Response): Pr
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
     const model = genAI.getGenerativeModel({ 
       model: "gemini-2.5-flash",
-      generationConfig: { responseMimeType: "application/json" } 
+      generationConfig: { responseMimeType: "application/json", temperature: 0.1 } 
     });
 
     // PROMPT ĐẶC BIỆT DÀNH CHO BÀI TOÁN MANGA
     // Yêu cầu AI tìm bong bóng thoại, dịch, và trả về tọa độ [ymin, xmin, ymax, xmax] theo tỷ lệ 1000
     const prompt = `
-      You are an expert manga translator and OCR vision AI.
-      Analyze this manga page image. Find all speech bubbles and text elements.
+      You are an expert manga translator, typesetter and OCR vision AI.
+      Analyze this manga page image. Detect and translate ALL text elements without missing any, including:
+      1. Oval/round dialogue and thought bubbles.
+      2. Rectangular narration boxes, captions, info cards, and character introduction panels.
+      3. Explanation tables, bullet points, and charts.
+      4. Floating side text, outer thoughts, and notes outside bubbles.
+
       For each text element, provide:
-      1. "translatedText": Translate the text into ${targetLang}. Keep the manga tone.
-      2. "box": The bounding box coordinates of the text bubble in the format [ymin, xmin, ymax, xmax], where coordinates are normalized from 0 to 1000 (0 is top/left, 1000 is bottom/right).
-      
-      Return ONLY a valid JSON array. If no text is found, return [].
-      Example format: [{"translatedText": "Chết tiệt!", "box": [150, 200, 300, 450]}]
+      - "translatedText": Translate the text into ${targetLang}. Keep the translation concise, punchy, and formatted to fit manga spaces.
+      - "type": Classify into one of:
+          * "bubble" (for curved/oval/round speech or thought bubbles)
+          * "box" (for rectangular narration boxes, character introduction cards, signs, tables)
+          * "floating" (for text directly drawn over background/drawings without an enclosing container)
+      - "box": The bounding box coordinates [ymin, xmin, ymax, xmax] normalized on a 0 to 1000 scale:
+          * For "bubble": Bound the entire bubble contour containing the text.
+          * For "box": Bound the rectangular container.
+          * For "floating": Bound the outer limits of the text block with slight padding.
+
+      CRITICAL POSITIONING CONSTRAINTS:
+      - TEXT-ANCHORED ONLY: First locate the actual text characters, then determine the enclosing container. Every bounding box MUST be centered around the text you read.
+      - NEVER predict or hallucinate boxes on empty white artistic spaces, panels, or light effects without text.
+      - Ensure [ymin, xmin, ymax, xmax] precisely match the actual location of that specific dialogue on the 0-1000 coordinate grid.
+
+      Return ONLY a JSON array in this structure:
+      [
+        {
+          "translatedText": "string",
+          "type": "bubble" | "box" | "floating",
+          "box": [ymin, xmin, ymax, xmax]
+        }
+      ]
+      If no text is found, return [].
     `;
 
     // Gửi CẢ câu lệnh VÀ bức ảnh cho Gemini
@@ -621,18 +645,19 @@ router.post('/api/manga/translate-page', async (req: Request, res: Response): Pr
       return res.status(200).json({ blocks: [] });
     }
 
-    // Đổi tọa độ [ymin, xmin, ymax, xmax] (thang 1000) của Gemini sang dạng phần trăm (%)
-    const finalBlocks = blocks.map((b: any) => {
-      const [ymin, xmin, ymax, xmax] = b.box;
-      return {
-        translatedText: b.translatedText,
-        // Chuyển sang phần trăm bằng cách chia cho 10
-        topPercent: ymin / 10,
-        leftPercent: xmin / 10,
-        widthPercent: (xmax - xmin) / 10,
-        heightPercent: (ymax - ymin) / 10
-      };
-    });
+    const finalBlocks = blocks
+      .filter((b: any) => Array.isArray(b.box) && b.box.length === 4)
+      .map((b: any) => {
+        const [ymin, xmin, ymax, xmax] = b.box;
+        return {
+          translatedText: b.translatedText,
+          type: b.type || "bubble", // "bubble" | "box" | "floating"
+          topPercent: ymin / 10,
+          leftPercent: xmin / 10,
+          widthPercent: Math.max(0, (xmax - xmin) / 10),
+          heightPercent: Math.max(0, (ymax - ymin) / 10)
+        };
+      });
 
     // ==========================================
     // 3. LƯU KẾT QUẢ VÀO CACHE ĐỂ LẦN SAU DÙNG

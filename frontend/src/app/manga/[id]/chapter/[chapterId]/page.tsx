@@ -6,8 +6,17 @@ import CommentSection from "@/components/CommentSection";
 import { SUPPORTED_LANGUAGES } from "@/components/constants/languages";
 // 🌟 1. THÊM LẠI useRef VÀO ĐÂY VÌ FORM ĐĂNG BÀI CẦN DÙNG NÓ
 import { useState, useEffect, use, useRef } from "react"; 
+import { useRouter } from "next/navigation";
+import { 
+  ReaderMode, 
+  BackgroundTheme, 
+  ReaderSettings, 
+  BG_THEMES 
+} from "@/types/theme";
 
-// 1. Interface Dữ liệu
+// =====================================================================
+// 1. INTERFACES
+// =====================================================================
 interface ChapterData {
   id: string;
   title: string;
@@ -22,6 +31,7 @@ interface ChapterData {
 
 interface TextBlock {
   translatedText: string;
+  type?: "bubble" | "box" | "floating";
   topPercent: number;
   leftPercent: number;
   widthPercent: number;
@@ -30,7 +40,6 @@ interface TextBlock {
 
 // =====================================================================
 // COMPONENT CON: ẢNH MANGA HỖ TRỢ DỊCH THUẬT BẰNG GEMINI VISION
-// (GIỮ NGUYÊN 100% KHÔNG THAY ĐỔI GÌ)
 // =====================================================================
 function TranslateableImage({ 
   imgUrl, 
@@ -39,7 +48,7 @@ function TranslateableImage({
 }: { 
   imgUrl: string; 
   targetLang: string;
-  mode: "vertical" | "horizontal" 
+  mode: "vertical" | "horizontal";
 }) {
   const [blocks, setBlocks] = useState<TextBlock[]>([]);
   const [isTranslating, setIsTranslating] = useState(false);
@@ -67,7 +76,7 @@ function TranslateableImage({
       if (res.ok) {
         const data = await res.json();
         if (data.blocks.length === 0) {
-           alert("AI không tìm thấy chữ nào hợp lệ trên trang này!");
+          alert("AI không tìm thấy chữ nào hợp lệ trên trang này!");
         }
         setBlocks(data.blocks);
         setShowTranslation(true); 
@@ -80,8 +89,8 @@ function TranslateableImage({
   };
 
   const wrapperClass = mode === "vertical" 
-    ? "relative w-full mb-4" 
-    : "relative h-full inline-block z-0"; 
+    ? "relative w-full max-w-full mb-4 mx-auto block" 
+    : "relative max-h-[85vh] w-fit mx-auto inline-flex items-center justify-center";
 
   const imgClass = mode === "vertical"
     ? "w-full h-auto block object-contain"
@@ -103,57 +112,107 @@ function TranslateableImage({
          "✨ Translate with AI"}
       </button>
 
-     {showTranslation && blocks.map((block, index) => (
-        <div 
-          key={index}
-          className="absolute bg-white text-black flex items-center justify-center text-center z-10 overflow-hidden"
-          style={{
-            top: `${block.topPercent}%`,
-            left: `${block.leftPercent}%`,
-            width: `${block.widthPercent}%`,
-            height: `${block.heightPercent}%`,
-            borderRadius: '12px', 
-            transform: 'scale(1.15)', 
-            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)', 
-            padding: '4px', 
-            fontSize: 'clamp(0.4rem, 1vw, 0.85rem)', 
-            lineHeight: '1.35', 
-            fontWeight: '500', 
-            fontFamily: "'Segoe UI', Roboto, Helvetica, Arial, sans-serif", 
-            wordBreak: 'break-word' 
-          }}
-        >
-          {block.translatedText}
-        </div>
-      ))}
-    </div>
-  );
+      {showTranslation && blocks.map((block, index) => {
+        const isVertical = block.heightPercent > block.widthPercent;
+        const blockType = block.type || "bubble";
+
+        let borderRadius = "4px";
+        let background = "rgba(255, 255, 255, 0.98)";
+        let textColor = "#000000";
+
+        if (blockType === "bubble") {
+          borderRadius = isVertical ? "45% / 35%" : "20px";
+        } else if (blockType === "box") {
+          borderRadius = "4px";
+          background = "#ffffff";
+        } else if (blockType === "floating") {
+          borderRadius = "4px";
+          background = "rgba(0, 0, 0, 0.85)";
+          textColor = "#ffffff";
+        }
+
+        return (
+          <div 
+            key={index}
+            className="absolute flex items-center justify-center text-center z-10 pointer-events-none transition-all duration-150"
+            style={{
+              top: `${block.topPercent}%`,
+              left: `${block.leftPercent}%`,
+              width: `${block.widthPercent}%`,
+              minHeight: `${block.heightPercent}%`, // 🌟 Cho phép tự nới nhẹ chiều cao nếu chữ nhiều hơn bóng thoại
+              backgroundColor: background,
+              color: textColor,
+              borderRadius: borderRadius,
+              transform: 'scale(1.15)',
+              boxShadow: blockType === "floating" ? "none" : "0 1px 2px rgba(0, 0, 0, 0.15)", 
+              padding: "2px 3px", // 🌟 Giảm padding cố định xuống mức tối thiểu để chữ có chỗ hiển thị
+              // 🌟 Font size co giãn linh hoạt hơn, cho phép thu nhỏ xuống 9px khi ô thoại bé
+              fontSize: "clamp(9px, 0.75vw, 13px)", 
+              lineHeight: "1.15", 
+              fontWeight: "600", 
+              fontFamily: "'Segoe UI', Roboto, Helvetica, Arial, sans-serif", 
+            }}
+          >
+            <span 
+              className="w-full flex items-center justify-center text-center"
+              style={{
+                wordBreak: "break-word",
+                whiteSpace: "normal",
+              }}
+            >
+              {block.translatedText}
+            </span>
+          </div>
+        );
+      })}
+    </div>   
+  );         
 }
+      
+
 // =====================================================================
-
-
+// COMPONENT CHÍNH
+// =====================================================================
 export default function MangaReaderPage({ params }: { params: Promise<{ id: string; chapterId: string }> }) {
   const lastLoggedChapter = useRef<string | null>(null);
   const resolvedParams = use(params);
   const mangaId = resolvedParams.id;
   const chapterId = resolvedParams.chapterId;
+  const router = useRouter();
 
   const [chapter, setChapter] = useState<ChapterData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const [viewMode, setViewMode] = useState<"vertical" | "horizontal">("vertical");
+  // 🌟 CẤU HÌNH THEME & CHẾ ĐỘ ĐỌC (TỰ ĐỘNG LƯU VÀO LOCALSTORAGE)
+  const [settings, setSettings] = useState<ReaderSettings>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("manga_reader_settings");
+        if (saved) return JSON.parse(saved);
+      } catch (e) {
+        console.error("Lỗi đọc cài đặt manga reader:", e);
+      }
+    }
+    return {
+      mode: "VERTICAL",
+      bgTheme: "oled",
+      maxWidth: "fit",
+    };
+  });
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+
   const [currentPage, setCurrentPage] = useState(0);
   const [targetLang, setTargetLang] = useState("Vietnamese");
 
   const { data: session } = useSession();
 
   // =====================================================================
-  // 🌟 2. CÁC STATE MỚI CHO TÍNH NĂNG ĐĂNG BÀI LÊN FORUM
+  // 🌟 CÁC STATE CHO TÍNH NĂNG ĐĂNG BÀI LÊN FORUM
   // =====================================================================
   const [isForumModalOpen, setIsForumModalOpen] = useState(false);
   const [postTitle, setPostTitle] = useState("");
   const [postContent, setPostContent] = useState("");
-  const [postCategory, setPostCategory] = useState<"GENERAL" | "ANIME" | "MANGA">("MANGA"); // Mặc định là MANGA
+  const [postCategory, setPostCategory] = useState<"GENERAL" | "ANIME" | "MANGA">("MANGA");
   const [postTags, setPostTags] = useState<string[]>([]);
   const [postTagInput, setPostTagInput] = useState("");
   const [postIsSpoiler, setPostIsSpoiler] = useState(false);
@@ -165,16 +224,25 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
   const postFileInputRef = useRef<HTMLInputElement>(null);
   const [attachedLink, setAttachedLink] = useState<{title: string, url: string} | null>(null);
 
+ 
+
+  const updateSettings = (partial: Partial<ReaderSettings>) => {
+    setSettings((prev) => {
+      const updated = { ...prev, ...partial };
+      localStorage.setItem("manga_reader_settings", JSON.stringify(updated));
+      return updated;
+    });
+  };
+
   // --- LOGIC FORUM: CHÈN LIÊN KẾT TRUYỆN THÀNH THẺ ĐÍNH KÈM ---
   const handleInsertMangaLink = () => {
     if (!chapter) return;
     
     const baseUrl = window.location.origin;
-    // Nếu đang lướt ngang, lấy luôn số trang hiện tại
-    const pageParam = viewMode === "horizontal" ? `?page=${currentPage + 1}` : "";
+    const pageParam = settings.mode !== "VERTICAL" ? `?page=${currentPage + 1}` : "";
     const mangaUrl = `${baseUrl}/manga/${mangaId}/chapter/${chapterId}${pageParam}`;
     
-    const pageText = viewMode === "horizontal" ? ` - Trang ${currentPage + 1}` : "";
+    const pageText = settings.mode !== "VERTICAL" ? ` - Trang ${currentPage + 1}` : "";
     const titleText = `${chapter.manga.title} - ${chapter.title}${pageText}`;
 
     setAttachedLink({ title: titleText, url: mangaUrl });
@@ -243,7 +311,6 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
 
       let finalContent = postContent;
       if (attachedLink) {
-        // Đóng gói thành chuẩn Markdown [Tên](URL) để ngoài Forum click được
         finalContent += `\n\n📖 Đang đọc: [${attachedLink.title}](${attachedLink.url})`;
       }
 
@@ -266,8 +333,10 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
       }
     } catch (error) { alert("Đã xảy ra lỗi kết nối đến máy chủ."); } finally { setIsPostingToForum(false); }
   };
-  // =====================================================================
 
+  // =====================================================================
+  // FETCH DỮ LIỆU CHƯƠNG & LỊCH SỬ
+  // =====================================================================
   useEffect(() => {
     const fetchChapter = async () => {
       try {
@@ -301,15 +370,11 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
     };
     recordHistory();
   }, [session?.user?.id, mangaId, chapterId]);
-// =====================================================================
-  // 🌟 2. LOGIC GHI NHẬN LƯỢT ĐỌC CHO BẢNG XẾP HẠNG (ĐÃ FIX DOUBLE LOG)
-  // =====================================================================
+
+  // LOG LƯỢT XEM
   useEffect(() => {
     const logMangaView = async () => {
-      // Bỏ qua nếu thiếu ID, hoặc nếu chapter này đã được ghi nhận lượt xem rồi
       if (!mangaId || !chapterId || lastLoggedChapter.current === chapterId) return;
-      
-      // Gán ID chapter hiện tại vào cờ ngay lập tức để chặn luồng Strict Mode chạy đúp
       lastLoggedChapter.current = chapterId;
 
       try {
@@ -318,15 +383,14 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
         });
       } catch (error) {
         console.error("Lỗi khi ghi nhận lượt đọc:", error);
-        // Nếu API lỗi, reset lại cờ để hệ thống có thể thử gọi lại
         lastLoggedChapter.current = null;
       }
     };
 
     logMangaView();
   }, [mangaId, chapterId]);
-  // =====================================================================
 
+  // 🌟 ĐỊNH NGHĨA LẠI 2 HÀM CHUYỂN TRANG
   const handleNextPage = () => {
     if (chapter && currentPage < chapter.images.length) {
       setCurrentPage((prev) => prev + 1);
@@ -339,87 +403,171 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
     }
   };
 
+  // =====================================================================
+  // BẮT PHÍM MŨI TÊN (HỖ TRỢ MANGA RTL / LTR)
+  // =====================================================================
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Bỏ qua phím mũi tên nếu đang gõ trong form đăng bài
       if (document.activeElement?.tagName === "INPUT" || document.activeElement?.tagName === "TEXTAREA") return;
-      if (viewMode !== "horizontal") return;
-      if (e.key === "ArrowRight") handleNextPage();
-      if (e.key === "ArrowLeft") handlePrevPage();
+      if (settings.mode === "VERTICAL" || !chapter) return;
+
+      if (e.key === "ArrowRight") {
+        if (settings.mode === "PAGED_RTL") {
+          handlePrevPage();
+        } else {
+          handleNextPage();
+        }
+      } else if (e.key === "ArrowLeft") {
+        if (settings.mode === "PAGED_RTL") {
+          handleNextPage();
+        } else {
+          handlePrevPage();
+        }
+      }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [viewMode, currentPage, chapter]);
+  }, [settings.mode, currentPage, chapter]);
+
+  // =====================================================================
+  // BẮT PHÍM MŨI TÊN (HỖ TRỢ MANGA RTL / LTR)
+  // =====================================================================
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (document.activeElement?.tagName === "INPUT" || document.activeElement?.tagName === "TEXTAREA") return;
+      if (settings.mode === "VERTICAL" || !chapter) return;
+
+      if (e.key === "ArrowRight") {
+        if (settings.mode === "PAGED_RTL") {
+          setCurrentPage((prev) => Math.max(0, prev - 1));
+        } else {
+          setCurrentPage((prev) => Math.min(chapter.images.length - 1, prev + 1));
+        }
+      } else if (e.key === "ArrowLeft") {
+        if (settings.mode === "PAGED_RTL") {
+          setCurrentPage((prev) => Math.min(chapter.images.length - 1, prev + 1));
+        } else {
+          setCurrentPage((prev) => Math.max(0, prev - 1));
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [settings.mode, currentPage, chapter]);
 
   if (loading) return <div className="min-h-screen bg-gray-900 text-white flex justify-center items-center">Loading content...</div>;
   if (!chapter) return <div className="min-h-screen bg-gray-900 text-white flex justify-center items-center">Chapter not found!</div>;
 
+ if (loading) {
+    return (
+      <div className="min-h-screen bg-[#0f0f11] flex items-center justify-center text-white">
+        <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4" />
+      </div>
+    );
+  }
+
+  if (!chapter) {
+    return (
+      <div className="min-h-screen bg-[#0f0f11] flex flex-col items-center justify-center text-white gap-4">
+        <p className="text-gray-400">Không tìm thấy nội dung chương truyện.</p>
+        <Link href={`/manga/${mangaId}`} className="text-blue-400 hover:underline">
+          &larr; Quay lại danh sách chương
+        </Link>
+      </div>
+    );
+  }
+
+  const currentTheme = BG_THEMES[settings.bgTheme];
+  const isPaged = settings.mode !== "VERTICAL";
+
   return (
-    <div className="min-h-screen bg-[#0f0f11] text-white">
-      
-      {/* THANH ĐIỀU HƯỚNG BÊN TRÊN (STICKY NAVBAR) */}
-      <div className="sticky top-0 z-40 bg-gray-900/95 backdrop-blur-md border-b border-gray-800 p-4 shadow-lg flex flex-wrap md:flex-nowrap justify-between items-center gap-4">
-        
+    <div 
+      style={{ backgroundColor: currentTheme.bg, color: currentTheme.text }} 
+      className="min-h-screen transition-colors duration-300 relative select-none"
+    >
+      {/* ===================================================================== */}
+      {/* 🌟 THANH ĐIỀU HƯỚNG BÊN TRÊN (STICKY NAVBAR) */}
+      {/* ===================================================================== */}
+      <div 
+        className="sticky top-0 z-40 backdrop-blur-md border-b p-4 shadow-lg flex flex-wrap md:flex-nowrap justify-between items-center gap-4 transition-colors duration-300"
+        style={{ 
+          backgroundColor: `${currentTheme.bg}e6`,
+          borderColor: settings.bgTheme === 'light' || settings.bgTheme === 'sepia' ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)'
+        }}
+      >
         {/* Nút quay lại & Tiêu đề */}
         <div className="flex items-center gap-4">
-          <Link href={`/manga/${mangaId}`} className="text-gray-400 hover:text-white bg-gray-800 px-3 py-1.5 rounded-lg transition shrink-0">
+          <Link 
+            href={`/manga/${mangaId}`} 
+            className="px-3 py-1.5 rounded-lg text-sm font-bold transition shrink-0 border"
+            style={{ 
+              backgroundColor: currentTheme.cardBg, 
+              borderColor: 'rgba(128,128,128,0.2)',
+              color: currentTheme.text 
+            }}
+          >
             &larr; Back to Series
           </Link>
           <div>
-            <h1 className="font-bold text-blue-400 truncate max-w-[150px] md:max-w-[200px]">{chapter.manga.title}</h1>
-            <h2 className="text-sm text-gray-400">{chapter.title}</h2>
+            <h1 className="font-bold text-blue-500 truncate max-w-[150px] md:max-w-[200px]">{chapter.manga.title}</h1>
+            <h2 className="text-sm opacity-70 truncate max-w-[150px] md:max-w-[200px]">{chapter.title}</h2>
           </div>
         </div>
 
-        <div className="flex items-center gap-4 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 hide-scrollbar">
-          
-          {/* 🌟 3. NÚT THẢO LUẬN FORUM CHÈN VÀO ĐÂY */}
+        <div className="flex items-center gap-3 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 hide-scrollbar">
+          {/* NÚT THẢO LUẬN FORUM */}
           <button 
             onClick={() => setIsForumModalOpen(true)}
-            className="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-sm font-bold transition shadow-lg shadow-blue-500/30 flex items-center gap-1.5 shrink-0"
+            className="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-sm font-bold transition shadow-lg shadow-blue-500/20 flex items-center gap-1.5 shrink-0"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
             <span className="hidden sm:inline">Thảo luận</span>
           </button>
 
           {/* Menu Chọn ngôn ngữ dịch AI */}
-          <div className="flex items-center gap-2 bg-gray-800 p-1 rounded-lg shrink-0 border border-gray-700">
-            <span className="text-xs font-bold text-gray-400 pl-2">Dịch ra:</span>
+          <div 
+            className="flex items-center gap-2 p-1 rounded-lg shrink-0 border"
+            style={{ backgroundColor: currentTheme.cardBg, borderColor: 'rgba(128,128,128,0.2)' }}
+          >
+            <span className="text-xs font-bold opacity-70 pl-2">Dịch:</span>
             <select 
               value={targetLang}
               onChange={(e) => setTargetLang(e.target.value)}
-              className="bg-gray-900 text-white text-sm px-2 py-1 rounded outline-none border border-gray-600 cursor-pointer"
+              className="bg-transparent text-sm px-2 py-1 rounded outline-none cursor-pointer"
+              style={{ color: currentTheme.text }}
             >
               {SUPPORTED_LANGUAGES.map((lang) => (
-                <option key={lang.code} value={lang.code}>{lang.label}</option>
+                <option key={lang.code} value={lang.code} className="bg-gray-900 text-white">
+                  {lang.label}
+                </option>
               ))}
             </select>
           </div>
 
-          {/* Cụm nút Đổi chế độ đọc */}
-          <div className="flex items-center gap-2 bg-gray-800 p-1 rounded-lg shrink-0">
-            <button
-              onClick={() => setViewMode("vertical")}
-              className={`px-3 py-1.5 rounded-md text-sm font-bold transition ${viewMode === "vertical" ? "bg-blue-600 text-white shadow-md" : "text-gray-400 hover:text-white"}`}
-            >
-              ↓ Vertical
-            </button>
-            <button
-              onClick={() => setViewMode("horizontal")}
-              className={`px-3 py-1.5 rounded-md text-sm font-bold transition ${viewMode === "horizontal" ? "bg-blue-600 text-white shadow-md" : "text-gray-400 hover:text-white"}`}
-            >
-              ↔ Horizontal
-            </button>
-          </div>
+          {/* 🌟 NÚT MỞ CÀI ĐẶT ĐỌC (Kiểu đọc & Màu nền) */}
+          <button
+            onClick={() => setIsSettingsModalOpen(true)}
+            className="px-3 py-1.5 rounded-lg text-sm font-bold transition flex items-center gap-1.5 shrink-0 border shadow-sm active:scale-95"
+            style={{ 
+              backgroundColor: currentTheme.cardBg, 
+              borderColor: 'rgba(128,128,128,0.25)',
+              color: currentTheme.text
+            }}
+          >
+            ⚙️ <span className="hidden sm:inline">Cài đặt đọc</span>
+          </button>
         </div>
       </div>
 
-      {/* KHU VỰC HIỂN THỊ NỘI DUNG TRUYỆN */}
+      {/* ===================================================================== */}
+      {/* 🌟 KHU VỰC HIỂN THỊ NỘI DUNG TRUYỆN */}
+      {/* ===================================================================== */}
       <div className="w-full flex justify-center">
-        
-        {/* CHẾ ĐỘ 1: CUỘN DỌC TRUYỀN THỐNG */}
-        {viewMode === "vertical" && (
-          <div className="flex flex-col items-center w-full max-w-3xl px-2 md:px-0 pt-4">
+        {/* CHẾ ĐỘ 1: CUỘN DỌC TRUYỀN THỐNG (VERTICAL) */}
+        {settings.mode === "VERTICAL" && (
+          <div className={`flex flex-col items-center w-full px-2 md:px-0 pt-4 ${
+            settings.maxWidth === 'fit' ? 'max-w-3xl' : settings.maxWidth === 'medium' ? 'max-w-5xl' : 'w-full'
+          }`}>
             {chapter.images.map((imgUrl, index) => (
               <TranslateableImage 
                 key={index} 
@@ -429,87 +577,140 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
               />
             ))}
             
-            {/* Thanh điều hướng ở cuối chương dọc */}
-            <div className="my-12 w-full px-4 flex flex-col md:flex-row justify-between items-center gap-4 bg-gray-900 p-6 rounded-2xl border border-gray-800">
-              <p className="text-gray-400 font-medium md:hidden mb-2">No more chapters</p>
+            {/* Thanh điều hướng ở cuối chương */}
+            <div 
+              className="my-12 w-full px-4 flex flex-col md:flex-row justify-between items-center gap-4 p-6 rounded-2xl border transition-colors"
+              style={{ backgroundColor: currentTheme.cardBg, borderColor: 'rgba(128,128,128,0.2)' }}
+            >
+              <p className="opacity-70 font-medium md:hidden mb-2">Hết chương</p>
               
               {chapter.prevChapterId ? (
-                <Link href={`/manga/${mangaId}/chapter/${chapter.prevChapterId}`} className="w-full md:w-auto text-center bg-gray-800 hover:bg-gray-700 text-white px-8 py-3 rounded-xl font-bold transition">
+                <Link 
+                  href={`/manga/${mangaId}/chapter/${chapter.prevChapterId}`} 
+                  className="w-full md:w-auto text-center px-8 py-3 rounded-xl font-bold transition border"
+                  style={{ backgroundColor: currentTheme.bg, borderColor: 'rgba(128,128,128,0.2)' }}
+                >
                   &larr; Previous Chapter
                 </Link>
               ) : (
-                <div className="w-full md:w-auto text-center bg-gray-800/30 text-gray-600 px-8 py-3 rounded-xl font-bold cursor-not-allowed">First Chapter</div>
+                <div className="w-full md:w-auto text-center opacity-40 px-8 py-3 rounded-xl font-bold cursor-not-allowed">First Chapter</div>
               )}
 
-              <Link href={`/manga/${mangaId}`} className="w-full md:w-auto text-center text-blue-400 hover:text-blue-300 font-bold px-6 py-3 transition hover:bg-gray-800 rounded-xl">
+              <Link 
+                href={`/manga/${mangaId}`} 
+                className="w-full md:w-auto text-center text-blue-500 hover:underline font-bold px-6 py-3 transition rounded-xl"
+              >
                 ≡ All Chapters
               </Link>
 
               {chapter.nextChapterId ? (
-                <Link href={`/manga/${mangaId}/chapter/${chapter.nextChapterId}`} className="w-full md:w-auto text-center bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-xl font-bold transition shadow-lg shadow-blue-600/20">
+                <Link 
+                  href={`/manga/${mangaId}/chapter/${chapter.nextChapterId}`} 
+                  className="w-full md:w-auto text-center bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-xl font-bold transition shadow-lg shadow-blue-600/20"
+                >
                   Next Chapter &rarr;
                 </Link>
               ) : (
-                <div className="w-full md:w-auto text-center bg-gray-800/30 text-gray-600 px-8 py-3 rounded-xl font-bold cursor-not-allowed">Updating...</div>
+                <div className="w-full md:w-auto text-center opacity-40 px-8 py-3 rounded-xl font-bold cursor-not-allowed">Updating...</div>
               )}
             </div>
           </div>
         )}
 
-        {/* CHẾ ĐỘ 2: LƯỚT NGANG TỪNG TRANG */}
-        {viewMode === "horizontal" && (
-          <div className="relative w-full h-[calc(100vh-80px)] flex flex-col justify-center items-center bg-black select-none overflow-hidden py-4">
+        {/* CHẾ ĐỘ 2 & 3: LẬT TRANG ĐƠN (MANGA RTL / LTR) */}
+        {isPaged && (
+          <div className="relative w-full h-[calc(100vh-80px)] flex flex-col justify-center items-center select-none overflow-hidden py-4">
             
-            <div className="absolute top-4 right-4 bg-black/60 px-3 py-1 rounded-full text-xs text-gray-300 z-30">
+            {/* Huy hiệu số trang */}
+            <div 
+              className="absolute top-4 right-4 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold z-30 border"
+              style={{ backgroundColor: `${currentTheme.cardBg}cc`, borderColor: 'rgba(128,128,128,0.2)' }}
+            >
               Trang {currentPage < chapter.images.length ? currentPage + 1 : chapter.images.length} / {chapter.images.length}
             </div>
 
-            {/* Vùng bấm ẩn chuyển trang */}
-            <div className="absolute top-0 left-0 w-1/4 h-full z-10 cursor-w-resize" onClick={handlePrevPage} title="Trang trước" />
-            <div className="absolute top-0 right-0 w-1/4 h-full z-10 cursor-e-resize" onClick={handleNextPage} title="Trang tiếp theo" />
+            {/* Vùng bấm ẩn để lùi / tiến trang */}
+            <div 
+              className="absolute top-0 left-0 w-1/4 h-full z-10 cursor-w-resize" 
+              onClick={() => {
+                if (settings.mode === "PAGED_RTL") {
+                  handleNextPage();
+                } else {
+                  handlePrevPage();
+                }
+              }} 
+              title={settings.mode === "PAGED_RTL" ? "Trang sau" : "Trang trước"} 
+            />
+            <div 
+              className="absolute top-0 right-0 w-1/4 h-full z-10 cursor-e-resize" 
+              onClick={() => {
+                if (settings.mode === "PAGED_RTL") {
+                  handlePrevPage();
+                } else {
+                  handleNextPage();
+                }
+              }} 
+              title={settings.mode === "PAGED_RTL" ? "Trang trước" : "Trang sau"} 
+            />
 
-            {/* HIỂN THỊ ẢNH HOẶC MENU KẾT THÚC */}
+            {/* HIỂN THỊ ẢNH HOẶC MENU KẾT THÚC CHƯƠNG */}
             {currentPage < chapter.images.length ? (
               <TranslateableImage 
+                key={chapter.images[currentPage]}
                 imgUrl={chapter.images[currentPage]} 
                 targetLang={targetLang} 
                 mode="horizontal" 
               />
             ) : (
-              <div className="bg-gray-900/95 backdrop-blur-md p-8 rounded-2xl border border-gray-700 text-center z-30 shadow-2xl w-[90%] max-w-md relative">
-                 <h3 className="text-xl font-bold text-white mb-2">The chapter has ended.</h3>
-                 <p className="mb-6 text-gray-400 text-sm">You want to do next?</p>
-                 
-                 <div className="flex flex-col gap-3">
-                   {chapter.nextChapterId ? (
-                     <Link href={`/manga/${mangaId}/chapter/${chapter.nextChapterId}`} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-3 rounded-xl font-bold transition w-full shadow-lg z-50 relative pointer-events-auto">
-                       Read next Chapter &rarr;
-                     </Link>
-                   ) : (
-                     <div className="bg-gray-800 text-gray-500 px-4 py-3 rounded-xl font-bold cursor-not-allowed w-full border border-gray-700">
-                       Waiting for new Chapter...
-                     </div>
-                   )}
-                   <Link href={`/manga/${mangaId}`} className="bg-gray-800 hover:bg-gray-700 text-gray-300 px-4 py-3 rounded-xl font-bold transition w-full z-50 relative pointer-events-auto">
-                     ≡ All Chapters
-                   </Link>
-                 </div>
+              <div 
+                className="p-8 rounded-2xl border text-center z-30 shadow-2xl w-[90%] max-w-md relative backdrop-blur-md"
+                style={{ backgroundColor: currentTheme.cardBg, borderColor: 'rgba(128,128,128,0.2)' }}
+              >
+                <h3 className="text-xl font-bold mb-2">The chapter has ended.</h3>
+                <p className="mb-6 opacity-70 text-sm">You want to do next?</p>
+                
+                <div className="flex flex-col gap-3">
+                  {chapter.nextChapterId ? (
+                    <Link 
+                      href={`/manga/${mangaId}/chapter/${chapter.nextChapterId}`} 
+                      className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-3 rounded-xl font-bold transition w-full shadow-lg z-50 relative pointer-events-auto"
+                    >
+                      Read next Chapter &rarr;
+                    </Link>
+                  ) : (
+                    <div 
+                      className="px-4 py-3 rounded-xl font-bold cursor-not-allowed w-full border opacity-50"
+                      style={{ backgroundColor: currentTheme.bg, borderColor: 'rgba(128,128,128,0.2)' }}
+                    >
+                      Waiting for new Chapter...
+                    </div>
+                  )}
+                  <Link 
+                    href={`/manga/${mangaId}`} 
+                    className="px-4 py-3 rounded-xl font-bold transition w-full z-50 relative pointer-events-auto border"
+                    style={{ backgroundColor: currentTheme.bg, borderColor: 'rgba(128,128,128,0.2)' }}
+                  >
+                    ≡ All Chapters
+                  </Link>
+                </div>
               </div>
             )}
 
-            {/* Thanh điều hướng */}
+            {/* Thanh nút bấm điều hướng trang */}
             <div className="absolute bottom-6 flex gap-4 z-30 pointer-events-auto">
               <button 
-                onClick={handlePrevPage}
-                disabled={currentPage === 0}
-                className="bg-gray-800/80 backdrop-blur hover:bg-gray-700 disabled:opacity-50 text-white w-12 h-12 rounded-full flex justify-center items-center font-bold text-xl shadow-lg border border-gray-600 transition"
+                onClick={settings.mode === "PAGED_RTL" ? handleNextPage : handlePrevPage}
+                disabled={settings.mode === "PAGED_RTL" ? currentPage === chapter.images.length : currentPage === 0}
+                className="w-12 h-12 rounded-full flex justify-center items-center font-bold text-xl shadow-lg border transition disabled:opacity-30"
+                style={{ backgroundColor: currentTheme.cardBg, borderColor: 'rgba(128,128,128,0.3)' }}
               >
                 &larr;
               </button>
               <button 
-                onClick={handleNextPage}
-                disabled={currentPage === chapter.images.length}
-                className="bg-gray-800/80 backdrop-blur hover:bg-gray-700 disabled:opacity-50 text-white w-12 h-12 rounded-full flex justify-center items-center font-bold text-xl shadow-lg border border-gray-600 transition"
+                onClick={settings.mode === "PAGED_RTL" ? handlePrevPage : handleNextPage}
+                disabled={settings.mode === "PAGED_RTL" ? currentPage === 0 : currentPage === chapter.images.length}
+                className="w-12 h-12 rounded-full flex justify-center items-center font-bold text-xl shadow-lg border transition disabled:opacity-30"
+                style={{ backgroundColor: currentTheme.cardBg, borderColor: 'rgba(128,128,128,0.3)' }}
               >
                 &rarr;
               </button>
@@ -518,19 +719,116 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
         )}
       </div>
 
-      {/* KHU VỰC BÌNH LUẬN */}
-      <div className="w-full flex justify-center mt-12 pb-20">
-        <div className="w-full max-w-4xl px-4">
-           <CommentSection targetType="chapter" targetId={chapterId} />
+      {/* ===================================================================== */}
+      {/* KHU VỰC BÌNH LUẬN (CHỈ HIỆN KHI CUỘN DỌC) */}
+      {/* ===================================================================== */}
+      {settings.mode === "VERTICAL" && (
+        <div className="w-full flex justify-center mt-12 pb-20">
+          <div className="w-full max-w-4xl px-4">
+            <CommentSection targetType="chapter" targetId={chapterId} />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* ===================================================================== */}
-      {/* 🌟 4. POPUP MODAL ĐĂNG BÀI LÊN FORUM KÈM LIÊN KẾT TRUYỆN */}
+      {/* 🌟 MODAL TÙY CHỈNH READER (KIỂU ĐỌC & BẢNG MÀU) */}
+      {/* ===================================================================== */}
+      {isSettingsModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div 
+            className="w-full max-w-sm rounded-3xl p-6 shadow-2xl border transition-all"
+            style={{ backgroundColor: currentTheme.cardBg, borderColor: 'rgba(128,128,128,0.2)' }}
+          >
+            <div className="flex items-center justify-between mb-5 border-b pb-3" style={{ borderColor: 'rgba(128,128,128,0.2)' }}>
+              <h3 className="font-extrabold text-base">Cài Đặt Trình Đọc</h3>
+              <button onClick={() => setIsSettingsModalOpen(false)} className="opacity-60 hover:opacity-100">✕</button>
+            </div>
+
+            {/* 1. Chọn chế độ cuộn / lật trang */}
+            <div className="mb-5">
+              <label className="block text-xs font-bold uppercase tracking-wider mb-2 opacity-70">
+                Kiểu Đọc
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                <button 
+                  onClick={() => updateSettings({ mode: 'VERTICAL' })}
+                  className={`p-2 rounded-xl text-xs font-bold border transition ${settings.mode === 'VERTICAL' ? 'border-blue-500 bg-blue-600/20 text-blue-400 font-black' : 'border-gray-500/20 opacity-70'}`}
+                >
+                  Cuộn Dọc
+                </button>
+                <button 
+                  onClick={() => updateSettings({ mode: 'PAGED_RTL' })}
+                  className={`p-2 rounded-xl text-xs font-bold border transition ${settings.mode === 'PAGED_RTL' ? 'border-blue-500 bg-blue-600/20 text-blue-400 font-black' : 'border-gray-500/20 opacity-70'}`}
+                  title="Chuẩn truyện tranh Nhật (Phải sang Trái)"
+                >
+                  Manga (RTL)
+                </button>
+                <button 
+                  onClick={() => updateSettings({ mode: 'PAGED_LTR' })}
+                  className={`p-2 rounded-xl text-xs font-bold border transition ${settings.mode === 'PAGED_LTR' ? 'border-blue-500 bg-blue-600/20 text-blue-400 font-black' : 'border-gray-500/20 opacity-70'}`}
+                  title="Chuẩn phương Tây (Trái sang Phải)"
+                >
+                  Lật Trái-Phải
+                </button>
+              </div>
+            </div>
+
+            {/* 2. Chọn màu nền */}
+            <div className="mb-5">
+              <label className="block text-xs font-bold uppercase tracking-wider mb-2 opacity-70">
+                Màu Nền Bảo Vệ Mắt
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {(Object.keys(BG_THEMES) as BackgroundTheme[]).map((themeKey) => (
+                  <button
+                    key={themeKey}
+                    onClick={() => updateSettings({ bgTheme: themeKey })}
+                    className={`flex items-center gap-2 p-2.5 rounded-xl border text-xs font-bold transition ${settings.bgTheme === themeKey ? 'border-blue-500 shadow-sm' : 'border-gray-500/20 opacity-70'}`}
+                    style={{ backgroundColor: BG_THEMES[themeKey].bg, color: BG_THEMES[themeKey].text }}
+                  >
+                    <span className="w-3.5 h-3.5 rounded-full border border-gray-400/40 shrink-0" style={{ backgroundColor: BG_THEMES[themeKey].bg }} />
+                    <span className="truncate">{BG_THEMES[themeKey].name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 3. Độ rộng khung đọc (cho chế độ Cuộn dọc) */}
+            {settings.mode === 'VERTICAL' && (
+              <div className="mb-6">
+                <label className="block text-xs font-bold uppercase tracking-wider mb-2 opacity-70">
+                  Độ Rộng Khung Hình
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(['fit', 'medium', 'full'] as const).map((w) => (
+                    <button
+                      key={w}
+                      onClick={() => updateSettings({ maxWidth: w })}
+                      className={`p-2 rounded-xl text-xs font-bold border transition ${settings.maxWidth === w ? 'border-blue-500 bg-blue-600/20 text-blue-400 font-black' : 'border-gray-500/20 opacity-70'}`}
+                    >
+                      {w === 'fit' ? 'Vừa (768px)' : w === 'medium' ? 'Rộng (1024px)' : 'Toàn màn'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <button 
+              onClick={() => setIsSettingsModalOpen(false)}
+              className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition shadow-lg shadow-blue-600/20"
+            >
+              Đóng Cài Đặt
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* 🌟 POPUP MODAL ĐĂNG BÀI LÊN FORUM KÈM LIÊN KẾT TRUYỆN */}
       {/* ===================================================================== */}
       {isForumModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-          <div className="bg-[#1a1d24] w-full max-w-2xl rounded-2xl border border-gray-800 shadow-2xl flex flex-col max-h-[90vh]">
+          <div className="bg-[#1a1d24] text-white w-full max-w-2xl rounded-2xl border border-gray-800 shadow-2xl flex flex-col max-h-[90vh]">
             
             <div className="flex justify-between items-center p-5 border-b border-gray-800">
               <h2 className="text-xl font-bold text-gray-100 flex items-center gap-2">
@@ -550,7 +848,6 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
                 className="w-full bg-transparent border border-gray-800 rounded-lg px-4 py-3 outline-none font-bold text-lg focus:border-blue-500 transition"
               />
               
-              {/* NÚT CHÈN LIÊN KẾT TRỞ THÀNH THẺ ĐÍNH KÈM */}
               {!attachedLink ? (
                 <button 
                   onClick={handleInsertMangaLink}
@@ -576,7 +873,6 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
                 className="w-full bg-transparent border border-gray-800 rounded-lg px-4 py-3 outline-none resize-none h-32 text-sm text-gray-200 focus:border-blue-500 transition custom-scrollbar leading-relaxed"
               />
 
-              {/* KHU VỰC HIỂN THỊ ẢNH XEM TRƯỚC */}
               {postMediaPreview && (
                 <div className="relative rounded-xl overflow-hidden border border-gray-800 bg-gray-900 aspect-video flex items-center justify-center">
                   {postMediaFile?.type.startsWith('video/') ? (
@@ -588,7 +884,6 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
                 </div>
               )}
 
-              {/* KHU VỰC TAGS VÀ SPOILER */}
               <div className="bg-gray-900/50 p-3 rounded-lg border border-gray-800">
                 <div className="flex flex-wrap gap-2 mb-2">
                   {postIsSpoiler && <span className="bg-red-900/50 text-red-400 text-xs px-2.5 py-1 rounded border border-red-500">⚠️ Spoiler</span>}
@@ -608,8 +903,6 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
             </div>
 
             <div className="p-5 border-t border-gray-800 flex justify-between items-center bg-gray-900/50 rounded-b-2xl">
-              
-              {/* THANH CÔNG CỤ TRÁI (Chọn Category, Up ảnh, Nút AI) */}
               <div className="flex items-center gap-3">
                 <select 
                   value={postCategory} onChange={e => setPostCategory(e.target.value as "GENERAL" | "ANIME" | "MANGA")}
@@ -630,7 +923,6 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
                 </button>
               </div>
 
-              {/* THANH CÔNG CỤ PHẢI (Nút Đăng bài) */}
               <div className="flex items-center gap-3">
                 <label className="hidden sm:flex items-center gap-2 text-sm text-gray-400 cursor-pointer hover:text-gray-200 transition">
                   <input type="checkbox" checked={postIsSpoiler} onChange={(e) => setPostIsSpoiler(e.target.checked)} className="rounded bg-gray-800 border-gray-700 text-red-500 focus:ring-red-500 focus:ring-offset-gray-900" />
@@ -645,12 +937,10 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
                   {isPostingToForum ? "Đang gửi..." : "Đăng bài"}
                 </button>
               </div>
-
             </div>
           </div>
         </div>
       )}
-
     </div> 
   );
 }
