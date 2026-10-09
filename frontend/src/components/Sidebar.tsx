@@ -21,6 +21,8 @@ export default function Sidebar() {
     { name: "AI Search Assistant", href: "/ai-search", icon: "🤖" },
     { name: "Forum", href: "/forum", icon: "💬" },
     { name: "Watch Party", href: "/party", icon: "🎉" },
+    { name: "Co-reading Room", href: "/manga-room", icon: "📖" },
+    
   ];
 
   return (
@@ -37,7 +39,12 @@ export default function Sidebar() {
         {/* Danh sách các nút điều hướng */}
         <nav className="px-4 py-6 space-y-1">
           {menuItems.map((item) => {
-            const isActive = pathname === item.href;
+            // Kiểm tra active chính xác cho trang chủ "/" và active theo tiền tố cho các trang con
+            const isActive =
+              item.href === "/"
+                ? pathname === "/"
+                : pathname === item.href || pathname.startsWith(`${item.href}/`);
+
             return (
               <Link
                 key={item.href}
@@ -57,59 +64,57 @@ export default function Sidebar() {
       </div>
 
       {/* Phần dưới cùng: Trạng thái User (Xác thực với NextAuth) */}
-<div className="p-4 border-t border-gray-800 bg-gray-950/40">
-  {status === "loading" ? (
-    <div className="flex justify-center py-2">
-      <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-    </div>
-  ) : session ? (
-    /* TRẠNG THÁI: ĐÃ ĐĂNG NHẬP */
-    <div className="space-y-4">
-      
-      {/* THAY ĐỔI Ở ĐÂY: Bọc thông tin bằng thẻ Link để chuyển hướng sang /profile */}
-      <Link
-        href="/profile"
-        className="flex items-center space-x-3 p-2 rounded-xl hover:bg-gray-800/60 transition-all duration-200 group block cursor-pointer"
-      >
-        <div className="flex items-center space-x-3">
-          <img
-            src={session.user?.image || "https://www.svgrepo.com/show/507442/user-circle.svg"}
-            alt={session.user?.name || "User Avatar"}
-            className="w-10 h-10 rounded-full object-cover border border-gray-700 bg-gray-800 group-hover:border-blue-500 transition-colors duration-200"
-          />
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold truncate text-gray-100 group-hover:text-blue-400 transition-colors duration-200">
-              {session.user?.name || "Người dùng"}
-            </p>
-            <p className="text-xs text-gray-500 truncate">
-              {session.user?.email}
-            </p>
+      <div className="p-4 border-t border-gray-800 bg-gray-950/40">
+        {status === "loading" ? (
+          <div className="flex justify-center py-2">
+            <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
           </div>
-        </div>
-      </Link>
-      
-      <button
-        onClick={() => signOut({ callbackUrl: "/login" })}
-        className="w-full py-2 px-4 bg-red-500/10 hover:bg-red-600 text-red-400 hover:text-white border border-red-500/20 hover:border-transparent text-sm font-medium rounded-xl transition-all duration-200 cursor-pointer"
-      >
-        Sign Out
-      </button>
-    </div>
-  ) : (
-    /* TRẠNG THÁI: CHƯA ĐĂNG NHẬP */
-    <div className="py-2 space-y-2">
-      <p className="text-xs text-gray-400 text-center mb-3">
-        Sign in to experience all cloud features
-      </p>
-      <Link
-        href="/login"
-        className="block w-full py-2.5 text-center text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-lg shadow-blue-600/10 transition-all duration-200"
-      >
-        Sign In / Sign Up
-      </Link>
-    </div>
-  )}
-</div>
+        ) : session ? (
+          /* TRẠNG THÁI: ĐÃ ĐĂNG NHẬP */
+          <div className="space-y-4">
+            <Link
+              href="/profile"
+              className="flex items-center space-x-3 p-2 rounded-xl hover:bg-gray-800/60 transition-all duration-200 group block cursor-pointer"
+            >
+              <div className="flex items-center space-x-3">
+                <img
+                  src={session.user?.image || "https://www.svgrepo.com/show/507442/user-circle.svg"}
+                  alt={session.user?.name || "User Avatar"}
+                  className="w-10 h-10 rounded-full object-cover border border-gray-700 bg-gray-800 group-hover:border-blue-500 transition-colors duration-200"
+                />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold truncate text-gray-100 group-hover:text-blue-400 transition-colors duration-200">
+                    {session.user?.name || "Người dùng"}
+                  </p>
+                  <p className="text-xs text-gray-500 truncate">
+                    {session.user?.email}
+                  </p>
+                </div>
+              </div>
+            </Link>
+            
+            <button
+              onClick={() => signOut({ callbackUrl: "/login" })}
+              className="w-full py-2 px-4 bg-red-500/10 hover:bg-red-600 text-red-400 hover:text-white border border-red-500/20 hover:border-transparent text-sm font-medium rounded-xl transition-all duration-200 cursor-pointer"
+            >
+              Sign Out
+            </button>
+          </div>
+        ) : (
+          /* TRẠNG THÁI: CHƯA ĐĂNG NHẬP */
+          <div className="py-2 space-y-2">
+            <p className="text-xs text-gray-400 text-center mb-3">
+              Sign in to experience all cloud features
+            </p>
+            <Link
+              href="/login"
+              className="block w-full py-2.5 text-center text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-lg shadow-blue-600/10 transition-all duration-200"
+            >
+              Sign In / Sign Up
+            </Link>
+          </div>
+        )}
+      </div>
 
     </aside>
   );

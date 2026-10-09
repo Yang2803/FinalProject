@@ -38,6 +38,8 @@ model User {
 
   hostedRooms PartyRoom[]  @relation("HostRooms")
   joinedRooms RoomMember[] @relation("MemberRooms")
+  hostedMangaRooms MangaCoRoom[]   @relation("MangaRoomHost")
+  mangaRoomMembers MangaCoMember[]
 }
 
 model Anime {
@@ -455,4 +457,34 @@ model MangaViewLog {
 
   @@index([mangaId])
   @@index([createdAt])
+}
+
+model MangaCoRoom {
+  id            String            @id @default(cuid())
+  name          String
+  inviteCode    String            @unique
+  isPrivate     Boolean           @default(false)
+  mangaId       String?
+  chapterId     String?
+  currentPage   Int               @default(0)
+  scrollPercent Float             @default(0)
+  isHostLocked  Boolean           @default(true)
+  hostId        String
+  host          User              @relation("MangaRoomHost", fields: [hostId], references: [id])
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  members       MangaCoMember[]
+}
+
+model MangaCoMember {
+  id        String       @id @default(cuid())
+  roomId    String
+  userId    String
+  status    String       @default("JOINED") // "JOINED" | "PENDING" | "REJECTED" | "BANNED"
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  room      MangaCoRoom  @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  joinedAt  DateTime     @default(now())
+
+  @@unique([roomId, userId])
 }
