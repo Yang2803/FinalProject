@@ -119,6 +119,40 @@ export function initSocket(server: HttpServer) {
       socket.to(`manga_${roomId}`).emit("manga:member_left", { userId });
     });
 
+    socket.on("manga:disband_room", ({ roomId }: { roomId: string }) => {
+      io.to(`manga_${roomId}`).emit("manga:room_disbanded");
+    });
+
+    // 🌟 SỬA: Lắng nghe di chuyển chuột -> Bắn tới `manga_${roomId}`
+    socket.on("manga:move_cursor", ({ roomId, cursor }: { roomId: string; cursor: any }) => {
+      socket.to(`manga_${roomId}`).emit("manga:cursor_moved", cursor);
+    });
+
+    // 🌟 SỬA: Lắng nghe nét vẽ laser khoanh vùng -> Bắn tới `manga_${roomId}`
+    socket.on("manga:laser_draw", ({ roomId, line }: { roomId: string; line: any }) => {
+      socket.to(`manga_${roomId}`).emit("manga:laser_draw", line);
+    });
+
+    // 🌟 SỬA: Lắng nghe sự kiện xóa nét vẽ -> Báo cho cả phòng `manga_${roomId}`
+    socket.on("manga:clear_laser", ({ roomId, targetUserId }: { roomId: string; targetUserId?: string }) => {
+      // Nếu có targetUserId: chỉ xóa nét của user đó. Nếu không có: xóa tất cả
+      io.to(`manga_${roomId}`).emit("manga:laser_cleared", { targetUserId });
+    });
+
+    // Khách gửi yêu cầu xin vào phòng kín
+    socket.on("manga:request_join", ({ roomId, user }: { roomId: string; user: any }) => {
+      // Gửi riêng cho Host (hoặc cả phòng manga_roomId, client của host sẽ bắt sự kiện này)
+      socket.to(`manga_${roomId}`).emit("manga:receive_join_request", {
+        applicant: user,
+        applicantSocketId: socket.id,
+      });
+    });
+
+    // Host trả lời kết quả duyệt (APPROVE hoặc REJECT)
+    socket.on("manga:respond_join_request", ({ applicantSocketId, approved }: { applicantSocketId: string; approved: boolean }) => {
+      io.to(applicantSocketId).emit("manga:join_response", { approved });
+    });
+
     // ============================================
     // 3. NGẮT KẾT NỐI CHUNG
     // ============================================

@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useRef, useEffect, use } from "react";
+import { useState, useRef, useEffect, use, useMemo } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useMangaRoom } from "@/hooks/useMangaRoom";
 import { SUPPORTED_LANGUAGES } from "@/components/constants/languages";
 import { ReaderSettings, BG_THEMES } from "@/types/theme";
+import { MangaVoiceChat } from "@/components/manga-room/MangaVoiceChat";
 
 // =====================================================================
 // INTERFACES
@@ -28,6 +29,7 @@ interface RoomData {
   chapterId: string | null;
   hostId: string;
   isHostLocked?: boolean;
+  isPrivate?: boolean;
 }
 
 interface TextBlock {
@@ -44,6 +46,19 @@ interface MangaOption {
   title: string;
   chapters?: { id: string; title: string }[];
 }
+
+// 🌟 HÀM SINH MÀU CỐ ĐỊNH THEO USER ID (Mỗi người 1 màu riêng)
+const getUserColor = (userId: string): string => {
+  const colors = [
+    "#10b981", "#3b82f6", "#f59e0b", "#ec4899", 
+    "#8b5cf6", "#06b6d4", "#f97316", "#14b8a6"
+  ];
+  let hash = 0;
+  for (let i = 0; i < userId.length; i++) {
+    hash = userId.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return colors[Math.abs(hash) % colors.length];
+};
 
 // =====================================================================
 // COMPONENT DỊCH AI (GEMINI VISION)
@@ -97,7 +112,7 @@ function TranslateableImage({
 
   return (
     <div className={wrapperClass} style={{ lineHeight: 0 }}>
-      <img src={imgUrl} alt="Manga Page" className={mode === "vertical" ? "w-full h-auto block" : "max-h-[85vh] w-auto block"} />
+      <img src={imgUrl} alt="Manga Page" className={mode === "vertical" ? "w-full h-auto block" : "max-h-[85vh] w-auto block select-none pointer-events-none"} />
 
       <button 
         onClick={handleTranslate} 
@@ -171,6 +186,12 @@ export default function MangaCoReadingRoom({
   const [chaptersOfManga, setChaptersOfManga] = useState<{ id: string; title: string }[]>([]);
   const [isUpdatingChapter, setIsUpdatingChapter] = useState(false);
 
+  // 🌟 State cho Laser Drawing (Khoanh vùng tạm thời)
+  const [isLaserPenActive, setIsLaserPenActive] = useState(false);
+  const [currentDrawStroke, setCurrentDrawStroke] = useState<{ x: number; y: number }[]>([]);
+  const [laserWidth, setLaserWidth] = useState<number>(0.8);
+  const isMouseDown = useRef(false);
+
   // Reader Settings
   const [settings, setSettings] = useState<ReaderSettings>({
     mode: "PAGED_RTL",
@@ -180,8 +201,10 @@ export default function MangaCoReadingRoom({
 
   const isRemoteSyncing = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const pageContainerRef = useRef<HTMLDivElement>(null);
 
-  const isHost = Boolean(session?.user?.id && room?.hostId === session.user.id);
+  const isHost = Boolean(session?.user?.id && String(room?.hostId) === String(session.user.id));
+  const userColor = useMemo(() => getUserColor(session?.user?.id || "default_user"), [session?.user?.id]);
 
   // Hook socket co-reading
   const {
@@ -189,16 +212,26 @@ export default function MangaCoReadingRoom({
     setIsLocked,
     emitPageChange,
     emitScroll,
-    emitLaser,
-    lasers,
+    emitCursorMove,
+    emitLaserDraw,
+    emitClearMyLaser,
+    emitClearAllLaser,
+    emitLeaveRoom,
+    emitDisbandRoom,
+    respondJoinRequest,
+    joinRequests,
+    approvalStatus,
+    remoteCursors,
+    laserLines,
   } = useMangaRoom({
     roomId,
     user: session?.user ? {
       id: session.user.id,
       name: session.user.name || "Bạn đọc",
-      color: "#10b981"
+      color: userColor
     } : null,
     isHost,
+    isPrivate: room?.isPrivate,
     onRemotePageChange: async (newChapterId, page) => {
       isRemoteSyncing.current = true;
       if (newChapterId && newChapterId !== currentChapterId) {
@@ -217,7 +250,7 @@ export default function MangaCoReadingRoom({
     },
   });
 
-  // Hàm tải chi tiết chapter
+  // Tải chi tiết chapter
   const fetchChapterDetail = async (chapId: string) => {
     try {
       const res = await fetch(`http://localhost:5000/api/chapter/${chapId}`);
@@ -235,7 +268,6 @@ export default function MangaCoReadingRoom({
     const initRoom = async () => {
       try {
         setLoading(true);
-        // Sửa endpoint sang manga-room
         const resRoom = await fetch(`http://localhost:5000/api/manga-room/rooms/${roomId}`);
         if (!resRoom.ok) throw new Error("Không tìm thấy phòng");
         const roomData: RoomData = await resRoom.json();
@@ -268,7 +300,6 @@ export default function MangaCoReadingRoom({
     }
   };
 
-  // Khi Host chọn 1 bộ Manga -> tải danh sách chapter của bộ đó
   const handleSelectManga = async (mangaId: string) => {
     setSelectedMangaId(mangaId);
     try {
@@ -282,7 +313,6 @@ export default function MangaCoReadingRoom({
     }
   };
 
-  // Host xác nhận chọn Chapter để cả phòng bắt đầu đọc
   const handleConfirmChapter = async (chapId: string) => {
     if (!room) return;
     setIsUpdatingChapter(true);
@@ -301,7 +331,7 @@ export default function MangaCoReadingRoom({
         setCurrentChapterId(chapId);
         await fetchChapterDetail(chapId);
         setCurrentPage(0);
-        emitPageChange(chapId, 0); // Bắn socket đồng bộ cho tất cả khách
+        emitPageChange(chapId, 0);
         setIsSelectMangaOpen(false);
       } else {
         alert("Không thể đổi chương!");
@@ -314,36 +344,62 @@ export default function MangaCoReadingRoom({
     }
   };
 
+  const hasMyStrokes = laserLines.some((line) => line.userId === session?.user?.id);
+
   // Điều khiển lật trang
   const handleNextPage = () => {
-    if (!chapter) return;
+    if (!chapter || !chapter.images || chapter.images.length === 0) return;
     if (!isHost && isLocked) return;
     if (currentPage < chapter.images.length - 1) {
       const nextPage = currentPage + 1;
       setCurrentPage(nextPage);
       emitPageChange(currentChapterId, nextPage);
+      emitClearAllLaser();
     }
   };
 
   const handlePrevPage = () => {
-    if (!chapter) return;
+    if (!chapter || !chapter.images || chapter.images.length === 0) return;
     if (!isHost && isLocked) return;
     if (currentPage > 0) {
       const prevPage = currentPage - 1;
       setCurrentPage(prevPage);
       emitPageChange(currentChapterId, prevPage);
+      emitClearAllLaser();
     }
   };
 
-  // Laser Pointer
+  // 🌟 LIVE CURSOR & LASER PEN MOUSE HANDLERS
   const handleMouseMoveOnPage = (e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
+    if (!pageContainerRef.current) return;
+    const rect = pageContainerRef.current.getBoundingClientRect();
     const xPercent = ((e.clientX - rect.left) / rect.width) * 100;
     const yPercent = ((e.clientY - rect.top) / rect.height) * 100;
-    emitLaser(xPercent, yPercent, currentPage);
+
+    // Phát vị trí con trỏ chuột cho mọi người
+    emitCursorMove(xPercent, yPercent);
+
+    // Nếu đang bật Laser Pen và đang đè chuột trái -> Lưu điểm vẽ
+    if (isLaserPenActive && isMouseDown.current) {
+      setCurrentDrawStroke((prev) => [...prev, { x: xPercent, y: yPercent }]);
+    }
   };
 
-  // Cuộn dọc Webtoon
+  const handleMouseDown = () => {
+    if (!isLaserPenActive) return;
+    isMouseDown.current = true;
+    setCurrentDrawStroke([]);
+  };
+
+  const handleMouseUp = () => {
+    if (!isLaserPenActive || !isMouseDown.current) return;
+    isMouseDown.current = false;
+    if (currentDrawStroke.length > 1) {
+      emitLaserDraw([...currentDrawStroke], laserWidth);
+    }
+    setCurrentDrawStroke([]);
+  };
+
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     if (isRemoteSyncing.current || (!isHost && isLocked)) return;
     const target = e.currentTarget;
@@ -351,9 +407,30 @@ export default function MangaCoReadingRoom({
     emitScroll(scrollPercent);
   };
 
-  if (loading) {
-    return <div className="min-h-screen bg-[#0f0f11] text-white flex items-center justify-center">Đang tải phòng đọc...</div>;
-  }
+  // Xác nhận rời phòng
+  const handleLeaveRoom = () => {
+    if (confirm("Bạn có chắc chắn muốn rời khỏi phòng đọc này?")) {
+      emitLeaveRoom();
+    }
+  };
+
+  // Xác nhận giải tán phòng (chỉ Host)
+  const handleDisbandRoom = async () => {
+    if (confirm("Bạn có chắc chắn muốn giải tán phòng? Tất cả thành viên sẽ bị đưa về sảnh!")) {
+      try {
+        // Tùy chọn: gọi API xóa phòng trong database nếu backend có endpoint
+        await fetch(`http://localhost:5000/api/manga-room/rooms/${room?.id}`, {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ hostId: session?.user?.id }),
+        }).catch(() => {});
+      } finally {
+        emitDisbandRoom();
+      }
+    }
+  };
+
+  if (loading) return <div className="min-h-screen bg-[#0f0f11] text-white flex items-center justify-center">Đang tải phòng đọc...</div>;
 
   if (!room) {
     return (
@@ -364,7 +441,49 @@ export default function MangaCoReadingRoom({
     );
   }
 
-  // 🌟 MÀN HÌNH CHỜ: KHI PHÒNG CHƯA ĐƯỢC CHỌN MANGA
+  // 🌟 MÀN HÌNH CHỜ PHÊ DUYỆT CỦA PHÒNG KÍN
+  if (!isHost && room.isPrivate && approvalStatus === "PENDING") {
+    return (
+      <div className="min-h-screen bg-[#0f0f11] text-white flex flex-col items-center justify-center p-6 text-center">
+        <div className="w-16 h-16 rounded-full bg-amber-500/10 text-amber-400 flex items-center justify-center text-3xl mb-4 border border-amber-500/20 animate-pulse">
+          ⏳
+        </div>
+        <h2 className="text-xl font-bold mb-2">Đang Chờ Phê Duyệt</h2>
+        <p className="text-gray-400 text-sm max-w-sm mb-6">
+          Đây là phòng kín. Yêu cầu tham gia của bạn đã được gửi tới Trưởng phòng, vui lòng đợi trong giây lát...
+        </p>
+        <Link
+          href="/manga-room"
+          className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-xs font-semibold transition"
+        >
+          Hủy & Quay lại sảnh
+        </Link>
+      </div>
+    );
+  }
+
+  // 🌟 MÀN HÌNH BỊ TỪ CHỐI
+  if (!isHost && approvalStatus === "REJECTED") {
+    return (
+      <div className="min-h-screen bg-[#0f0f11] text-white flex flex-col items-center justify-center p-6 text-center">
+        <div className="w-16 h-16 rounded-full bg-red-500/10 text-red-400 flex items-center justify-center text-3xl mb-4 border border-red-500/20">
+          🚫
+        </div>
+        <h2 className="text-xl font-bold mb-2">Yêu Cầu Bị Từ Chối</h2>
+        <p className="text-gray-400 text-sm max-w-sm mb-6">
+          Trưởng phòng đã từ chối yêu cầu tham gia phòng đọc này của bạn.
+        </p>
+        <Link
+          href="/manga-room"
+          className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition"
+        >
+          Quay lại sảnh phòng đọc
+        </Link>
+      </div>
+    );
+  }
+
+  // MÀN HÌNH CHỜ KHI CHƯA CHỌN TRUYỆN
   if (!chapter) {
     return (
       <div className="min-h-screen bg-[#0f0f11] text-white flex flex-col items-center justify-center p-6 text-center">
@@ -391,7 +510,7 @@ export default function MangaCoReadingRoom({
           </div>
         )}
 
-        {/* MODAL CHỌN TRUYỆN DÀNH CHO HOST */}
+        {/* MODAL CHỌN TRUYỆN */}
         {isSelectMangaOpen && (
           <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
             <div className="bg-[#1a1d24] border border-gray-800 rounded-2xl max-w-lg w-full p-6 text-left">
@@ -449,58 +568,181 @@ export default function MangaCoReadingRoom({
   const currentTheme = BG_THEMES[settings.bgTheme] || BG_THEMES.oled;
 
   return (
-    <div className="min-h-screen relative flex flex-col" style={{ backgroundColor: currentTheme.bg, color: currentTheme.text }}>
-      {/* HEADER PHÒNG */}
-      <div className="h-14 border-b border-gray-800 bg-gray-900/90 backdrop-blur px-4 flex items-center justify-between z-30">
-        <div className="flex items-center gap-3">
-          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-          <h2 className="font-bold text-sm">
-            Phòng #{room.inviteCode || room.id.slice(0, 6)} - {chapter.manga.title} ({chapter.title})
-          </h2>
+    <div className="min-h-screen relative flex flex-col select-none" style={{ backgroundColor: currentTheme.bg, color: currentTheme.text }}>
+{/* HEADER PHÒNG */}
+      <header className="h-14 border-b border-gray-800 bg-gray-900/95 backdrop-blur px-3 md:px-4 flex items-center justify-between z-30 shrink-0 gap-2">
+        {/* CỤM TRÁI: THÔNG TIN PHÒNG & QUYỀN HOST */}
+        <div className="flex items-center gap-2 min-w-0 shrink">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+          <div className="flex items-center gap-1.5 min-w-0 text-xs md:text-sm font-semibold text-gray-200">
+            <span className="text-emerald-400 font-mono shrink-0">
+              #{room.inviteCode || room.id.slice(0, 6)}
+            </span>
+            <span className="text-gray-600 hidden sm:inline">|</span>
+            <span className="truncate max-w-[120px] sm:max-w-[200px] lg:max-w-[260px] text-gray-300">
+              {chapter.manga.title}
+            </span>
+            <span className="text-gray-500 font-normal truncate hidden md:inline">
+              ({chapter.title})
+            </span>
+          </div>
+
           {isHost && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 ml-1 shrink-0">
               <button
+                type="button"
                 onClick={() => setIsLocked(!isLocked)}
-                className={`px-2.5 py-1 rounded text-xs font-bold border transition ${
-                  isLocked ? "bg-amber-500/20 text-amber-300 border-amber-500/40" : "bg-gray-800 text-gray-400 border-gray-700"
+                className={`px-2 py-1 rounded text-xs font-medium border whitespace-nowrap transition ${
+                  isLocked
+                    ? "bg-amber-500/15 text-amber-300 border-amber-500/40"
+                    : "bg-gray-800 text-gray-400 border-gray-700 hover:text-gray-200"
                 }`}
+                title="Khóa/mở khóa quyền chuyển trang"
               >
-                {isLocked ? "🔒 Host Lock: Bật" : "🔓 Tự do: Bật"}
+                {isLocked ? "🔒 Khóa" : "🔓 Tự do"}
               </button>
               <button
+                type="button"
                 onClick={openMangaSelector}
-                className="px-2.5 py-1 bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 rounded text-xs font-medium transition"
+                className="px-2 py-1 bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 rounded text-xs font-medium whitespace-nowrap transition"
               >
-                🔄 Đổi truyện/chương
+                🔄 Đổi truyện
               </button>
             </div>
           )}
         </div>
 
-        {/* Ngôn ngữ dịch AI */}
-        <div className="flex items-center gap-2">
-          <span className="text-xs opacity-70">Dịch:</span>
-          <select 
-            value={targetLang}
-            onChange={(e) => setTargetLang(e.target.value)}
-            className="bg-gray-800 text-xs px-2 py-1 rounded outline-none border border-gray-700 text-white"
-          >
-            {SUPPORTED_LANGUAGES.map((lang) => (
-              <option key={lang.code} value={lang.code}>{lang.label}</option>
-            ))}
-          </select>
-        </div>
-      </div>
+        {/* CỤM PHẢI: LASER PEN, XÓA, VOICE CHAT, DỊCH, RỜI/GIẢI TÁN */}
+        <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
+          {/* 1. Laser Pen + Kích thước nét */}
+          <div className="flex items-center bg-gray-800/80 border border-gray-700/80 rounded-lg p-0.5">
+            <button
+              type="button"
+              onClick={() => setIsLaserPenActive(!isLaserPenActive)}
+              className={`px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap transition flex items-center gap-1 ${
+                isLaserPenActive
+                  ? "bg-red-500 text-white shadow-sm shadow-red-900/50"
+                  : "text-gray-300 hover:text-white"
+              }`}
+            >
+              <span>{isLaserPenActive ? "🔴 Đang vẽ" : "✏️ Laser"}</span>
+            </button>
 
-      {/* NỘI DUNG TRANG TRUYỆN */}
+            {isLaserPenActive && (
+              <div className="flex items-center gap-0.5 pl-1 pr-0.5 border-l border-gray-700 ml-1">
+                {[
+                  { label: "S", value: 0.8, title: "Mảnh" },
+                  { label: "M", value: 1.6, title: "Vừa" },
+                  { label: "L", value: 2.4, title: "Dày" },
+                ].map((size) => (
+                  <button
+                    key={size.value}
+                    type="button"
+                    title={size.title}
+                    onClick={() => setLaserWidth(size.value)}
+                    className={`w-5 h-5 rounded text-[10px] font-bold transition flex items-center justify-center ${
+                      laserWidth === size.value
+                        ? "bg-emerald-600 text-white"
+                        : "text-gray-400 hover:text-gray-200"
+                    }`}
+                  >
+                    {size.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* 2. Nút xóa nét của tôi */}
+          {hasMyStrokes && (
+            <button
+              type="button"
+              onClick={emitClearMyLaser}
+              className="px-2 py-1 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white border border-gray-700 rounded-lg text-xs font-medium whitespace-nowrap transition flex items-center gap-1"
+              title="Chỉ xóa nét vẽ của bạn"
+            >
+              <span>🧹 Xóa nét</span>
+            </button>
+          )}
+
+          {/* 3. Nút xóa tất cả dành cho Host */}
+          {isHost && laserLines.length > 0 && (
+            <button
+              type="button"
+              onClick={emitClearAllLaser}
+              className="px-2 py-1 bg-red-950/40 hover:bg-red-900/60 text-red-300 border border-red-800/60 rounded-lg text-xs font-medium whitespace-nowrap transition flex items-center gap-1"
+              title="Xóa toàn bộ nét của tất cả mọi người"
+            >
+              <span>🗑️ Xóa hết</span>
+            </button>
+          )}
+
+          {/* 4. LiveKit Voice Chat */}
+          {session?.user?.id && (
+            <div className="shrink-0">
+              <MangaVoiceChat
+                roomId={room.id}
+                userId={session.user.id}
+                userName={session.user.name || "Bạn đọc"}
+              />
+            </div>
+          )}
+
+          {/* 5. Dropdown ngôn ngữ dịch */}
+          <div className="hidden lg:flex items-center gap-1 bg-gray-800/60 border border-gray-700/80 rounded-lg px-2 py-1">
+            <span className="text-[11px] text-gray-400 whitespace-nowrap">Dịch:</span>
+            <select
+              value={targetLang}
+              onChange={(e) => setTargetLang(e.target.value)}
+              className="bg-transparent text-xs text-gray-200 outline-none cursor-pointer"
+            >
+              {SUPPORTED_LANGUAGES.map((lang) => (
+                <option key={lang.code} value={lang.code} className="bg-gray-900 text-white">
+                  {lang.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* 6. Nút Rời phòng / Giải tán */}
+          <div className="border-l border-gray-800 pl-1.5 md:pl-2 shrink-0">
+            {isHost ? (
+              <button
+                type="button"
+                onClick={handleDisbandRoom}
+                className="px-2.5 py-1 bg-red-600/20 hover:bg-red-600 text-red-300 hover:text-white border border-red-500/40 rounded-lg text-xs font-semibold whitespace-nowrap transition flex items-center gap-1"
+                title="Giải tán phòng cho tất cả mọi người"
+              >
+                <span>🚪 Giải tán</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleLeaveRoom}
+                className="px-2.5 py-1 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white border border-gray-700 rounded-lg text-xs font-semibold whitespace-nowrap transition flex items-center gap-1"
+                title="Rời khỏi phòng đọc"
+              >
+                <span>🚪 Rời</span>
+              </button>
+            )}
+          </div>
+        </div>
+      </header>
+
+      {/* NỘI DUNG TRANG TRUYỆN + CANVAS LASER + LIVE CURSORS */}
       <div 
         ref={containerRef} 
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto relative flex flex-col items-center justify-center p-4 custom-scrollbar"
+        className={`flex-1 overflow-y-auto relative flex flex-col items-center justify-center p-4 custom-scrollbar ${
+          isLaserPenActive ? "cursor-crosshair" : "cursor-default"
+        }`}
       >
         <div 
-          className="relative max-w-3xl w-full flex justify-center"
+          ref={pageContainerRef}
+          className="relative w-fit max-w-full flex justify-center select-none"
           onMouseMove={handleMouseMoveOnPage}
+          onMouseDown={handleMouseDown}
+          onMouseUp={handleMouseUp}
         >
           {settings.mode === "VERTICAL" ? (
             <div className="w-full flex flex-col items-center">
@@ -517,21 +759,81 @@ export default function MangaCoReadingRoom({
             />
           )}
 
-          {/* RENDER CON TRỎ LASER CỦA BẠN BÈ */}
-          {Object.values(lasers).map((laser) => (
+          {/* 🌟 1. SVG LỚP VẼ LASER (KHOANH VÙNG CHI TIẾT TẠM THỜI) */}
+          <svg 
+            viewBox="0 0 100 100" 
+            preserveAspectRatio="none"
+            className="absolute inset-0 w-full h-full pointer-events-none z-30"
+          >
+            {/* Nét vẽ của chính bạn khi đang kéo chuột */}
+            {currentDrawStroke.length > 1 && (
+              <path
+                d={currentDrawStroke.reduce(
+                  (acc, pt, idx) => `${acc} ${idx === 0 ? "M" : "L"} ${pt.x} ${pt.y}`,
+                  ""
+                )}
+                fill="none"
+                stroke={userColor}
+                strokeWidth={laserWidth}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                vectorEffect="non-scaling-stroke"
+                style={{ filter: `drop-shadow(0 0 6px ${userColor})` }}
+              />
+            )}
+
+            {/* Nét vẽ của bạn bè đồng bộ qua Socket (tự biến mất sau 2.5s) */}
+            {laserLines.map((line) => {
+              if (line.points.length < 2) return null;
+              const pathData = line.points.reduce(
+                (acc, pt, idx) => `${acc} ${idx === 0 ? "M" : "L"} ${pt.x} ${pt.y}`,
+                ""
+              );
+              return (
+                <path
+                  key={line.id}
+                  d={pathData}
+                  fill="none"
+                  stroke={line.color}
+                  strokeWidth={line.strokeWidth || 0.8}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  vectorEffect="non-scaling-stroke"
+                  className="transition-opacity duration-1000 opacity-90"
+                  style={{ filter: `drop-shadow(0 0 8px ${line.color})` }}
+                />
+              );
+            })}
+          </svg>
+
+          {/* 🌟 2. LIVE CURSORS: CON TRỎ CHUỘT THỜI GIAN THỰC CỦA BẠN BÈ */}
+          {Object.values(remoteCursors).map((cur) => (
             <div
-              key={laser.userId}
-              className="absolute pointer-events-none z-50 flex items-center gap-1.5 transition-all duration-75"
+              key={cur.userId}
+              className="absolute pointer-events-none z-40 flex items-center gap-1.5 transition-all duration-75 ease-out"
               style={{
-                top: `${laser.yPercent}%`,
-                left: `${laser.xPercent}%`,
-                transform: "translate(-50%, -50%)",
+                top: `${cur.yPercent}%`,
+                left: `${cur.xPercent}%`,
+                transform: "translate(-2px, -2px)",
               }}
             >
-              <div className="w-3.5 h-3.5 rounded-full animate-ping opacity-75" style={{ backgroundColor: laser.color }} />
-              <div className="w-3 h-3 rounded-full shadow-lg absolute inset-0" style={{ backgroundColor: laser.color }} />
-              <span className="text-[10px] font-black px-1.5 py-0.5 rounded text-white ml-2 shadow whitespace-nowrap" style={{ backgroundColor: laser.color }}>
-                {laser.username}
+              {/* Mũi tên trỏ chuột sắc nét theo màu user */}
+              <svg 
+                className="w-4 h-4 drop-shadow-md" 
+                viewBox="0 0 24 24" 
+                fill={cur.color} 
+                stroke="#000" 
+                strokeWidth="1.5"
+              >
+                <path d="M3 3l7 18 3-7 7-3L3 3z" />
+              </svg>
+
+              {/* Tên bạn bè bay theo con trỏ */}
+              <span
+                className="text-[10px] font-bold px-1.5 py-0.5 rounded text-white shadow-md whitespace-nowrap"
+                style={{ backgroundColor: cur.color }}
+              >
+                {cur.userName}
               </span>
             </div>
           ))}
@@ -540,26 +842,32 @@ export default function MangaCoReadingRoom({
 
       {/* THANH ĐIỀU KHIỂN TRANG */}
       {settings.mode !== "VERTICAL" && (
-        <div className="h-12 border-t border-gray-800 bg-gray-900/60 backdrop-blur flex items-center justify-center gap-4 text-sm z-20">
-          <button 
-            onClick={settings.mode === "PAGED_RTL" ? handleNextPage : handlePrevPage}
-            disabled={(!isHost && isLocked) || currentPage === 0}
-            className="px-3 py-1 bg-gray-800 rounded disabled:opacity-40"
+        <div className="h-14 border-t border-gray-800 bg-gray-900/90 backdrop-blur flex items-center justify-center gap-6 text-sm z-50 sticky bottom-0 shrink-0">
+          <button
+            type="button"
+            onClick={handlePrevPage}
+            disabled={currentPage === 0}
+            className="px-4 py-2 bg-gray-800 hover:bg-emerald-600 disabled:opacity-30 disabled:hover:bg-gray-800 text-white font-medium rounded-lg transition cursor-pointer select-none"
           >
-            Trang trước
+            &larr; Trang trước
           </button>
-          <span>{currentPage + 1} / {chapter.images.length}</span>
-          <button 
-            onClick={settings.mode === "PAGED_RTL" ? handlePrevPage : handleNextPage}
-            disabled={(!isHost && isLocked) || currentPage === chapter.images.length - 1}
-            className="px-3 py-1 bg-gray-800 rounded disabled:opacity-40"
+
+          <span className="font-bold text-emerald-400 text-base">
+            Trang {currentPage + 1} / {chapter.images.length}
+          </span>
+
+          <button
+            type="button"
+            onClick={handleNextPage}
+            disabled={currentPage >= chapter.images.length - 1}
+            className="px-4 py-2 bg-gray-800 hover:bg-emerald-600 disabled:opacity-30 disabled:hover:bg-gray-800 text-white font-medium rounded-lg transition cursor-pointer select-none"
           >
-            Trang sau
+            Trang sau &rarr;
           </button>
         </div>
       )}
 
-      {/* MODAL ĐỔI TRUYỆN TRONG KHI ĐANG ĐỌC (NẾU HOST BẤM ĐỔI) */}
+      {/* MODAL ĐỔI TRUYỆN */}
       {isSelectMangaOpen && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-[#1a1d24] border border-gray-800 rounded-2xl max-w-lg w-full p-6 text-left">
@@ -605,7 +913,48 @@ export default function MangaCoReadingRoom({
             )}
           </div>
         </div>
+
       )}
+
+      {/* 🌟 MODAL PHÊ DUYỆT THAM GIA PHÒNG (CHỈ HOST MỚI NHÌN THẤY) */}
+      {isHost && joinRequests.length > 0 && (
+        <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2 max-w-sm w-full animate-bounce-short">
+          {joinRequests.map((req) => (
+            <div
+              key={req.applicant.id}
+              className="bg-gray-900/95 border border-amber-500/40 p-4 rounded-xl shadow-2xl backdrop-blur flex flex-col gap-3"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-full bg-amber-500/20 text-amber-300 flex items-center justify-center font-bold text-sm">
+                  {req.applicant.name?.charAt(0).toUpperCase() || "U"}
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-white">{req.applicant.name || "Người dùng"}</h4>
+                  <p className="text-[11px] text-gray-400">Đang xin vào phòng đọc này</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 justify-end">
+                <button
+                  type="button"
+                  onClick={() => respondJoinRequest(req.applicantSocketId, req.applicant.id, false)}
+                  className="px-3 py-1.5 bg-gray-800 hover:bg-red-950/60 text-gray-300 hover:text-red-400 border border-gray-700 rounded-lg text-xs font-semibold transition"
+                >
+                  Từ chối
+                </button>
+                <button
+                  type="button"
+                  onClick={() => respondJoinRequest(req.applicantSocketId, req.applicant.id, true)}
+                  className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition shadow-lg shadow-emerald-900/40"
+                >
+                  Đồng ý
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      
     </div>
   );
 }

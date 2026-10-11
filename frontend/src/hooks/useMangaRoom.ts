@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { io, Socket } from "socket.io-client";
+import { useRouter } from "next/navigation";
 
 export interface MangaRoomUser {
   id: string;
@@ -15,78 +16,201 @@ export interface MangaRoomMember extends MangaRoomUser {
   role?: "HOST" | "MEMBER";
 }
 
-interface LaserPointer {
+export interface JoinRequest {
+  applicant: MangaRoomUser;
+  applicantSocketId: string;
+}
+
+// Con trỏ chuột thời gian thực
+export interface RemoteCursor {
   userId: string;
-  username: string;
+  userName: string;
   color: string;
   xPercent: number;
   yPercent: number;
-  pageIndex: number;
+}
+
+// Nét vẽ laser khoanh vùng tạm thời
+export interface LaserLine {
+  id: string;
+  userId: string;
+  points: { x: number; y: number }[];
+  color: string;
+  strokeWidth: number;
 }
 
 export function useMangaRoom({
   roomId,
   user,
   isHost,
+  isPrivate,
   onRemotePageChange,
   onRemoteScroll,
 }: {
   roomId: string;
   user: MangaRoomUser | null;
   isHost: boolean;
+  isPrivate?: boolean;
   onRemotePageChange: (chapterId: string, page: number) => void;
   onRemoteScroll: (percent: number) => void;
 }) {
-  const [isLocked, setIsLocked] = useState(true);
-  const [members, setMembers] = useState<MangaRoomMember[]>([]);
-  const [lasers, setLasers] = useState<Record<string, LaserPointer>>({});
+  const router = useRouter();
   const socketRef = useRef<Socket | null>(null);
-  const laserTimeouts = useRef<Record<string, NodeJS.Timeout>>({});
+
+  // 🌟 Cờ đánh dấu đã gửi yêu cầu xin vào hay chưa (tránh gửi lặp lại khi re-render)
+  const hasRequestedRef = useRef(false);
+  // 🌟 Danh sách ID những người Host đã duyệt trong phiên này
+  const approvedUserIdsRef = useRef<Set<string>>(new Set());
+
+  // States cơ bản
+  const [isLocked, setIsLocked] = useState(false);
+  const [members, setMembers] = useState<MangaRoomMember[]>([]);
+  const [remoteCursors, setRemoteCursors] = useState<Record<string, RemoteCursor>>({});
+  const [laserLines, setLaserLines] = useState<LaserLine[]>([]);
+
+  // 🌟 States quản lý phê duyệt phòng kín
+  const [joinRequests, setJoinRequests] = useState<JoinRequest[]>([]);
+  const [isApprovedByHost, setIsApprovedByHost] = useState(false);
+  const [isRejectedByHost, setIsRejectedByHost] = useState(false);
+
+  // 🌟 Suy diễn trạng thái duyệt phòng (Tránh setState trong useEffect gây lỗi cascading renders)
+  const approvalStatus: "APPROVED" | "PENDING" | "REJECTED" = useMemo(() => {
+    if (isHost || !isPrivate) return "APPROVED";
+    if (isRejectedByHost) return "REJECTED";
+    if (isApprovedByHost) return "APPROVED";
+    return "PENDING";
+  }, [isHost, isPrivate, isApprovedByHost, isRejectedByHost]);
 
   useEffect(() => {
     if (!roomId) return;
 
-    // Tự khởi tạo Socket bên trong hook
     const socket = io("http://localhost:5000");
     socketRef.current = socket;
 
     if (user) {
       socket.emit("manga:join_room", { roomId, user });
+
+      // 🌟 CHỈ GỬI YÊU CẦU NẾU CHƯA GỬI LẦN NÀO VÀ CHƯA ĐƯỢC DUYỆT
+      if (isPrivate && !isHost && !isApprovedByHost && !hasRequestedRef.current) {
+        socket.emit("manga:request_join", { roomId, user });
+        hasRequestedRef.current = true; // Đánh dấu đã gửi
+      }
     }
 
-    socket.on("manga:page_synced", (data) => {
+    // 🌟 Host: Nhận yêu cầu xin vào phòng kín
+    socket.on("manga:receive_join_request", (req: JoinRequest) => {
+      if (isHost) {
+        // Nếu người này đã được Host duyệt rồi thì bỏ qua không hiện lại popup nữa
+        if (approvedUserIdsRef.current.has(req.applicant.id)) return;
+
+        setJoinRequests((prev) => [
+          ...prev.filter((r) => r.applicant.id !== req.applicant.id),
+          req,
+        ]);
+      }
+    });
+
+    // 🌟 Khách: Nhận kết quả duyệt từ Host
+    socket.on("manga:join_response", ({ approved }: { approved: boolean }) => {
+      if (approved) {
+        setIsApprovedByHost(true);
+      } else {
+        setIsRejectedByHost(true);
+      }
+    });
+
+    // 1. Đồng bộ lật trang
+    socket.on("manga:page_synced", (data: { chapterId: string; currentPage: number }) => {
       onRemotePageChange(data.chapterId, data.currentPage);
     });
 
-    socket.on("manga:scroll_synced", (data) => {
+    // 2. Đồng bộ cuộn dọc (Webtoon)
+    socket.on("manga:scroll_synced", (data: { scrollPercent: number }) => {
       onRemoteScroll(data.scrollPercent);
     });
 
-    socket.on("manga:lock_updated", ({ isHostLocked }) => {
+    // 3. Cập nhật trạng thái khóa của Host
+    socket.on("manga:lock_updated", ({ isHostLocked }: { isHostLocked: boolean }) => {
       setIsLocked(isHostLocked);
     });
 
-    socket.on("manga:laser_updated", (data: LaserPointer) => {
-      setLasers((prev) => ({ ...prev, [data.userId]: data }));
+    // 4. Nhận vị trí Live Cursor từ thành viên khác
+    socket.on("manga:cursor_moved", (cursor: RemoteCursor) => {
+      if (cursor.userId === user?.id) return;
+      setRemoteCursors((prev) => ({ ...prev, [cursor.userId]: cursor }));
+    });
 
-      if (laserTimeouts.current[data.userId]) {
-        clearTimeout(laserTimeouts.current[data.userId]);
+    // 5. Xóa con trỏ khi có người rời phòng
+    socket.on("manga:user_left", ({ userId }: { userId: string }) => {
+      setRemoteCursors((prev) => {
+        const next = { ...prev };
+        delete next[userId];
+        return next;
+      });
+    });
+
+    // 6. Nhận nét vẽ Laser khoanh vùng từ thành viên khác
+    socket.on("manga:laser_draw", (line: LaserLine) => {
+      setLaserLines((prev) => [...prev, line]);
+    });
+
+    // 7. Lắng nghe sự kiện xóa nét vẽ
+    socket.on("manga:laser_cleared", ({ targetUserId }: { targetUserId?: string }) => {
+      if (targetUserId) {
+        // Chỉ xóa nét của người tương ứng
+        setLaserLines((prev) => prev.filter((line) => line.userId !== targetUserId));
+      } else {
+        // Trưởng phòng yêu cầu xóa tất cả
+        setLaserLines([]);
       }
-      laserTimeouts.current[data.userId] = setTimeout(() => {
-        setLasers((prev) => {
-          const next = { ...prev };
-          delete next[data.userId];
-          return next;
-        });
-      }, 1500);
+    });
+
+    // 8. Lắng nghe sự kiện phòng bị giải tán
+    socket.on("manga:room_disbanded", () => {
+      alert("Trưởng phòng đã giải tán phòng đọc này!");
+      router.push("/manga-room");
     });
 
     return () => {
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [roomId, user?.id]);
+  }, [roomId, user?.id, isHost, isPrivate, isApprovedByHost, router]);
 
+  // 🌟 Host duyệt hoặc từ chối
+  const respondJoinRequest = useCallback(
+    (applicantSocketId: string, applicantId: string, approved: boolean) => {
+      if (!socketRef.current || !isHost) return;
+
+      // Đánh dấu đã duyệt vào Set để không bao giờ nhận lại request của người này nữa
+      if (approved) {
+        approvedUserIdsRef.current.add(applicantId);
+      }
+
+      socketRef.current.emit("manga:respond_join_request", { applicantSocketId, approved });
+
+      // Xóa ngay lập tức khỏi danh sách popup
+      setJoinRequests((prev) => prev.filter((r) => r.applicant.id !== applicantId));
+    },
+    [isHost]
+  );
+
+  // Rời phòng của thành viên
+  const emitLeaveRoom = useCallback(() => {
+    if (socketRef.current && user) {
+      socketRef.current.emit("manga:leave_room", { roomId, userId: user.id });
+    }
+    router.push("/manga-room");
+  }, [roomId, user, router]);
+
+  // Giải tán phòng của Host
+  const emitDisbandRoom = useCallback(async () => {
+    if (!socketRef.current || !isHost) return;
+    socketRef.current.emit("manga:disband_room", { roomId });
+    router.push("/manga-room");
+  }, [roomId, isHost, router]);
+
+  // Phát tín hiệu lật trang
   const emitPageChange = useCallback(
     (chapterId: string, page: number) => {
       if (!socketRef.current || (!isHost && isLocked)) return;
@@ -99,6 +223,7 @@ export function useMangaRoom({
     [roomId, isHost, isLocked]
   );
 
+  // Phát tín hiệu cuộn trang
   const emitScroll = useCallback(
     (percent: number) => {
       if (!socketRef.current || (!isHost && isLocked)) return;
@@ -107,21 +232,60 @@ export function useMangaRoom({
     [roomId, isHost, isLocked]
   );
 
-  const emitLaser = useCallback(
-    (xPercent: number, yPercent: number, pageIndex: number) => {
+  // Phát tọa độ con trỏ chuột thời gian thực (Live Cursor)
+  const emitCursorMove = useCallback(
+    (xPercent: number, yPercent: number) => {
       if (!socketRef.current || !user) return;
-      socketRef.current.emit("manga:laser_pointer", {
+      socketRef.current.emit("manga:move_cursor", {
         roomId,
-        userId: user.id,
-        username: user.name || "Bạn đọc",
-        color: user.color || "#ef4444",
-        xPercent,
-        yPercent,
-        pageIndex,
+        cursor: {
+          userId: user.id,
+          userName: user.name || user.username || "Bạn đọc",
+          color: user.color || "#10b981",
+          xPercent,
+          yPercent,
+        },
       });
     },
     [roomId, user]
   );
+
+  // Phát nét vẽ khoanh vùng Laser
+  const emitLaserDraw = useCallback(
+    (points: { x: number; y: number }[], strokeWidth: number = 0.8) => {
+      if (!socketRef.current || !user) return;
+      const newLine: LaserLine = {
+        id: `${user.id}_${Date.now()}`,
+        userId: user.id,
+        points,
+        color: user.color || "#10b981",
+        strokeWidth,
+      };
+
+      setLaserLines((prev) => [...prev, newLine]);
+      socketRef.current.emit("manga:laser_draw", { roomId, line: newLine });
+    },
+    [roomId, user]
+  );
+
+  // Chỉ xóa nét vẽ của chính mình
+  const emitClearMyLaser = useCallback(() => {
+    if (!socketRef.current || !user) return;
+    setLaserLines((prev) => prev.filter((line) => line.userId !== user.id));
+    socketRef.current.emit("manga:clear_laser", { 
+      roomId, 
+      targetUserId: user.id 
+    });
+  }, [roomId, user]);
+
+  // Trưởng phòng xóa toàn bộ nét vẽ trong phòng
+  const emitClearAllLaser = useCallback(() => {
+    if (!socketRef.current || !isHost) return;
+    setLaserLines([]);
+    socketRef.current.emit("manga:clear_laser", { 
+      roomId 
+    });
+  }, [roomId, isHost]);
 
   return {
     isLocked,
@@ -129,10 +293,19 @@ export function useMangaRoom({
       setIsLocked(locked);
       socketRef.current?.emit("manga:toggle_lock", { roomId, isHostLocked: locked });
     },
+    approvalStatus,
+    joinRequests,
+    respondJoinRequest,
     emitPageChange,
     emitScroll,
-    emitLaser,
-    lasers,
+    emitCursorMove,
+    emitLaserDraw,
+    emitClearMyLaser,
+    emitClearAllLaser,
+    emitLeaveRoom,
+    emitDisbandRoom,
+    remoteCursors,
+    laserLines,
     members,
   };
 }

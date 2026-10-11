@@ -84,7 +84,7 @@ export default function MangaCoReadingLobby() {
 
     setIsCreating(true);
     try {
-      const res = await fetch("http://localhost:5000/api/party/rooms", {
+      const res = await fetch("http://localhost:5000/api/manga-room/rooms", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

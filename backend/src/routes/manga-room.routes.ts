@@ -268,25 +268,47 @@ router.get('/rooms', async (req: Request, res: Response): Promise<any> => {
 // ==========================================
 router.get('/rooms/:roomId/voice-token', async (req: Request, res: Response): Promise<any> => {
   try {
-    const roomId = String(req.params.roomId);
+    const rawRoomId = String(req.params.roomId);
     const userName = (req.query.userName as string) || "Bạn đọc";
+    // 🌟 Ưu tiên dùng userId cố định từ Session
+    const userId = (req.query.userId as string) || `user_${Math.random().toString(36).substring(2, 8)}`;
 
     if (!process.env.LIVEKIT_API_KEY || !process.env.LIVEKIT_API_SECRET) {
       return res.status(500).json({ message: "Máy chủ chưa được cấu hình LiveKit!" });
     }
 
-    const uniqueIdentity = `user_${Math.random().toString(36).substring(2, 10)}`;
+    // 🌟 Chuẩn hóa ID phòng: Đảm bảo mọi người cùng vào 1 room voice dù client truyền id hay inviteCode
+    const existingRoom = await prisma.mangaCoRoom.findFirst({
+      where: {
+        OR: [
+          { id: rawRoomId },
+          { inviteCode: rawRoomId.toUpperCase() }
+        ]
+      },
+      select: { id: true }
+    });
+
+    // Nếu tìm thấy phòng thì lấy ID chuẩn của DB, nếu không thì fallback rawRoomId
+    const canonicalRoomId = existingRoom ? existingRoom.id : rawRoomId;
 
     const at = new AccessToken(
       process.env.LIVEKIT_API_KEY,
       process.env.LIVEKIT_API_SECRET,
       {
-        identity: uniqueIdentity,
-        name: userName
+        identity: userId, // 🌟 ID cố định định danh duy nhất cho user này
+        name: userName    // Tên hiển thị thật sự khi nói
       }
     );
 
-    at.addGrant({ roomJoin: true, room: `manga_${roomId}`, canPublish: true, canSubscribe: true });
+    // Thời gian sống của token (ví dụ: 6 tiếng)
+    at.ttl = '6h';
+
+    at.addGrant({
+      roomJoin: true,
+      room: `manga_${canonicalRoomId}`,
+      canPublish: true,   // Cho phép bật Mic
+      canSubscribe: true  // Cho phép nghe tiếng người khác
+    });
 
     const token = await at.toJwt();
     return res.status(200).json({ token });
