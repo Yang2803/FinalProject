@@ -26,6 +26,7 @@ export interface RemoteCursor {
   userId: string;
   userName: string;
   color: string;
+  pageIndex: number;
   xPercent: number;
   yPercent: number;
 }
@@ -34,9 +35,15 @@ export interface RemoteCursor {
 export interface LaserLine {
   id: string;
   userId: string;
+  pageIndex: number;
   points: { x: number; y: number }[];
   color: string;
   strokeWidth: number;
+}
+
+export interface MangaTheme {
+  type: "color" | "image";
+  value: string;
 }
 
 export function useMangaRoom({
@@ -46,6 +53,7 @@ export function useMangaRoom({
   isPrivate,
   onRemotePageChange,
   onRemoteScroll,
+  onRemoteReadModeChange,
 }: {
   roomId: string;
   user: MangaRoomUser | null;
@@ -53,9 +61,12 @@ export function useMangaRoom({
   isPrivate?: boolean;
   onRemotePageChange: (chapterId: string, page: number) => void;
   onRemoteScroll: (percent: number) => void;
+  onRemoteReadModeChange?: (mode: "SINGLE" | "VERTICAL") => void;
 }) {
   const router = useRouter();
   const socketRef = useRef<Socket | null>(null);
+
+  const [theme, setTheme] = useState<MangaTheme>({ type: "color", value: "#000000" });
 
   // 🌟 Cờ đánh dấu đã gửi yêu cầu xin vào hay chưa (tránh gửi lặp lại khi re-render)
   const hasRequestedRef = useRef(false);
@@ -165,10 +176,32 @@ export function useMangaRoom({
       }
     });
 
+    // 🌟 1. Lắng nghe Host đổi chế độ đọc (Từng trang / Cuộn dọc)
+    socket.on("manga:read_mode_updated", ({ readMode }: { readMode: "SINGLE" | "VERTICAL" }) => {
+      if (onRemoteReadModeChange) {
+        onRemoteReadModeChange(readMode);
+      }
+    });
+
+    // 🌟 2. Cập nhật trạng thái khóa phòng cho tất cả mọi người
+    socket.on("manga:lock_updated", ({ isHostLocked }: { isHostLocked: boolean }) => {
+      setIsLocked(isHostLocked);
+    });
+
+    // 🌟 3. Đồng bộ cuộn từ xa
+    socket.on("manga:scroll_synced", (data: { scrollPercent: number }) => {
+      onRemoteScroll(data.scrollPercent);
+    });
+
     // 8. Lắng nghe sự kiện phòng bị giải tán
     socket.on("manga:room_disbanded", () => {
       alert("Trưởng phòng đã giải tán phòng đọc này!");
       router.push("/manga-room");
+    });
+
+    // 9. Lắng nghe sự kiện cập nhật theme background Manga Room
+    socket.on("manga:theme_updated", (newTheme: MangaTheme) => {
+      setTheme(newTheme);
     });
 
     return () => {
@@ -232,9 +265,19 @@ export function useMangaRoom({
     [roomId, isHost, isLocked]
   );
 
+  // Hàm phát sự kiện đổi theme
+  const emitChangeTheme = useCallback(
+    (newTheme: MangaTheme) => {
+      if (!socketRef.current || !isHost) return;
+      setTheme(newTheme);
+      socketRef.current.emit("manga:change_theme", { roomId, theme: newTheme });
+    },
+    [roomId, isHost]
+  );
+
   // Phát tọa độ con trỏ chuột thời gian thực (Live Cursor)
   const emitCursorMove = useCallback(
-    (xPercent: number, yPercent: number) => {
+    (pageIndex: number, xPercent: number, yPercent: number) => {
       if (!socketRef.current || !user) return;
       socketRef.current.emit("manga:move_cursor", {
         roomId,
@@ -242,6 +285,7 @@ export function useMangaRoom({
           userId: user.id,
           userName: user.name || user.username || "Bạn đọc",
           color: user.color || "#10b981",
+          pageIndex,
           xPercent,
           yPercent,
         },
@@ -252,11 +296,12 @@ export function useMangaRoom({
 
   // Phát nét vẽ khoanh vùng Laser
   const emitLaserDraw = useCallback(
-    (points: { x: number; y: number }[], strokeWidth: number = 0.8) => {
+    (pageIndex: number, points: { x: number; y: number }[], strokeWidth: number = 0.8) => {
       if (!socketRef.current || !user) return;
       const newLine: LaserLine = {
         id: `${user.id}_${Date.now()}`,
         userId: user.id,
+        pageIndex,
         points,
         color: user.color || "#10b981",
         strokeWidth,
@@ -287,12 +332,28 @@ export function useMangaRoom({
     });
   }, [roomId, isHost]);
 
+  // 🌟 Hàm phát tín hiệu đổi chế độ đọc
+  const emitChangeReadMode = useCallback(
+    (mode: "SINGLE" | "VERTICAL") => {
+      if (!socketRef.current || (!isHost && isLocked)) return;
+      socketRef.current.emit("manga:change_read_mode", { roomId, readMode: mode });
+    },
+    [roomId, isHost, isLocked]
+  );
+
+  // 🌟 Hàm khóa/mở khóa phòng
+  const toggleLock = useCallback(
+    (nextLocked: boolean) => {
+      if (!socketRef.current || !isHost) return;
+      setIsLocked(nextLocked);
+      socketRef.current.emit("manga:toggle_lock", { roomId, isHostLocked: nextLocked });
+    },
+    [roomId, isHost]
+  );
+
   return {
     isLocked,
-    setIsLocked: (locked: boolean) => {
-      setIsLocked(locked);
-      socketRef.current?.emit("manga:toggle_lock", { roomId, isHostLocked: locked });
-    },
+    setIsLocked: toggleLock,
     approvalStatus,
     joinRequests,
     respondJoinRequest,
@@ -304,6 +365,10 @@ export function useMangaRoom({
     emitClearAllLaser,
     emitLeaveRoom,
     emitDisbandRoom,
+    emitChangeTheme,
+    emitChangeReadMode,
+    toggleLock,
+    theme,
     remoteCursors,
     laserLines,
     members,

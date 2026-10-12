@@ -123,6 +123,22 @@ export function initSocket(server: HttpServer) {
       io.to(`manga_${roomId}`).emit("manga:room_disbanded");
     });
 
+    // 1. Đồng bộ chế độ đọc (Single Page / Vertical Webtoon)
+    socket.on("manga:change_read_mode", ({ roomId, readMode }: { roomId: string; readMode: "SINGLE" | "VERTICAL" }) => {
+      io.to(`manga_${roomId}`).emit("manga:read_mode_updated", { readMode });
+    });
+
+    // 2. Bật / Tắt Khóa phòng (Chỉ Host mới có quyền phát lệnh này)
+    socket.on("manga:toggle_lock", ({ roomId, isHostLocked }: { roomId: string; isHostLocked: boolean }) => {
+      io.to(`manga_${roomId}`).emit("manga:lock_updated", { isHostLocked });
+    });
+
+    // 3. Đồng bộ cuộn dọc mượt mà
+    socket.on("manga:sync_scroll", ({ roomId, scrollPercent }: { roomId: string; scrollPercent: number }) => {
+      // Dùng socket.to() để chỉ gửi cho các thành viên khác, không gửi ngược lại người đang cuộn
+      socket.to(`manga_${roomId}`).emit("manga:scroll_synced", { scrollPercent });
+    });
+
     // 🌟 SỬA: Lắng nghe di chuyển chuột -> Bắn tới `manga_${roomId}`
     socket.on("manga:move_cursor", ({ roomId, cursor }: { roomId: string; cursor: any }) => {
       socket.to(`manga_${roomId}`).emit("manga:cursor_moved", cursor);
@@ -137,6 +153,11 @@ export function initSocket(server: HttpServer) {
     socket.on("manga:clear_laser", ({ roomId, targetUserId }: { roomId: string; targetUserId?: string }) => {
       // Nếu có targetUserId: chỉ xóa nét của user đó. Nếu không có: xóa tất cả
       io.to(`manga_${roomId}`).emit("manga:laser_cleared", { targetUserId });
+    });
+
+    // Đồng bộ theme background Manga Room
+    socket.on("manga:change_theme", ({ roomId, theme }: { roomId: string; theme: { type: "color" | "image"; value: string } }) => {
+      io.to(`manga_${roomId}`).emit("manga:theme_updated", theme);
     });
 
     // Khách gửi yêu cầu xin vào phòng kín
