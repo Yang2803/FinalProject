@@ -89,12 +89,12 @@ function TranslateableImage({
   };
 
   const wrapperClass = mode === "vertical" 
-    ? "relative w-full max-w-full mb-4 mx-auto block" 
-    : "relative max-h-[85vh] w-fit mx-auto inline-flex items-center justify-center";
+    ? "relative inline-block w-fit max-w-full mb-6 mx-auto" 
+    : "relative inline-flex items-center justify-center max-h-[85vh] w-fit mx-auto";
 
   const imgClass = mode === "vertical"
-    ? "w-full h-auto block object-contain"
-    : "h-full w-auto block object-contain transition-opacity duration-300";
+    ? "w-full max-w-3xl h-auto block select-none"
+    : "max-h-[85vh] w-auto block object-contain select-none";
 
   return (
     <div className={wrapperClass}>
@@ -113,23 +113,44 @@ function TranslateableImage({
       </button>
 
       {showTranslation && blocks.map((block, index) => {
-        const isVertical = block.heightPercent > block.widthPercent;
         const blockType = block.type || "bubble";
+        const isVertical = block.heightPercent > block.widthPercent;
 
-        let borderRadius = "4px";
+        // Tự động phân loại kiểu dáng che chữ
+        let borderRadius = "18px";
         let background = "rgba(255, 255, 255, 0.98)";
         let textColor = "#000000";
 
         if (blockType === "bubble") {
-          borderRadius = isVertical ? "45% / 35%" : "20px";
+          // Ô thoại hình oval dọc thì bo tròn dáng bầu dục
+          borderRadius = isVertical ? "48% / 38%" : "22px";
         } else if (blockType === "box") {
           borderRadius = "4px";
           background = "#ffffff";
         } else if (blockType === "floating") {
           borderRadius = "4px";
-          background = "rgba(0, 0, 0, 0.85)";
+          background = "rgba(0, 0, 0, 0.88)";
           textColor = "#ffffff";
         }
+
+        // Tính kích thước chữ vừa vặn theo độ dài văn bản
+        const textLen = block.translatedText.length;
+        // 🌟 TÍNH CỠ CHỮ RIÊNG CHO TỪNG CHẾ ĐỘ
+        const isHorizontal = mode === "horizontal";
+
+        const fontSize = isHorizontal
+          ? // 🔻 Cỡ chữ dành riêng cho Manga (RTL) & Lật ngang (Horizontal) - nhỏ hơn để không mất chữ
+            textLen > 90
+            ? "clamp(7px, 0.65vw, 8.5px)"
+            : textLen > 40
+            ? "clamp(8px, 0.75vw, 9.5px)"
+            : "clamp(9px, 0.85vw, 10.5px)"
+          : // 🔹 Giữ nguyên hoàn toàn kích thước của chế độ Cuộn dọc (Vertical)
+            textLen > 90
+            ? "clamp(8.5px, 0.75vw, 10px)"
+            : textLen > 40
+            ? "clamp(9.5px, 0.85vw, 11px)"
+            : "clamp(10.5px, 0.95vw, 12px)";
 
         return (
           <div 
@@ -139,29 +160,39 @@ function TranslateableImage({
               top: `${block.topPercent}%`,
               left: `${block.leftPercent}%`,
               width: `${block.widthPercent}%`,
-              minHeight: `${block.heightPercent}%`, // 🌟 Cho phép tự nới nhẹ chiều cao nếu chữ nhiều hơn bóng thoại
-              backgroundColor: background,
-              color: textColor,
-              borderRadius: borderRadius,
-              transform: 'scale(1.15)',
-              boxShadow: blockType === "floating" ? "none" : "0 1px 2px rgba(0, 0, 0, 0.15)", 
-              padding: "2px 3px", // 🌟 Giảm padding cố định xuống mức tối thiểu để chữ có chỗ hiển thị
-              // 🌟 Font size co giãn linh hoạt hơn, cho phép thu nhỏ xuống 9px khi ô thoại bé
-              fontSize: "clamp(9px, 0.75vw, 13px)", 
-              lineHeight: "1.15", 
-              fontWeight: "600", 
-              fontFamily: "'Segoe UI', Roboto, Helvetica, Arial, sans-serif", 
+              height: `${block.heightPercent}%`,
             }}
           >
-            <span 
-              className="w-full flex items-center justify-center text-center"
+            {/* Khung bóng thoại phủ vừa khít diện tích thoại gốc */}
+            <div
+              className="w-full h-full flex items-center justify-center text-center overflow-hidden"
               style={{
-                wordBreak: "break-word",
-                whiteSpace: "normal",
+                backgroundColor: background,
+                color: textColor,
+                borderRadius: borderRadius,
+                padding: "4px 6px",
+                fontSize: fontSize,
+                lineHeight: "1.25",
+                fontWeight: "600",
+                fontFamily: "'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+                boxShadow: blockType === "floating" ? "none" : "0 1px 4px rgba(0, 0, 0, 0.18)",
               }}
             >
-              {block.translatedText}
-            </span>
+              <span 
+                className="w-full text-center select-none"
+                style={{
+                  wordBreak: "break-word",
+                  whiteSpace: "normal",
+                  overflowWrap: "anywhere",
+                  display: "-webkit-box",
+                  WebkitLineClamp: isVertical ? 8 : 6,
+                  WebkitBoxOrient: "vertical",
+                  overflow: "hidden",
+                }}
+              >
+                {block.translatedText}
+              </span>
+            </div>
           </div>
         );
       })}

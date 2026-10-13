@@ -604,14 +604,17 @@ router.post('/api/manga/translate-page', async (req: Request, res: Response): Pr
           * "box" (for rectangular narration boxes, character introduction cards, signs, tables)
           * "floating" (for text directly drawn over background/drawings without an enclosing container)
       - "box": The bounding box coordinates [ymin, xmin, ymax, xmax] normalized on a 0 to 1000 scale:
-          * For "bubble": Bound the entire bubble contour containing the text.
-          * For "box": Bound the rectangular container.
-          * For "floating": Bound the outer limits of the text block with slight padding.
+          * For "bubble": You MUST tightly bound the OUTER BORDER of the white speech bubble contour (NOT just the inner text).
+          * For "box": Tightly bound the rectangular narration box borders.
+          * For "floating": Tightly bound the text block itself.
 
-      CRITICAL POSITIONING CONSTRAINTS:
-      - TEXT-ANCHORED ONLY: First locate the actual text characters, then determine the enclosing container. Every bounding box MUST be centered around the text you read.
-      - NEVER predict or hallucinate boxes on empty white artistic spaces, panels, or light effects without text.
-      - Ensure [ymin, xmin, ymax, xmax] precisely match the actual location of that specific dialogue on the 0-1000 coordinate grid.
+      COORDINATE SYSTEM RULES:
+      - Coordinate format is strictly [ymin, xmin, ymax, xmax] where (0,0) is TOP-LEFT and (1000,1000) is BOTTOM-RIGHT of the full image.
+      - ymin: uppermost edge of the bubble outline
+      - xmin: leftmost edge of the bubble outline
+      - ymax: lowermost edge of the bubble outline
+      - xmax: rightmost edge of the bubble outline
+      - Do NOT shift or add artificial margins.
 
       Return ONLY a JSON array in this structure:
       [

@@ -65,13 +65,9 @@ export function useMangaRoom({
 }) {
   const router = useRouter();
   const socketRef = useRef<Socket | null>(null);
+  const [socketInstance, setSocketInstance] = useState<Socket | null>(null);
 
   const [theme, setTheme] = useState<MangaTheme>({ type: "color", value: "#000000" });
-
-  // 🌟 Cờ đánh dấu đã gửi yêu cầu xin vào hay chưa (tránh gửi lặp lại khi re-render)
-  const hasRequestedRef = useRef(false);
-  // 🌟 Danh sách ID những người Host đã duyệt trong phiên này
-  const approvedUserIdsRef = useRef<Set<string>>(new Set());
 
   // States cơ bản
   const [isLocked, setIsLocked] = useState(false);
@@ -79,12 +75,17 @@ export function useMangaRoom({
   const [remoteCursors, setRemoteCursors] = useState<Record<string, RemoteCursor>>({});
   const [laserLines, setLaserLines] = useState<LaserLine[]>([]);
 
-  // 🌟 States quản lý phê duyệt phòng kín
+  // 🌟 States quản lý phê duyệt phòng kín (Kiểm tra sessionStorage trước để không bị kẹt khi vào lại)
   const [joinRequests, setJoinRequests] = useState<JoinRequest[]>([]);
-  const [isApprovedByHost, setIsApprovedByHost] = useState(false);
+  const [isApprovedByHost, setIsApprovedByHost] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return sessionStorage.getItem(`manga_room_approved_${roomId}`) === "true";
+    }
+    return false;
+  });
   const [isRejectedByHost, setIsRejectedByHost] = useState(false);
 
-  // 🌟 Suy diễn trạng thái duyệt phòng (Tránh setState trong useEffect gây lỗi cascading renders)
+  // 🌟 Suy diễn trạng thái duyệt phòng
   const approvalStatus: "APPROVED" | "PENDING" | "REJECTED" = useMemo(() => {
     if (isHost || !isPrivate) return "APPROVED";
     if (isRejectedByHost) return "REJECTED";
@@ -97,23 +98,26 @@ export function useMangaRoom({
 
     const socket = io("http://localhost:5000");
     socketRef.current = socket;
+    socket.on("connect", () => {
+      setSocketInstance(socket);
+    });
+
+    socket.on("disconnect", () => {
+      setSocketInstance(null);
+    });
 
     if (user) {
       socket.emit("manga:join_room", { roomId, user });
 
-      // 🌟 CHỈ GỬI YÊU CẦU NẾU CHƯA GỬI LẦN NÀO VÀ CHƯA ĐƯỢC DUYỆT
-      if (isPrivate && !isHost && !isApprovedByHost && !hasRequestedRef.current) {
+      // Nếu là phòng kín và không phải Host -> Gửi yêu cầu xin vào (server sẽ tự kiểm tra đã duyệt chưa)
+      if (isPrivate && !isHost) {
         socket.emit("manga:request_join", { roomId, user });
-        hasRequestedRef.current = true; // Đánh dấu đã gửi
       }
     }
 
-    // 🌟 Host: Nhận yêu cầu xin vào phòng kín
+    // 🌟 Host: Nhận yêu cầu xin vào phòng kín từ thành viên mới
     socket.on("manga:receive_join_request", (req: JoinRequest) => {
       if (isHost) {
-        // Nếu người này đã được Host duyệt rồi thì bỏ qua không hiện lại popup nữa
-        if (approvedUserIdsRef.current.has(req.applicant.id)) return;
-
         setJoinRequests((prev) => [
           ...prev.filter((r) => r.applicant.id !== req.applicant.id),
           req,
@@ -121,12 +125,18 @@ export function useMangaRoom({
       }
     });
 
-    // 🌟 Khách: Nhận kết quả duyệt từ Host
+    // 🌟 Khách: Nhận kết quả duyệt (từ Host hoặc server tự cấp nếu đã vào trước đó)
     socket.on("manga:join_response", ({ approved }: { approved: boolean }) => {
       if (approved) {
         setIsApprovedByHost(true);
+        if (typeof window !== "undefined") {
+          sessionStorage.setItem(`manga_room_approved_${roomId}`, "true");
+        }
       } else {
         setIsRejectedByHost(true);
+        if (typeof window !== "undefined") {
+          sessionStorage.removeItem(`manga_room_approved_${roomId}`);
+        }
       }
     });
 
@@ -152,7 +162,7 @@ export function useMangaRoom({
     });
 
     // 5. Xóa con trỏ khi có người rời phòng
-    socket.on("manga:user_left", ({ userId }: { userId: string }) => {
+    socket.on("manga:member_left", ({ userId }: { userId: string }) => {
       setRemoteCursors((prev) => {
         const next = { ...prev };
         delete next[userId];
@@ -168,38 +178,29 @@ export function useMangaRoom({
     // 7. Lắng nghe sự kiện xóa nét vẽ
     socket.on("manga:laser_cleared", ({ targetUserId }: { targetUserId?: string }) => {
       if (targetUserId) {
-        // Chỉ xóa nét của người tương ứng
         setLaserLines((prev) => prev.filter((line) => line.userId !== targetUserId));
       } else {
-        // Trưởng phòng yêu cầu xóa tất cả
         setLaserLines([]);
       }
     });
 
-    // 🌟 1. Lắng nghe Host đổi chế độ đọc (Từng trang / Cuộn dọc)
+    // 8. Lắng nghe Host đổi chế độ đọc (Từng trang / Cuộn dọc)
     socket.on("manga:read_mode_updated", ({ readMode }: { readMode: "SINGLE" | "VERTICAL" }) => {
       if (onRemoteReadModeChange) {
         onRemoteReadModeChange(readMode);
       }
     });
 
-    // 🌟 2. Cập nhật trạng thái khóa phòng cho tất cả mọi người
-    socket.on("manga:lock_updated", ({ isHostLocked }: { isHostLocked: boolean }) => {
-      setIsLocked(isHostLocked);
-    });
-
-    // 🌟 3. Đồng bộ cuộn từ xa
-    socket.on("manga:scroll_synced", (data: { scrollPercent: number }) => {
-      onRemoteScroll(data.scrollPercent);
-    });
-
-    // 8. Lắng nghe sự kiện phòng bị giải tán
+    // 9. Lắng nghe sự kiện phòng bị giải tán
     socket.on("manga:room_disbanded", () => {
+      if (typeof window !== "undefined") {
+        sessionStorage.removeItem(`manga_room_approved_${roomId}`);
+      }
       alert("Trưởng phòng đã giải tán phòng đọc này!");
       router.push("/manga-room");
     });
 
-    // 9. Lắng nghe sự kiện cập nhật theme background Manga Room
+    // 10. Lắng nghe sự kiện cập nhật theme background Manga Room
     socket.on("manga:theme_updated", (newTheme: MangaTheme) => {
       setTheme(newTheme);
     });
@@ -207,25 +208,27 @@ export function useMangaRoom({
     return () => {
       socket.disconnect();
       socketRef.current = null;
+      setSocketInstance(null);
     };
-  }, [roomId, user?.id, isHost, isPrivate, isApprovedByHost, router]);
+  }, [roomId, user?.id, isHost, isPrivate, router]);
 
-  // 🌟 Host duyệt hoặc từ chối
+  // 🌟 Host duyệt hoặc từ chối thành viên
   const respondJoinRequest = useCallback(
     (applicantSocketId: string, applicantId: string, approved: boolean) => {
       if (!socketRef.current || !isHost) return;
 
-      // Đánh dấu đã duyệt vào Set để không bao giờ nhận lại request của người này nữa
-      if (approved) {
-        approvedUserIdsRef.current.add(applicantId);
-      }
+      // Gửi cả roomId và applicantId để backend lưu vào Set tự động duyệt các lần sau
+      socketRef.current.emit("manga:respond_join_request", {
+        roomId,
+        applicantSocketId,
+        applicantId,
+        approved,
+      });
 
-      socketRef.current.emit("manga:respond_join_request", { applicantSocketId, approved });
-
-      // Xóa ngay lập tức khỏi danh sách popup
+      // Xóa khỏi danh sách popup
       setJoinRequests((prev) => prev.filter((r) => r.applicant.id !== applicantId));
     },
-    [isHost]
+    [roomId, isHost]
   );
 
   // Rời phòng của thành viên
@@ -239,6 +242,9 @@ export function useMangaRoom({
   // Giải tán phòng của Host
   const emitDisbandRoom = useCallback(async () => {
     if (!socketRef.current || !isHost) return;
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem(`manga_room_approved_${roomId}`);
+    }
     socketRef.current.emit("manga:disband_room", { roomId });
     router.push("/manga-room");
   }, [roomId, isHost, router]);
@@ -332,7 +338,7 @@ export function useMangaRoom({
     });
   }, [roomId, isHost]);
 
-  // 🌟 Hàm phát tín hiệu đổi chế độ đọc
+  // Hàm phát tín hiệu đổi chế độ đọc
   const emitChangeReadMode = useCallback(
     (mode: "SINGLE" | "VERTICAL") => {
       if (!socketRef.current || (!isHost && isLocked)) return;
@@ -341,7 +347,7 @@ export function useMangaRoom({
     [roomId, isHost, isLocked]
   );
 
-  // 🌟 Hàm khóa/mở khóa phòng
+  // Hàm khóa/mở khóa phòng
   const toggleLock = useCallback(
     (nextLocked: boolean) => {
       if (!socketRef.current || !isHost) return;
@@ -352,6 +358,7 @@ export function useMangaRoom({
   );
 
   return {
+    socket: socketInstance,
     isLocked,
     setIsLocked: toggleLock,
     approvalStatus,

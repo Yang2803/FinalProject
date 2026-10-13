@@ -7,6 +7,7 @@ import { useMangaRoom } from "@/hooks/useMangaRoom";
 import { SUPPORTED_LANGUAGES } from "@/components/constants/languages";
 import { MangaVoiceChat } from "@/components/manga-room/MangaVoiceChat";
 import { MangaPageCanvas } from "@/components/manga-room/MangaPageCanvas";
+import { MangaRoomBGM } from "@/components/manga-room/MangaRoomBGM";
 
 // =====================================================================
 // INTERFACES
@@ -92,6 +93,7 @@ export default function MangaCoReadingRoom({
 
   // Hook socket co-reading
   const {
+    socket,
     isLocked,
     setIsLocked,
     emitPageChange,
@@ -565,21 +567,7 @@ export default function MangaCoReadingRoom({
             </div>
           )}
 
-          {/* 5. Dropdown ngôn ngữ dịch */}
-          <div className="hidden lg:flex items-center gap-1 bg-gray-800/60 border border-gray-700/80 rounded-lg px-2 py-1">
-            <span className="text-[11px] text-gray-400 whitespace-nowrap">Dịch:</span>
-            <select
-              value={targetLang}
-              onChange={(e) => setTargetLang(e.target.value)}
-              className="bg-transparent text-xs text-gray-200 outline-none cursor-pointer"
-            >
-              {SUPPORTED_LANGUAGES.map((lang) => (
-                <option key={lang.code} value={lang.code} className="bg-gray-900 text-white">
-                  {lang.label}
-                </option>
-              ))}
-            </select>
-          </div>
+          
 
           {/* 6. Nút Rời phòng / Giải tán */}
           <div className="border-l border-gray-800 pl-1.5 md:pl-2 shrink-0">
@@ -753,6 +741,7 @@ export default function MangaCoReadingRoom({
           )}
         </div>
 
+
         {/* Ở GIỮA: CỤM CHUYỂN TRANG (Ẩn khi bật cuộn dọc) */}
         {readMode === "SINGLE" ? (
           <div className="flex items-center gap-6">
@@ -784,9 +773,15 @@ export default function MangaCoReadingRoom({
           </div>
         )}
 
-        {/* GÓC PHẢI: KHOẢNG ĐỆM ĐỂ CÂN BẰNG LAYOUT */}
-        <div className="min-w-[200px]" />
+        {/* 🌟 GÓC PHẢI: NHẠC NỀN YOUTUBE (Thay cho thẻ min-w-[200px] cũ) */}
+        <div className="flex items-center justify-end min-w-[200px]">
+          <MangaRoomBGM roomId={roomId} isHost={isHost} socket={socket} />
+        </div>
+
+        
       </div>
+
+      
 
       {/* MODAL ĐỔI TRUYỆN TRONG KHI ĐANG ĐỌC */}
       {isSelectMangaOpen && (
