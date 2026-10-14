@@ -9,6 +9,7 @@ interface ChatMessage {
   id: string;
   role: "user" | "model";
   content: string;
+  imageUrl?: string; // 🌟 Lưu ảnh hiển thị trực tiếp trên UI
 }
 
 interface ChatSession {
@@ -27,6 +28,11 @@ export default function AiSearchChatPage() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  // 🌟 States cho tính năng tìm kiếm bằng hình ảnh
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [imageMimeType, setImageMimeType] = useState<string>("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -60,7 +66,7 @@ export default function AiSearchChatPage() {
         setMessages([{ 
           id: "welcome", 
           role: "model", 
-          content: "Hi! I'm the AI ​​Assistant from Smart Anime Platform 🌸. What kind of anime/manga are you looking for? Let me know!" 
+          content: "Hi! I'm the AI Assistant from Smart Anime Platform 🌸. Bạn đang muốn tìm Anime/Manga theo cốt truyện hay muốn tải ảnh lên (📷) để mình nhận diện giúp nào?" 
         }]);
       }
     };
@@ -68,15 +74,52 @@ export default function AiSearchChatPage() {
     fetchSessionMessages();
   }, [activeSessionId]);
 
+  // 🌟 Hàm xử lý khi người dùng chọn ảnh từ máy
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      alert("Vui lòng chỉ chọn file hình ảnh (JPG, PNG, WEBP...)!");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Dung lượng ảnh quá lớn! Vui lòng chọn ảnh nhỏ hơn 5MB.");
+      return;
+    }
+
+    setImageMimeType(file.type);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setSelectedImage(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+
+    // Reset giá trị input file để có thể chọn lại cùng 1 ảnh nếu muốn
+    e.target.value = "";
+  };
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || !session?.user?.id) return;
+    if ((!input.trim() && !selectedImage) || !session?.user?.id) return;
 
     const userMsg = input.trim();
+    const currentImage = selectedImage;
+    const currentMime = imageMimeType;
+
+    // Reset ô nhập và ảnh preview ngay lập tức
     setInput("");
+    setSelectedImage(null);
+    setImageMimeType("");
     
-    // Hiện tin nhắn user lên UI ngay lập tức
-    const tempUserMsg: ChatMessage = { id: Date.now().toString(), role: "user", content: userMsg };
+    // Hiện tin nhắn user + ảnh lên UI ngay lập tức
+    const tempUserMsg: ChatMessage = { 
+      id: Date.now().toString(), 
+      role: "user", 
+      content: userMsg || "Hãy cho tôi biết bức ảnh này thuộc bộ Anime hay Manga nào?",
+      imageUrl: currentImage || undefined
+    };
     setMessages(prev => [...prev, tempUserMsg]);
     setIsLoading(true);
 
@@ -87,11 +130,12 @@ export default function AiSearchChatPage() {
         body: JSON.stringify({ 
           userId: session.user.id,
           sessionId: activeSessionId,
-          message: userMsg
+          message: userMsg,
+          imageBase64: currentImage,
+          mimeType: currentMime
         })
       });
 
-      // BẮT LỖI THÔNG MINH TRÁNH LỖI HTML/JSON
       if (!res.ok) {
         const errorText = await res.text(); 
         console.error("Lỗi từ Backend:", errorText);
@@ -113,7 +157,7 @@ export default function AiSearchChatPage() {
       
     } catch (error) {
       console.error(error);
-      setMessages(prev => [...prev, { id: "err", role: "model", content: "Xin lỗi, đường truyền ma thuật đang bị nhiễu. Cậu thử lại sau nhé! 💦" }]);
+      setMessages(prev => [...prev, { id: "err", role: "model", content: "Xin lỗi, đường truyền ma thuật đang bị nhiễu hoặc ảnh quá nặng. Cậu thử lại sau nhé! 💦" }]);
     } finally {
       setIsLoading(false);
     }
@@ -121,6 +165,8 @@ export default function AiSearchChatPage() {
 
   const createNewChat = () => {
     setActiveSessionId(null);
+    setSelectedImage(null);
+    setImageMimeType("");
   };
 
   if (!session) return <div className="min-h-screen bg-[#0f0f11] text-white flex items-center justify-center">Vui lòng đăng nhập để sử dụng AI.</div>;
@@ -135,7 +181,7 @@ export default function AiSearchChatPage() {
         <div className="p-4">
           <button 
             onClick={createNewChat}
-            className="w-full py-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white font-bold rounded-xl shadow-lg shadow-purple-500/20 transition flex items-center justify-center gap-2"
+            className="w-full py-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white font-bold rounded-xl shadow-lg shadow-purple-500/20 transition flex items-center justify-center gap-2 cursor-pointer"
           >
             <span>+</span> New Chat
           </button>
@@ -147,7 +193,7 @@ export default function AiSearchChatPage() {
             <button 
               key={s.id}
               onClick={() => setActiveSessionId(s.id)}
-              className={`w-full text-left p-3 rounded-lg text-sm truncate transition ${activeSessionId === s.id ? 'bg-gray-800 text-purple-400 font-bold border border-gray-700' : 'text-gray-400 hover:bg-gray-800/50 hover:text-white'}`}
+              className={`w-full text-left p-3 rounded-lg text-sm truncate transition cursor-pointer ${activeSessionId === s.id ? 'bg-gray-800 text-purple-400 font-bold border border-gray-700' : 'text-gray-400 hover:bg-gray-800/50 hover:text-white'}`}
             >
               💬 {s.title}
             </button>
@@ -186,14 +232,21 @@ export default function AiSearchChatPage() {
                   : "bg-gray-800/80 backdrop-blur-md text-gray-200 border border-gray-700/50 rounded-2xl rounded-tl-sm shadow-xl"
               }`}>
                 {msg.role === "user" ? (
-                  msg.content
+                  <div className="flex flex-col gap-2.5">
+                    {msg.imageUrl && (
+                      <img 
+                        src={msg.imageUrl} 
+                        alt="Uploaded search" 
+                        className="max-h-60 w-auto rounded-xl border border-white/20 object-contain self-end"
+                      />
+                    )}
+                    <div className="whitespace-pre-wrap">{msg.content}</div>
+                  </div>
                 ) : (
-                  
-                  // CHỈNH SỬA CLASS VÀ THẺ LINK TẠI ĐÂY
                   <div className="prose prose-invert max-w-none prose-p:mb-2 prose-ul:my-2">
                     <ReactMarkdown 
                       components={{
-                        a: ({ node, ...props }) => {
+                        a: ({ ...props }) => {
                           const isExternal = props.href?.startsWith('http');
                           return (
                             <Link 
@@ -210,7 +263,6 @@ export default function AiSearchChatPage() {
                       {msg.content}
                     </ReactMarkdown>
                   </div>
-                  
                 )}
               </div>
             </div>
@@ -230,26 +282,76 @@ export default function AiSearchChatPage() {
         </div>
 
         <div className="p-4 md:p-6 bg-gradient-to-t from-[#0f0f11] to-transparent relative z-10">
+          {/* 🌟 KHUNG XEM TRƯỚC ẢNH ĐANG ĐÍNH KÈM */}
+          {selectedImage && (
+            <div className="max-w-4xl mx-auto mb-3 flex items-center gap-3 bg-gray-900/95 border border-purple-500/50 p-2.5 rounded-2xl w-fit shadow-xl backdrop-blur-md">
+              <img 
+                src={selectedImage} 
+                alt="Upload preview" 
+                className="w-16 h-16 object-cover rounded-xl border border-gray-700"
+              />
+              <div className="text-xs text-gray-200 pr-2">
+                <p className="font-bold text-purple-400 flex items-center gap-1">
+                  <span>✨ Ảnh đã sẵn sàng</span>
+                </p>
+                <p className="text-[11px] text-gray-400 mt-0.5">
+                  Nhập thêm câu hỏi hoặc bấm gửi ngay để AI tìm phim/truyện
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedImage(null);
+                  setImageMimeType("");
+                }}
+                className="w-7 h-7 rounded-full bg-gray-800 hover:bg-red-500 text-gray-400 hover:text-white text-xs flex items-center justify-center transition cursor-pointer"
+                title="Xóa ảnh đính kèm"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
           <form onSubmit={handleSendMessage} className="max-w-4xl mx-auto relative group">
             <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-500 to-cyan-500 rounded-full blur opacity-30 group-focus-within:opacity-100 transition duration-500"></div>
             
+            {/* Input chọn file ảnh ẩn */}
+            <input
+              type="file"
+              accept="image/*"
+              ref={fileInputRef}
+              onChange={handleImageSelect}
+              className="hidden"
+            />
+
+            {/* Nút bấm tải ảnh lên */}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isLoading}
+              title="Tải ảnh lên để tìm Anime/Manga"
+              className="absolute left-2.5 top-2 w-10 h-10 rounded-full bg-gray-800 hover:bg-gray-700 text-cyan-400 flex items-center justify-center transition z-10 border border-gray-700 cursor-pointer disabled:opacity-50"
+            >
+              📷
+            </button>
+
             <input 
               type="text" 
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Bạn muốn tìm phim gì? (VD: Anime đánh nhau phép thuật...)"
-              className="relative w-full bg-gray-900 border border-gray-700 rounded-full py-4 pl-6 pr-14 text-sm outline-none text-white focus:bg-gray-800 transition"
+              placeholder={selectedImage ? "Nhập thêm yêu cầu (hoặc bấm gửi luôn)..." : "Bạn muốn tìm phim gì? Hoặc bấm 📷 để tìm bằng hình ảnh..."}
+              className="relative w-full bg-gray-900 border border-gray-700 rounded-full py-4 pl-14 pr-14 text-sm outline-none text-white focus:bg-gray-800 transition"
               disabled={isLoading}
             />
             <button 
               type="submit" 
-              disabled={!input.trim() || isLoading}
-              className="absolute right-2 top-2 w-10 h-10 bg-gradient-to-r from-purple-600 to-cyan-500 hover:opacity-80 disabled:opacity-50 disabled:grayscale rounded-full flex items-center justify-center text-white transition shadow-lg"
+              disabled={(!input.trim() && !selectedImage) || isLoading}
+              className="absolute right-2 top-2 w-10 h-10 bg-gradient-to-r from-purple-600 to-cyan-500 hover:opacity-80 disabled:opacity-50 disabled:grayscale rounded-full flex items-center justify-center text-white transition shadow-lg cursor-pointer"
             >
               ➤
             </button>
           </form>
-          <p className="text-center text-[10px] text-gray-500 mt-3">AI Assistant có thể mắc sai lầm. Hãy kiểm tra lại thông tin phim nhé.</p>
+          <p className="text-center text-[10px] text-gray-500 mt-3">AI Assistant có thể nhận diện cảnh phim Anime, trang truyện Manga và nhân vật từ ảnh tải lên.</p>
         </div>
         
       </div>

@@ -11,6 +11,7 @@ import { LiveKitRoom, RoomAudioRenderer, TrackToggle } from "@livekit/components
 import { Track } from "livekit-client";
 import "@livekit/components-styles"; 
 import { RoomTheme, THEME_PRESETS } from "@/types/theme";
+import { MangaRoomReactions } from "@/components/manga-room/MangaRoomReactions";
 
 // ==========================================
 // ĐỊNH NGHĨA INTERFACES
@@ -349,6 +350,31 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
 
   const isHost = session?.user?.id === room?.hostId;
 
+  // 🌟 TẠO MÀU RIÊNG BIỆT CHO TỪNG USER TRONG PHÒNG WATCH PARTY
+  const USER_COLORS = [
+    "#ef4444", // Đỏ
+    "#f97316", // Cam
+    "#eab308", // Vàng
+    "#10b981", // Xanh lá ngọc
+    "#06b6d4", // Xanh Cyan
+    "#3b82f6", // Xanh dương
+    "#8b5cf6", // Tím
+    "#ec4899", // Hồng
+    "#f43f5e", // Đỏ hồng
+  ];
+
+  const getUserColor = (identifier: string) => {
+    let hash = 0;
+    for (let i = 0; i < identifier.length; i++) {
+      hash = identifier.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return USER_COLORS[Math.abs(hash) % USER_COLORS.length];
+  };
+
+  const myUserColor = getUserColor(
+    session?.user?.id || session?.user?.name || "guest"
+  );
+
   // ==========================================
   // HỆ THỐNG "HEARTBEAT" TỰ ĐỘNG ĐỒNG BỘ 
   // ==========================================
@@ -582,8 +608,32 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
       '--room-glow': theme.glow,
       backgroundImage: theme.bgUrl ? `url("${theme.bgUrl}")` : undefined,
     } as React.CSSProperties}
-    className="min-h-screen bg-[#0f0f11] bg-cover bg-center bg-no-repeat text-white flex flex-col md:flex-row p-4 gap-6 h-screen overflow-hidden relative transition-colors duration-500"
+    className="h-[calc(100vh-80px)] bg-[#0f0f11] bg-cover bg-center bg-no-repeat text-white flex flex-col md:flex-row p-4 gap-6 overflow-hidden relative transition-colors duration-500"
   >
+    {/* 🌟 NHÚNG CSS ẨN THANH CUỘN CỘT TRÁI & LÀM MẢNH THANH CUỘN CHAT */}
+      <style>{`
+        .no-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+        .no-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 5px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(255, 255, 255, 0.15);
+          border-radius: 9999px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(255, 255, 255, 0.3);
+        }
+      `}</style>
+      
     {/* Lớp phủ làm tối nhẹ: hạ độ tối từ black/75 xuống black/40 để nhìn rõ wallpaper */}
     {theme.bgUrl && (
       <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px] pointer-events-none z-0" />
@@ -940,18 +990,27 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
             <div ref={messagesEndRef} />
           </div>
 
-          <form onSubmit={handleSendMessage} className="mt-4 pt-4 border-t border-gray-800 flex gap-2 shrink-0">
+          <form onSubmit={handleSendMessage} className="mt-4 pt-4 border-t border-gray-800 flex items-center gap-2 shrink-0">
+            {/* 🌟 NÚT THẢ CẢM XÚC BAY TRONG PHÒNG WATCH PARTY */}
+            <MangaRoomReactions
+              roomId={room.id}
+              socket={socket}
+              userName={session?.user?.name || "Ẩn danh"}
+              userColor={myUserColor}
+              popupAlign="left"
+            />
+
             <input 
               type="text" 
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
               placeholder="Nhập tin nhắn..." 
-              className="flex-1 bg-gray-900 border border-gray-800 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 text-white transition" 
+              className="flex-1 min-w-0 bg-gray-900 border border-gray-800 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 text-white transition" 
             />
             <button 
               type="submit" 
               disabled={!chatInput.trim()} 
-              className="disabled:opacity-50 text-white px-4 py-2 rounded-lg font-bold text-sm transition shadow-md active:scale-95"
+              className="disabled:opacity-50 text-white px-4 py-2 rounded-lg font-bold text-sm transition shadow-md active:scale-95 shrink-0"
               style={{ backgroundColor: 'var(--room-accent)', boxShadow: '0 0 10px var(--room-glow)' }}
             >
               Gửi

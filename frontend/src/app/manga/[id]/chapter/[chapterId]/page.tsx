@@ -115,67 +115,74 @@ function TranslateableImage({
       {showTranslation && blocks.map((block, index) => {
         const blockType = block.type || "bubble";
         const isVertical = block.heightPercent > block.widthPercent;
-
-        // Tự động phân loại kiểu dáng che chữ
-        let borderRadius = "18px";
-        let background = "rgba(255, 255, 255, 0.98)";
-        let textColor = "#000000";
-
-        if (blockType === "bubble") {
-          // Ô thoại hình oval dọc thì bo tròn dáng bầu dục
-          borderRadius = isVertical ? "48% / 38%" : "22px";
-        } else if (blockType === "box") {
-          borderRadius = "4px";
-          background = "#ffffff";
-        } else if (blockType === "floating") {
-          borderRadius = "4px";
-          background = "rgba(0, 0, 0, 0.88)";
-          textColor = "#ffffff";
-        }
-
-        // Tính kích thước chữ vừa vặn theo độ dài văn bản
-        const textLen = block.translatedText.length;
-        // 🌟 TÍNH CỠ CHỮ RIÊNG CHO TỪNG CHẾ ĐỘ
         const isHorizontal = mode === "horizontal";
 
+        // 🌟 1. THU GỌN KHUNG (INSET) ĐỂ KHÔNG ĐÈ LÊN VIỀN ĐEN & NHÂN VẬT XUNG QUANH
+        // Nếu là bubble, bóp nhẹ chiều ngang (86%) và chiều dọc (90%) để nằm gọn trong lòng bóng thoại gốc
+        const scaleW = blockType === "bubble" ? 0.86 : 0.95;
+        const scaleH = blockType === "bubble" ? 0.90 : 0.95;
+
+        const adjustedWidth = block.widthPercent * scaleW;
+        const adjustedHeight = block.heightPercent * scaleH;
+        const adjustedLeft = block.leftPercent + (block.widthPercent - adjustedWidth) / 2;
+        const adjustedTop = block.topPercent + (block.heightPercent - adjustedHeight) / 2;
+
+        // 🌟 2. TẠO DÁNG HÌNH ELIP / OVAL CHUẨN MANGA ĐỂ KHÔNG CHE 4 GÓC TRANH
+        let borderRadius = "50%";
+        let background = "rgba(255, 255, 255, 0.96)";
+        let textColor = "#000000";
+        // Ép padding 2 bên sườn (12% - 14%) để chữ tự động xếp thành cột dọc thay vì dàn ngang
+        let boxPadding = isVertical ? "6% 14%" : "6% 10%";
+
+        if (blockType === "bubble") {
+          borderRadius = isVertical ? "50% / 42%" : "42% / 50%";
+        } else if (blockType === "box") {
+          borderRadius = "4px";
+          background = "rgba(255, 255, 255, 0.98)";
+          boxPadding = "4px 6px";
+        } else if (blockType === "floating") {
+          borderRadius = "6px";
+          background = "rgba(0, 0, 0, 0.85)";
+          textColor = "#ffffff";
+          boxPadding = "3px 5px";
+        }
+
+        // 🌟 3. CỠ CHỮ THEO CHẾ ĐỘ ĐỌC
+        const textLen = block.translatedText.length;
         const fontSize = isHorizontal
-          ? // 🔻 Cỡ chữ dành riêng cho Manga (RTL) & Lật ngang (Horizontal) - nhỏ hơn để không mất chữ
-            textLen > 90
-            ? "clamp(7px, 0.65vw, 8.5px)"
+          ? textLen > 90
+            ? "clamp(6.5px, 0.6vw, 8px)"
             : textLen > 40
-            ? "clamp(8px, 0.75vw, 9.5px)"
-            : "clamp(9px, 0.85vw, 10.5px)"
-          : // 🔹 Giữ nguyên hoàn toàn kích thước của chế độ Cuộn dọc (Vertical)
-            textLen > 90
-            ? "clamp(8.5px, 0.75vw, 10px)"
+            ? "clamp(7.5px, 0.7vw, 9px)"
+            : "clamp(8.5px, 0.8vw, 10px)"
+          : textLen > 90
+            ? "clamp(8px, 0.72vw, 9.5px)"
             : textLen > 40
-            ? "clamp(9.5px, 0.85vw, 11px)"
-            : "clamp(10.5px, 0.95vw, 12px)";
+            ? "clamp(9px, 0.82vw, 10.5px)"
+            : "clamp(10px, 0.92vw, 11.5px)";
 
         return (
           <div 
             key={index}
             className="absolute flex items-center justify-center text-center z-10 pointer-events-none transition-all duration-150"
             style={{
-              top: `${block.topPercent}%`,
-              left: `${block.leftPercent}%`,
-              width: `${block.widthPercent}%`,
-              height: `${block.heightPercent}%`,
+              top: `${adjustedTop}%`,
+              left: `${adjustedLeft}%`,
+              width: `${adjustedWidth}%`,
+              height: `${adjustedHeight}%`,
             }}
           >
-            {/* Khung bóng thoại phủ vừa khít diện tích thoại gốc */}
             <div
               className="w-full h-full flex items-center justify-center text-center overflow-hidden"
               style={{
                 backgroundColor: background,
                 color: textColor,
                 borderRadius: borderRadius,
-                padding: "4px 6px",
+                padding: boxPadding,
                 fontSize: fontSize,
-                lineHeight: "1.25",
+                lineHeight: "1.2",
                 fontWeight: "600",
                 fontFamily: "'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-                boxShadow: blockType === "floating" ? "none" : "0 1px 4px rgba(0, 0, 0, 0.18)",
               }}
             >
               <span 
@@ -183,9 +190,11 @@ function TranslateableImage({
                 style={{
                   wordBreak: "break-word",
                   whiteSpace: "normal",
-                  overflowWrap: "anywhere",
+                  overflowWrap: "break-word",
+                  // 🌟 Giúp các dòng chữ tự cân bằng độ dài thành cột dọc đẹp mắt
+                  textWrap: "balance",
                   display: "-webkit-box",
-                  WebkitLineClamp: isVertical ? 8 : 6,
+                  WebkitLineClamp: isVertical ? 10 : 7,
                   WebkitBoxOrient: "vertical",
                   overflow: "hidden",
                 }}

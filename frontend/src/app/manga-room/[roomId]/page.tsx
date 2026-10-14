@@ -8,6 +8,7 @@ import { SUPPORTED_LANGUAGES } from "@/components/constants/languages";
 import { MangaVoiceChat } from "@/components/manga-room/MangaVoiceChat";
 import { MangaPageCanvas } from "@/components/manga-room/MangaPageCanvas";
 import { MangaRoomBGM } from "@/components/manga-room/MangaRoomBGM";
+import { MangaRoomReactions } from "@/components/manga-room/MangaRoomReactions";
 
 // =====================================================================
 // INTERFACES
@@ -773,10 +774,18 @@ export default function MangaCoReadingRoom({
           </div>
         )}
 
-        {/* 🌟 GÓC PHẢI: NHẠC NỀN YOUTUBE (Thay cho thẻ min-w-[200px] cũ) */}
-        <div className="flex items-center justify-end min-w-[200px]">
+        {/* 🌟 GÓC PHẢI: CẢM XÚC BAY & NHẠC NỀN YOUTUBE */}
+        <div className="flex items-center justify-end gap-2 min-w-[200px]">
+          <MangaRoomReactions
+            roomId={roomId}
+            socket={socket}
+            userName={session?.user?.name || "Bạn đọc"}
+            userColor={userColor}
+          />
           <MangaRoomBGM roomId={roomId} isHost={isHost} socket={socket} />
         </div>
+
+        
 
         
       </div>

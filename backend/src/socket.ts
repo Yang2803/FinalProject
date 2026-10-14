@@ -235,6 +235,25 @@ export function initSocket(server: HttpServer) {
       console.log(`⏩ [Manga Room ${data.roomId}] Seeked to: ${data.currentTime}s`);
     });
 
+    // 🌟 ĐỒNG BỘ THẢ CẢM XÚC BAY (DÙNG CHUNG CHO CẢ MANGA ROOM & WATCH PARTY)
+    socket.on(
+      "manga:send_reaction",
+      (data: {
+        roomId: string;
+        id: string;
+        emoji: string;
+        userName: string;
+        color: string;
+        leftPercent: number;
+      }) => {
+        // Phát cho phòng đọc Manga (có tiền tố manga_) VÀ phòng xem phim Watch Party (roomId trực tiếp)
+        socket
+          .to(`manga_${data.roomId}`)
+          .to(data.roomId)
+          .emit("manga:reaction_received", data);
+      }
+    );
+
     
 
     // ============================================

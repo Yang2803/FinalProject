@@ -30,23 +30,33 @@ router.get('/api/chat/session/:sessionId', async (req: Request, res: Response) =
 
 router.post('/api/chat/send', async (req: Request, res: Response): Promise<any> => {
   try {
-    const { userId, sessionId, message } = req.body;
-    if (!userId || !message) return res.status(400).json({ message: "Missing data" });
+    // 🌟 Nhận thêm imageBase64 và mimeType từ Frontend
+    const { userId, sessionId, message, imageBase64, mimeType } = req.body;
+    if (!userId || (!message?.trim() && !imageBase64)) {
+      return res.status(400).json({ message: "Missing data" });
+    }
 
+    const userText = message?.trim() || "Hãy cho tôi biết bức ảnh này thuộc bộ Anime hay Manga nào, tên nhân vật là gì?";
     let currentSessionId = sessionId;
 
     if (!currentSessionId) {
+      const titlePrefix = imageBase64 ? "📷 [Tìm bằng ảnh] " : "";
       const newSession = await prisma.aiChatSession.create({
         data: {
           userId: userId,
-          title: message.substring(0, 30) + "..." 
+          title: (titlePrefix + userText).substring(0, 35) + "..." 
         }
       });
       currentSessionId = newSession.id;
     }
 
+    // Lưu tin nhắn của user vào Database
+    const savedUserContent = imageBase64 
+      ? `📷 *[Đã đính kèm một hình ảnh]*\n\n${userText}` 
+      : userText;
+
     await prisma.aiChatMessage.create({
-      data: { sessionId: currentSessionId, role: "user", content: message }
+      data: { sessionId: currentSessionId, role: "user", content: savedUserContent }
     });
 
     const history = await prisma.aiChatMessage.findMany({
@@ -63,7 +73,7 @@ router.post('/api/chat/send', async (req: Request, res: Response): Promise<any> 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
 
     // =====================================================================
-    // 🌟 1. CẬP NHẬT TOOL: BỔ SUNG BỘ LỌC MEDIA TYPE
+    // 🌟 1. KHAI BÁO TOOLS CHO AI
     // =====================================================================
     const tools: any = [{
       functionDeclarations: [{
@@ -109,10 +119,9 @@ router.post('/api/chat/send', async (req: Request, res: Response): Promise<any> 
       tools: tools 
     });
 
-    // 🌟 Cập nhật lại System Instruction để AI biết nó đang xài Tool mới
     const systemInstruction = `
       You are a highly intelligent Otaku/Anime assistant for the "Smart Anime Platform".
-      Your primary task is to recommend, discuss, and analyze Anime and Manga based on user preferences.
+      Your primary task is to recommend, discuss, and analyze Anime and Manga based on user preferences or uploaded images.
 
       HERE IS THE SYSTEM'S CURRENT DATABASE:
       [AVAILABLE ANIME]
@@ -122,9 +131,9 @@ router.post('/api/chat/send', async (req: Request, res: Response): Promise<any> 
       ${systemMangas || "No manga available"}
 
       CRITICAL RULES YOU MUST FOLLOW:
-      1. If you recommend a series from the lists above, you MUST use the EXACT markdown link provided. 
+      1. If you recommend or identify a series from the lists above, you MUST use the EXACT markdown link provided. 
          - Correct Example: "Cậu có thể xem [Jujutsu Kaisen](/anime/12345) ngay nhé!"
-      2. If you recommend a series that IS NOT in the list, explicitly inform the user that it's not available in the system and suggest external legal platforms.
+      2. If you recommend or identify a series that IS NOT in the list, explicitly inform the user that it's not available in the system and suggest external legal platforms.
       3. NEVER translate Anime/Manga titles into Vietnamese.
       4. Your tone should be enthusiastic, friendly, and relatable to the anime community (use emojis). Use bullet points for readability.
       5. DYNAMIC LANGUAGE BEHAVIOR: Detect the language used by the user and respond in that EXACT SAME LANGUAGE.
@@ -134,12 +143,15 @@ router.post('/api/chat/send', async (req: Request, res: Response): Promise<any> 
          - DEPENDENCY RULE A: If the tool returns text starting with "SYSTEM_DATA:", you MUST base your answer ENTIRELY and STRICTLY on the provided data. Do not invent episodes/chapters.
          - DEPENDENCY RULE B: If the tool returns "NO_DATA_FOUND", you are ALLOWED to answer using your internal knowledge. HOWEVER, you MUST explicitly append this EXACT string at the very end of your response:
            "⚠️ Lưu ý: Thông tin này được lấy từ nguồn bên ngoài, hiện chưa có trong cơ sở dữ liệu của hệ thống và chưa được kiểm chứng."
+      8. IMAGE RECOGNITION: If the user attaches an image, analyze the character appearance, art style, dialogue text, or scene carefully:
+         - State the exact Anime/Manga title, character names, and context of the scene/page.
+         - Match the identified series with [AVAILABLE ANIME] and [AVAILABLE MANGA] above and provide the direct clickable Markdown link if available in the system.
     `;
 
     const chat = aiModel.startChat({
       history: [
         { role: "user", parts: [{ text: systemInstruction }] },
-        { role: "model", parts: [{ text: "Đã hiểu! Tôi sẽ tuân thủ tuyệt đối các quy tắc và sử dụng Tool khi cần thiết." }] },
+        { role: "model", parts: [{ text: "Đã hiểu! Tôi sẽ tuân thủ tuyệt đối các quy tắc, nhận diện hình ảnh chuẩn xác và sử dụng Tool khi cần thiết." }] },
         ...history.slice(0, -1).map(msg => ({
           role: msg.role === "user" ? "user" : "model",
           parts: [{ text: msg.content }]
@@ -148,9 +160,21 @@ router.post('/api/chat/send', async (req: Request, res: Response): Promise<any> 
     });
 
     // =====================================================================
-    // 🌟 2. XỬ LÝ LÔ-GÍC KÉP CHO TỪNG TOOL KÈM ĐIỀU KIỆN LỌC
+    // 🌟 2. ĐÓNG GÓI PAYLOAD (TEXT + IMAGE NẾU CÓ) GỬI CHO GEMINI
     // =====================================================================
-    let aiResult = await chat.sendMessage(message);
+    const messageParts: any[] = [{ text: userText }];
+
+    if (imageBase64 && mimeType) {
+      const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, "");
+      messageParts.push({
+        inlineData: {
+          data: cleanBase64,
+          mimeType: mimeType
+        }
+      });
+    }
+
+    let aiResult = await chat.sendMessage(messageParts);
     let responseText = "";
     const call = aiResult.response.functionCalls()?.[0];
 
@@ -164,31 +188,25 @@ router.post('/api/chat/send', async (req: Request, res: Response): Promise<any> 
 
       let combinedResults: string[] = [];
 
-      // CHỈ quét bảng Anime nếu người dùng hỏi anime hoặc không nói rõ
       if (mediaType === 'anime' || mediaType === 'both') {
         const allEpisodes = await prisma.episode.findMany({
           select: { episodeNumber: true, title: true, characters: true, anime: { select: { title: true } } },
-          orderBy: { episodeNumber: 'asc' } // 🌟 SỬA LỖI 1: Ép Prisma sắp xếp từ nhỏ đến lớn
+          orderBy: { episodeNumber: 'asc' }
         });
         const matchedEps = allEpisodes.filter(ep => ep.characters.some(c => regex.test(c)));
-        
-        // Format của Anime: "Tập 1: Tên tập phim"
         combinedResults.push(...matchedEps.map(ep => `- [Anime] ${ep.anime.title} | Tập ${ep.episodeNumber}: ${ep.title}`));
       }
 
-      // CHỈ quét bảng Manga nếu người dùng hỏi manga hoặc không nói rõ
       if (mediaType === 'manga' || mediaType === 'both') {
         const allChapters = await prisma.chapter.findMany({
           select: { chapterNumber: true, title: true, characters: true, manga: { select: { title: true } } },
-          orderBy: { chapterNumber: 'asc' } // 🌟 SỬA LỖI 1: Ép Prisma sắp xếp chapter từ nhỏ đến lớn
+          orderBy: { chapterNumber: 'asc' }
         });
         const matchedChaps = allChapters.filter(chap => chap.characters.some(c => regex.test(c)));
-        
-        // 🌟 SỬA LỖI 2: Chỉ lấy chap.title (Vì title đã chứa sẵn chữ "Chapter X")
         combinedResults.push(...matchedChaps.map(chap => `- [Manga] ${chap.manga.title} | ${chap.title}`));
       }
 
-      let dbResultStr = combinedResults.length > 0 
+      const dbResultStr = combinedResults.length > 0 
         ? combinedResults.join("\n") 
         : "Hệ thống không tìm thấy kết quả phù hợp.";
 
@@ -228,13 +246,12 @@ router.post('/api/chat/send', async (req: Request, res: Response): Promise<any> 
           matchedData.push(...matchedChapters);
         }
 
-        // Trộn, lọc và sắp xếp
         const validMatches = matchedData
           .filter(item => item.distance < 0.7)
           .sort((a, b) => a.distance - b.distance)
           .slice(0, 3);
 
-        let dbResultStr = validMatches.length > 0 
+        const dbResultStr = validMatches.length > 0 
           ? "SYSTEM_DATA:\n" + validMatches.map(item => `- [${item.mediaType}] ${item.seriesTitle} | Số ${item.number}: ${item.title}\n  Nội dung tóm tắt: ${item.plotSummary}`).join("\n\n")
           : "NO_DATA_FOUND";
 
@@ -252,7 +269,11 @@ router.post('/api/chat/send', async (req: Request, res: Response): Promise<any> 
 
     responseText = aiResult.response.text();
 
-    // =====================================================================
+    // Update lại thời gian updatedAt của Session
+    await prisma.aiChatSession.update({
+      where: { id: currentSessionId },
+      data: { updatedAt: new Date() }
+    }).catch(() => {});
 
     const savedAiMessage = await prisma.aiChatMessage.create({
       data: { sessionId: currentSessionId, role: "model", content: responseText }
