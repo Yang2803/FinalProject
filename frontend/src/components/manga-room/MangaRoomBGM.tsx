@@ -73,6 +73,7 @@ export function MangaRoomBGM({ roomId, isHost, socket }: MangaRoomBGMProps) {
 
     socket.on("manga:bgm_synced", handleSync);
     socket.on("manga:bgm_seeked", handleSeek);
+    socket.emit("manga:request_bgm", { roomId });
 
     return () => {
       socket.off("manga:bgm_synced", handleSync);
