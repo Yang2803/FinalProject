@@ -387,7 +387,7 @@ router.get('/api/history/:userId', async (req: Request, res: Response): Promise<
         chapter: { select: { id: true, title: true } }
       },
       orderBy: { updatedAt: 'desc' },
-      take: 5 
+      take: 20 
     });
 
     const animeHistory = await prisma.animeHistory.findMany({
@@ -397,7 +397,7 @@ router.get('/api/history/:userId', async (req: Request, res: Response): Promise<
         episode: { select: { id: true, title: true } }
       },
       orderBy: { updatedAt: 'desc' },
-      take: 5 
+      take: 20 
     });
 
     res.status(200).json({ mangaHistory, animeHistory });
