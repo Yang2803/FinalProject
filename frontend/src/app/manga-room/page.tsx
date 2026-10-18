@@ -122,186 +122,349 @@ export default function MangaCoReadingLobby() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0f0f11] text-white p-6 md:p-12 overflow-y-auto">
-      <div className="max-w-6xl mx-auto">
-        {/* === HEADER === */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-500 mb-4">
-            Đọc Truyện Cùng Nhau
-          </h1>
-          <p className="text-gray-400 max-w-lg mx-auto">
-            Tạo phòng đọc Manga trực tiếp, đồng bộ thao tác lật trang, cuộn dọc và trỏ Laser cùng bạn bè theo thời gian thực!
-          </p>
+    <div className="min-h-screen bg-[#0f0f11] text-white p-4 sm:p-8 md:p-12 relative overflow-hidden select-none">
+      {/* Hiệu ứng ánh sáng nền (Ambient Background Glow) */}
+      <div className="absolute -top-32 left-1/4 w-96 h-96 bg-emerald-600/15 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute top-40 right-1/4 w-96 h-96 bg-cyan-600/15 rounded-full blur-[120px] pointer-events-none" />
+
+      <div className="max-w-6xl mx-auto relative z-10 space-y-12">
+        
+        {/* ===================================================================== */}
+        {/* 🌟 1. HERO HEADER BANNER */}
+        {/* ===================================================================== */}
+        <div className="relative rounded-3xl bg-gradient-to-b from-[#161922] to-[#12141c] border border-white/[0.08] p-8 md:p-10 text-center shadow-2xl overflow-hidden">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(16,185,129,0.12),transparent_60%)] pointer-events-none" />
+
+          <div className="relative z-10 max-w-2xl mx-auto space-y-4">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-extrabold uppercase tracking-wider">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+              <span>Real-time Co-Reading Space</span>
+            </div>
+
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-200 to-cyan-400 leading-tight">
+              Reading Together
+            </h1>
+
+            {/* Các huy hiệu tính năng của phòng đọc */}
+            <div className="pt-2 flex flex-wrap items-center justify-center gap-2 text-xs font-semibold text-gray-300">
+              <span className="px-3 py-1.5 rounded-xl bg-gray-900/80 border border-white/[0.06] flex items-center gap-1.5">
+                📖 Synchronized page turning
+              </span>
+              <span className="px-3 py-1.5 rounded-xl bg-gray-900/80 border border-white/[0.06] flex items-center gap-1.5">
+                🔦 Pointers & Laser Pens
+              </span>
+              <span className="px-3 py-1.5 rounded-xl bg-gray-900/80 border border-white/[0.06] flex items-center gap-1.5">
+                🎵 General BGM
+              </span>
+              <span className="px-3 py-1.5 rounded-xl bg-gray-900/80 border border-white/[0.06] flex items-center gap-1.5">
+                🎙️ Conversation
+              </span>
+            </div>
+          </div>
         </div>
 
-        {/* === GRID 2 THẺ: TẠO PHÒNG & NHẬP MÃ === */}
-        <div className="grid md:grid-cols-2 gap-6 mb-16">
-          {/* CARD 1: TẠO PHÒNG */}
-          <div className="bg-[#1a1d24] p-8 rounded-2xl border border-emerald-900/50 shadow-2xl relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-1 bg-emerald-500"></div>
-            <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-              📖 Tạo Phòng Đọc Mới
-            </h2>
+        {/* ===================================================================== */}
+        {/* 🌟 2. GRID 2 THẺ: TẠO PHÒNG MỚI & VÀO PHÒNG BẰNG MÃ */}
+        {/* ===================================================================== */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
+          
+          {/* CARD 1: TẠO PHÒNG ĐỌC MỚI */}
+          <div className="group bg-[#151821]/90 backdrop-blur-xl p-7 md:p-8 rounded-3xl border border-emerald-500/20 hover:border-emerald-500/40 shadow-2xl relative overflow-hidden flex flex-col justify-between transition-all duration-300">
+            <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-500" />
+            <div className="absolute -right-16 -top-16 w-40 h-40 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none group-hover:bg-emerald-500/20 transition" />
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-bold text-gray-400 mb-2">Tên phòng đọc</label>
-                <input
-                  type="text"
-                  placeholder="VD: Cùng cày Jujutsu Kaisen tối nay..."
-                  value={roomName}
-                  onChange={(e) => setRoomName(e.target.value)}
-                  className="w-full bg-gray-900 border border-gray-800 rounded-lg px-4 py-3 outline-none focus:border-emerald-500 transition text-white"
-                />
+            <div>
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-2xl shadow-lg shadow-emerald-500/10">
+                    📖
+                  </div>
+                  <div>
+                    <h2 className="text-xl md:text-2xl font-extrabold text-white">
+                      Create New Reading Room
+                    </h2>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      Become the host and control the manga reading experience
+                    </p>
+                  </div>
+                </div>
+                <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  Host
+                </span>
               </div>
 
-              <div className="flex items-center gap-3 bg-gray-900/50 p-3 rounded-lg border border-gray-800">
-                <input
-                  type="checkbox"
-                  id="private-manga-mode"
-                  checked={isPrivate}
-                  onChange={(e) => setIsPrivate(e.target.checked)}
-                  className="w-5 h-5 accent-emerald-600 rounded"
-                />
-                <label htmlFor="private-manga-mode" className="text-sm font-medium cursor-pointer flex-1">
-                  Phòng Kín (Private)
-                  <p className="text-xs text-gray-500 mt-0.5">Yêu cầu Trưởng phòng duyệt trước khi vào đọc.</p>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">
+                    Room Name
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g., Let's read Jujutsu Kaisen together tonight..."
+                    value={roomName}
+                    onChange={(e) => setRoomName(e.target.value)}
+                    className="w-full bg-gray-900/90 border border-gray-800 focus:border-emerald-500 rounded-xl px-4 py-3.5 text-sm outline-none transition text-white placeholder:text-gray-600 shadow-inner"
+                  />
+                </div>
+
+                {/* Hộp chọn Phòng Kín (Private) hiện đại */}
+                <label
+                  htmlFor="private-manga-mode"
+                  className={`flex items-center justify-between gap-4 p-4 rounded-2xl border cursor-pointer transition-all ${
+                    isPrivate
+                      ? "bg-emerald-950/30 border-emerald-500/50"
+                      : "bg-gray-900/60 border-gray-800 hover:border-gray-700"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl">🔒</span>
+                    <div>
+                      <p className="text-sm font-bold text-gray-200">
+                        Private Room
+                      </p>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        Requires host approval before joining.
+                      </p>
+                    </div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    id="private-manga-mode"
+                    checked={isPrivate}
+                    onChange={(e) => setIsPrivate(e.target.checked)}
+                    className="w-5 h-5 accent-emerald-500 rounded cursor-pointer shrink-0"
+                  />
                 </label>
+              </div>
+            </div>
+
+            <button
+              onClick={handleCreateRoom}
+              disabled={isCreating || !session}
+              className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 text-white font-bold py-3.5 rounded-xl mt-6 transition-all shadow-lg shadow-emerald-900/30 active:scale-[0.99] cursor-pointer flex items-center justify-center gap-2"
+            >
+              <span>{isCreating ? "⏳ Creating..." : session ? "✨ Create Reading Room" : "🔒 Please log in"}</span>
+            </button>
+          </div>
+
+          {/* CARD 2: JOIN ROOM BY INVITE CODE */}
+          <div className="group bg-[#151821]/90 backdrop-blur-xl p-7 md:p-8 rounded-3xl border border-cyan-500/20 hover:border-cyan-500/40 shadow-2xl relative overflow-hidden flex flex-col justify-between transition-all duration-300">
+            <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-cyan-500 via-sky-400 to-blue-500" />
+            <div className="absolute -right-16 -top-16 w-40 h-40 bg-cyan-500/10 rounded-full blur-2xl pointer-events-none group-hover:bg-cyan-500/20 transition" />
+
+            <div>
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-2xl shadow-lg shadow-cyan-500/10">
+                    🎟️
+                  </div>
+                  <div>
+                    <h2 className="text-xl md:text-2xl font-extrabold text-white">
+                      Join Room by Invite Code
+                    </h2>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      For guests with an invite code from friends
+                    </p>
+                  </div>
+                </div>
+                <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                  Quick Join
+                </span>
+              </div>
+
+              <p className="text-gray-400 text-sm mb-5 leading-relaxed">
+                Enter the invite code (<strong className="text-gray-200">Invite Code</strong>) with 6 characters from your friends to connect directly to the shared reading room.
+              </p>
+            </div>
+
+            <form onSubmit={(e) => handleJoinRoom(e)} className="space-y-5 mt-auto">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="e.g., MG8K92"
+                  value={inviteCode}
+                  onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+                  maxLength={6}
+                  className="w-full bg-gray-900/90 border-2 border-dashed border-gray-700 focus:border-cyan-500 rounded-2xl px-4 py-4 outline-none transition text-cyan-300 text-center text-2xl font-black tracking-[0.35em] uppercase placeholder:text-gray-600 placeholder:tracking-normal placeholder:text-base placeholder:font-semibold"
+                />
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-500">
+                  {inviteCode.length}/6
+                </span>
               </div>
 
               <button
-                onClick={handleCreateRoom}
-                disabled={isCreating || !session}
-                className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold py-3 rounded-lg mt-4 transition shadow-lg shadow-emerald-900/20"
+                type="submit"
+                disabled={!inviteCode.trim() || inviteCode.length < 6}
+                className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 disabled:opacity-50 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-cyan-900/30 active:scale-[0.99] cursor-pointer flex items-center justify-center gap-2"
               >
-                {isCreating ? "Đang tạo phòng..." : session ? "Tạo Phòng Đọc Ngay" : "Vui lòng Đăng nhập"}
+                <span>🚀 Join Room Now</span>
               </button>
-            </div>
-          </div>
-
-          {/* CARD 2: VÀO PHÒNG BẰNG MÃ */}
-          <div className="bg-[#1a1d24] p-8 rounded-2xl border border-cyan-900/50 shadow-2xl relative overflow-hidden flex flex-col">
-            <div className="absolute top-0 left-0 w-full h-1 bg-cyan-500"></div>
-            <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-              🎟️ Vào Phòng Bằng Mã
-            </h2>
-
-            <form onSubmit={(e) => handleJoinRoom(e)} className="flex-1 flex flex-col justify-center">
-              <p className="text-gray-400 text-sm mb-4">
-                Nhập mã mời (Invite Code) gồm 6 chữ số từ bạn bè để tham gia cùng đọc manga.
-              </p>
-
-              <div className="flex flex-col gap-4">
-                <input
-                  type="text"
-                  placeholder="Nhập mã (VD: MG8K92)"
-                  value={inviteCode}
-                  onChange={(e) => setInviteCode(e.target.value)}
-                  maxLength={6}
-                  className="w-full bg-gray-900 border border-gray-800 rounded-lg px-4 py-4 outline-none focus:border-cyan-500 transition text-white text-center text-xl font-bold tracking-widest uppercase"
-                />
-                <button
-                  type="submit"
-                  disabled={!inviteCode.trim() || inviteCode.length < 6}
-                  className="w-full bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold py-3 rounded-lg transition shadow-lg shadow-cyan-900/20"
-                >
-                  Tham Gia Phòng
-                </button>
-              </div>
             </form>
           </div>
+
         </div>
 
-        {/* === DANH SÁCH CÁC PHÒNG ĐANG MỞ === */}
-        <div className="mb-10 flex items-center justify-between">
-          <h2 className="text-2xl font-bold flex items-center gap-2">
-            <span className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></span>
-            Phòng đọc đang mở
-          </h2>
-          <button
-            onClick={handleRefreshRooms}
-            className="text-sm font-bold text-gray-400 hover:text-white flex items-center gap-2 bg-gray-900 hover:bg-gray-800 px-4 py-2 rounded-lg border border-gray-800 transition"
-          >
-            <svg
-              className={`w-4 h-4 ${isLoadingRooms ? "animate-spin" : ""}`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+        {/* ===================================================================== */}
+        {/* 🌟 3. DANH SÁCH CÁC PHÒNG ĐANG MỞ (LIVE ROOMS) */}
+        {/* ===================================================================== */}
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/[0.07]">
+            <div className="flex items-center gap-3">
+              <span className="relative flex h-3.5 w-3.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500"></span>
+              </span>
+              <h2 className="text-2xl font-black text-white">
+                Active Reading Rooms
+              </h2>
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                {activeRooms.length} rooms
+              </span>
+            </div>
+
+            <button
+              onClick={handleRefreshRooms}
+              className="self-start sm:self-auto text-xs font-bold text-gray-300 hover:text-white flex items-center gap-2 bg-[#161922] hover:bg-gray-800 px-4 py-2.5 rounded-xl border border-white/[0.08] transition cursor-pointer shadow-sm"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            Làm mới
-          </button>
-        </div>
-
-        {isLoadingRooms ? (
-          <div className="flex justify-center py-12">
-            <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
-          </div>
-        ) : activeRooms.length === 0 ? (
-          <div className="bg-[#1a1d24] border border-gray-800 rounded-xl p-12 text-center">
-            <span className="text-4xl block mb-4">📚</span>
-            <h3 className="text-xl font-bold text-gray-300 mb-2">Chưa có phòng đọc nào!</h3>
-            <p className="text-gray-500">Hãy tạo phòng đầu tiên và rủ bạn bè vào cùng đọc nhé.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {activeRooms.map((r) => (
-              <div
-                key={r.id}
-                className="bg-[#1a1d24] border border-gray-800 hover:border-emerald-500/50 rounded-xl p-5 transition hover:shadow-lg hover:shadow-emerald-900/10 group flex flex-col"
+              <svg
+                className={`w-4 h-4 text-emerald-400 ${isLoadingRooms ? "animate-spin" : ""}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
               >
-                <div className="flex justify-between items-start mb-4">
-                  <h3 className="font-bold text-lg text-gray-200 group-hover:text-emerald-400 transition line-clamp-2">
-                    {r.name}
-                  </h3>
-                  {r.isPrivate ? (
-                    <span className="bg-red-500/10 text-red-400 text-xs font-bold px-2 py-1 rounded border border-red-500/20 shrink-0 ml-2">
-                      Private 🔒
-                    </span>
-                  ) : (
-                    <span className="bg-emerald-500/10 text-emerald-400 text-xs font-bold px-2 py-1 rounded border border-emerald-500/20 shrink-0 ml-2">
-                      Public 🌍
-                    </span>
-                  )}
-                </div>
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
+              </svg>
+              <span>Refresh List</span>
+            </button>
+          </div>
 
-                <div className="flex items-center gap-3 mb-4">
-                  {r.host?.image ? (
-                    <img src={r.host.image} alt={r.host.name || "Host"} className="w-8 h-8 rounded-full bg-gray-700 object-cover" />
-                  ) : (
-                    <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center font-bold text-xs">
-                      {r.host?.name?.charAt(0).toUpperCase() || "H"}
-                    </div>
-                  )}
+          {isLoadingRooms ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="h-56 rounded-2xl bg-[#151821]/80 border border-white/[0.05] animate-pulse p-5"
+                />
+              ))}
+            </div>
+          ) : activeRooms.length === 0 ? (
+            <div className="bg-[#151821]/80 border border-dashed border-gray-800 rounded-3xl p-12 text-center max-w-lg mx-auto my-6">
+              <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-3xl mx-auto mb-4">
+                📚
+              </div>
+              <h3 className="text-xl font-extrabold text-gray-200 mb-2">
+                No active reading rooms available!
+              </h3>
+              <p className="text-sm text-gray-500">
+                Please enter a room name in the field above to create your first reading room and invite friends to join.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {activeRooms.map((r) => (
+                <div
+                  key={r.id}
+                  className="bg-[#151821]/90 hover:bg-[#191d28] border border-white/[0.07] hover:border-emerald-500/50 rounded-2xl p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-emerald-950/30 group flex flex-col justify-between relative overflow-hidden"
+                >
+                  {/* Thanh sáng mảnh trên đỉnh thẻ */}
+                  <div
+                    className={`absolute top-0 left-0 w-full h-1 ${
+                      r.isPrivate ? "bg-amber-500/70" : "bg-emerald-500"
+                    }`}
+                  />
+
                   <div>
-                    <p className="text-xs text-gray-500">Trưởng phòng</p>
-                    <p className="text-sm font-semibold">{r.host?.name || "Ẩn danh"}</p>
+                    {/* Hàng trên: Trạng thái Public/Private & Mã phòng */}
+                    <div className="flex items-center justify-between gap-2 mb-3">
+                      {r.isPrivate ? (
+                        <span className="bg-amber-500/10 text-amber-400 text-[11px] font-extrabold px-2.5 py-1 rounded-full border border-amber-500/25 flex items-center gap-1">
+                          🔒 Private Room
+                        </span>
+                      ) : (
+                        <span className="bg-emerald-500/10 text-emerald-400 text-[11px] font-extrabold px-2.5 py-1 rounded-full border border-emerald-500/25 flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                          Public
+                        </span>
+                      )}
+
+                      <span className="text-[11px] font-mono font-bold text-gray-400 bg-gray-900 px-2.5 py-1 rounded-lg border border-gray-800">
+                        #{r.inviteCode}
+                      </span>
+                    </div>
+
+                    {/* Tên phòng */}
+                    <h3 className="font-extrabold text-lg text-white group-hover:text-emerald-400 transition line-clamp-1 mb-4">
+                      {r.name}
+                    </h3>
+
+                    {/* Thông tin Trưởng phòng */}
+                    <div className="flex items-center gap-3 mb-4 pb-4 border-b border-white/[0.06]">
+                      <div className="relative shrink-0">
+                        {r.host?.image ? (
+                          <img
+                            src={r.host.image}
+                            alt={r.host.name || "Host"}
+                            className="w-9 h-9 rounded-full bg-gray-800 object-cover border border-emerald-500/40"
+                          />
+                        ) : (
+                          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-600 to-teal-700 flex items-center justify-center font-bold text-xs text-white">
+                            {r.host?.name?.charAt(0).toUpperCase() || "H"}
+                          </div>
+                        )}
+                        <span
+                          className="absolute -top-1 -right-1 text-[10px]"
+                          title="Host of the Room"
+                        >
+                          👑
+                        </span>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[11px] text-gray-500 font-medium">Host of the Room</p>
+                        <p className="text-sm font-bold text-gray-200 truncate">
+                          {r.host?.name || "Ẩn danh"}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Khung bộ truyện đang đọc */}
+                    <div className="bg-gray-900/75 rounded-xl p-3.5 mb-5 border border-white/[0.05]">
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-400/80 mb-1 flex items-center gap-1.5">
+                        <span>📖 Currently Reading:</span>
+                      </p>
+                      <p className="text-sm font-bold text-gray-100 line-clamp-1">
+                        {r.manga
+                          ? `${r.manga.title}${r.chapter?.title ? ` • ${r.chapter.title}` : ""}`
+                          : "The host is choosing a manga to read..."}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Hàng cuối: Số người & Nút tham gia */}
+                  <div className="flex items-center justify-between pt-1 mt-auto">
+                    <span className="text-xs font-bold text-gray-400 bg-gray-900/80 px-3 py-1.5 rounded-lg border border-white/[0.05] flex items-center gap-1.5">
+                      <span>👥</span>
+                      <span>{r.members?.length || 1} readers</span>
+                    </span>
+
+                    <button
+                      onClick={() => handleJoinRoom(undefined, r.inviteCode)}
+                      className="bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-500/30 hover:border-emerald-500 px-4 py-2 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
+                    >
+                      <span>{r.isPrivate ? "Request to Join" : "Join Reading"}</span>
+                      <span>&rarr;</span>
+                    </button>
                   </div>
                 </div>
+              ))}
+            </div>
+          )}
+        </div>
 
-                <div className="bg-gray-900/50 rounded-lg p-3 mb-5 border border-gray-800 flex-1">
-                  <p className="text-xs text-gray-400 mb-1">Đang đọc:</p>
-                  <p className="text-sm font-medium text-gray-200 line-clamp-1">
-                    {r.manga ? `${r.manga.title} - ${r.chapter?.title || ""}` : "Trưởng phòng chưa chọn truyện"}
-                  </p>
-                </div>
-
-                <div className="flex items-center justify-between mt-auto">
-                  <span className="text-sm text-gray-400 flex items-center gap-1.5">
-                    👥 {r.members?.length || 1} người đang đọc
-                  </span>
-                  <button
-                    onClick={() => handleJoinRoom(undefined, r.inviteCode)}
-                    className="bg-gray-800 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-bold transition"
-                  >
-                    Vào đọc ngay
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
     </div>
   );

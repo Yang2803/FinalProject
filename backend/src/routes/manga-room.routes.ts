@@ -252,6 +252,8 @@ router.get('/rooms', async (req: Request, res: Response): Promise<any> => {
       include: {
         host: { select: { id: true, name: true, image: true } },
         members: { where: { status: 'JOINED' } }
+        //mai sửa
+
       },
       orderBy: { createdAt: 'desc' }
     });
