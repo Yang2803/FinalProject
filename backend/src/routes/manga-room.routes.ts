@@ -77,7 +77,9 @@ router.get('/rooms/:inviteCode', async (req: Request, res: Response): Promise<an
           include: {
             user: { select: { id: true, name: true, image: true } }
           }
-        }
+        },
+        manga: { select: { id: true, title: true } },
+        chapter: { select: { id: true, title: true } }
       }
     });
 
@@ -251,8 +253,9 @@ router.get('/rooms', async (req: Request, res: Response): Promise<any> => {
     const rooms = await prisma.mangaCoRoom.findMany({
       include: {
         host: { select: { id: true, name: true, image: true } },
-        members: { where: { status: 'JOINED' } }
-        //mai sửa
+        members: { where: { status: 'JOINED' } },
+        manga: { select: { title: true } }, 
+        chapter: { select: { title: true, chapterNumber: true } }
 
       },
       orderBy: { createdAt: 'desc' }

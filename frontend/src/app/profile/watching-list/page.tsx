@@ -86,84 +86,114 @@ export default function ProfileWatchingListPage() {
   if (!session?.user) return null;
 
   return (
-    <div className="min-h-screen bg-[#0f0f11] text-white p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
-        
-        {/* Nút quay lại trang Profile tổng */}
-        <Link href="/profile" className="text-gray-400 hover:text-white mb-6 inline-block font-medium drop-shadow-md">
-          &larr; Return Profile
-        </Link>
-
-        {/* HEADER CỦA TRANG */}
-        <div className="flex items-end justify-between mb-10 border-b border-gray-800 pb-6">
-          <div>
-            <h1 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500 mb-2">
-              My Watching List
-            </h1>
-            <p className="text-gray-400 text-sm">
-              You are currently watching <span className="font-bold text-white">{watchList.length}</span> anime
-            </p>
-          </div>
-          <Link href="/anime" className="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg transition shadow-lg shadow-blue-900/20 text-sm">
-            + Find More Anime
+  <div className="min-h-screen bg-[#0f0f13] text-white p-4 md:p-8">
+    <div className="max-w-7xl mx-auto">
+      
+      {/* 🌟 HEADER: Đồng bộ 100% với Reading List (Nút Back tròn, viền gradient và badge đếm Titles) */}
+      <div className="flex items-center justify-between mb-10 pb-6 border-b border-gray-800/60 relative">
+        <div className="absolute bottom-0 left-0 w-32 h-px bg-gradient-to-r from-blue-500 to-purple-500"></div>
+        <div className="flex items-center gap-5">
+          <Link 
+            href="/profile" 
+            className="group flex items-center justify-center w-10 h-10 bg-gray-800/50 hover:bg-gray-700 rounded-full transition-all border border-gray-700 hover:border-gray-500 text-gray-400 hover:text-white shadow-sm"
+          >
+            <svg className="w-5 h-5 group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
           </Link>
+          <h1 className="text-3xl md:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500 tracking-tight">
+            My Watching List
+          </h1>
         </div>
+        <div className="text-sm font-bold text-gray-400 bg-gray-800/40 px-4 py-1.5 rounded-full border border-gray-700/50 shadow-inner">
+          {watchList.length} {watchList.length <= 1 ? 'Title' : 'Titles'}
+        </div>
+      </div>
 
-        {/* DANH SÁCH PHIM */}
-        {watchList.length === 0 ? (
-          <div className="text-center bg-gray-900 border border-gray-800 rounded-2xl p-16">
-            <div className="text-6xl mb-4">🎬</div>
-            <h3 className="text-2xl font-bold text-gray-300 mb-2">Empty List</h3>
-            <p className="text-gray-500 max-w-md mx-auto mb-6">You have not added any anime to your watchlist yet. Explore our collection and click Add to Watchlist to get started!</p>
-            <Link href="/anime" className="text-blue-400 hover:text-blue-300 font-bold hover:underline">
-              Discover now &rarr;
+      {/* 🌟 KHU VỰC DANH SÁCH PHIM */}
+      {watchList.length === 0 ? (
+        /* 🌟 EMPTY STATE: Khối Glassmorphism giống hệt Reading List */
+        <div className="relative overflow-hidden bg-gradient-to-b from-gray-800/40 to-[#0f0f13] rounded-3xl p-12 md:p-16 text-center border border-gray-800 shadow-2xl flex flex-col items-center justify-center min-h-[40vh]">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-blue-500/10 blur-[100px] rounded-full pointer-events-none"></div>
+          
+          <div className="relative z-10 flex flex-col items-center">
+            <span className="text-6xl mb-6 drop-shadow-2xl hover:scale-110 transition-transform duration-300">🎬</span>
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-200 mb-3 tracking-wide">Your list is empty</h2>
+            <p className="text-gray-400 mb-8 max-w-md mx-auto text-sm md:text-base leading-relaxed">
+              You have not added any anime to your watching list yet. Explore our collection and find your next favorite series!
+            </p>
+            
+            {/* Nút bấm gradient với hiệu ứng viền chạy */}
+            <Link href="/anime" className="relative group overflow-hidden rounded-xl p-[1px]">
+              <span className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl opacity-70 group-hover:opacity-100 transition-opacity duration-300"></span>
+              <div className="relative bg-gray-900 px-8 py-3.5 rounded-xl transition-all duration-300 group-hover:bg-opacity-0">
+                <span className="font-bold text-gray-200 group-hover:text-white transition-colors tracking-wide">
+                  Discover Anime &rarr;
+                </span>
+              </div>
             </Link>
           </div>
-        ) : (
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
-            {watchList.map((item) => (
-              <Link key={item.id} href={`/anime/${item.anime.id}`} className="group relative block">
-                <div className="bg-gray-800 rounded-xl overflow-hidden shadow-lg border border-gray-800 group-hover:border-blue-500 transition-all duration-300 h-full flex flex-col">
-                  
-                  <div className="relative aspect-[2/3] w-full bg-gray-900 overflow-hidden shrink-0">
-                    {item.anime.coverImage ? (
-                      <img src={item.anime.coverImage} alt={item.anime.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-600">Trống</div>
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                    
-                    <div className="absolute top-2 left-2 bg-blue-600/90 backdrop-blur-sm text-white font-bold text-xs px-2 py-1 rounded">
-                      {item.anime._count.episodes} Tập
+        </div>
+      ) : (
+        /* 🌟 GRID PHIM: Đồng bộ tỷ lệ 6 cột và thiết kế Card tối giản */
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
+          {watchList.map((item) => (
+            /* Tách button ra khỏi thẻ Link để tránh lỗi HTML lồng nhau và click nhầm */
+            <div key={item.id} className="group relative block rounded-2xl overflow-hidden bg-[#1a1a24] border border-gray-800/80 hover:border-gray-600 transition-all duration-500 hover:-translate-y-2 shadow-lg hover:shadow-blue-500/20">
+              
+              <Link href={`/anime/${item.anime.id}`} className="block h-full cursor-pointer">
+                <div className="relative aspect-[2/3] w-full overflow-hidden bg-gray-900">
+                  {item.anime.coverImage ? (
+                    <img 
+                      src={item.anime.coverImage} 
+                      alt={item.anime.title} 
+                      className="w-full h-full object-cover opacity-90 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700 ease-out" 
+                    />
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center text-gray-600">
+                      <svg className="w-10 h-10 mb-2 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                      <span className="text-xs font-medium tracking-widest uppercase">No Cover</span>
                     </div>
-
-                    <button 
-                      onClick={(e) => handleRemove(item.anime.id, e)}
-                      className="absolute top-2 right-2 bg-red-600/90 hover:bg-red-500 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 shadow-lg"
-                      title="Remove from list"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </div>
-
-                  <div className="p-4 flex flex-col flex-1 justify-between">
-                    <h3 className="font-bold text-gray-200 line-clamp-2 group-hover:text-blue-400 transition mb-2">
-                      {item.anime.title}
-                    </h3>
-                    <p className="text-[10px] text-gray-500 italic">
-                      Added on: {new Date(item.createdAt).toLocaleDateString('vi-VN')}
-                    </p>
-                  </div>
+                  )}
                   
+                  {/* Lớp gradient bóng mờ từ dưới lên để chữ và nhãn nổi bật hơn */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#1a1a24] via-[#1a1a24]/20 to-transparent opacity-90"></div>
+                  
+                  {/* Nhãn số tập (Đưa xuống góc trái dưới cùng với chấm tròn phát sáng giống hệt Reading List) */}
+                  <div className="absolute bottom-3 left-3 z-10 flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-md border border-gray-700/50">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse shadow-[0_0_5px_#60a5fa]"></span>
+                    <span className="text-[10px] font-bold text-gray-200 uppercase tracking-wider">
+                      {item.anime._count?.episodes || 0} Episodes
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="p-4 pt-2">
+                  <h3 className="font-bold text-sm text-gray-200 line-clamp-2 group-hover:text-blue-400 transition-colors duration-300 leading-snug">
+                    {item.anime.title}
+                  </h3>
                 </div>
               </Link>
-            ))}
-          </div>
-        )}
 
-      </div>
+              {/* 🌟 NÚT XÓA CHUYÊN NGHIỆP: Nằm góc trên phải, hiệu ứng trượt mượt mà */}
+              <button 
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleRemove(item.anime.id, e);
+                }}
+                className="absolute top-3 right-3 z-20 bg-red-500/80 backdrop-blur-md hover:bg-red-500 text-white w-8 h-8 rounded-full flex justify-center items-center opacity-0 translate-y-2 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 shadow-lg border border-red-400/30 hover:scale-110 focus:outline-none"
+                title="Remove from watching list"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+
+            </div>
+          ))}
+        </div>
+      )}
+
     </div>
-  );
-}
+  </div>
+);}

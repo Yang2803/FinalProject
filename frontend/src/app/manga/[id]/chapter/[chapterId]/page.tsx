@@ -119,8 +119,8 @@ function TranslateableImage({
 
         // 🌟 1. THU GỌN KHUNG (INSET) ĐỂ KHÔNG ĐÈ LÊN VIỀN ĐEN & NHÂN VẬT XUNG QUANH
         // Nếu là bubble, bóp nhẹ chiều ngang (86%) và chiều dọc (90%) để nằm gọn trong lòng bóng thoại gốc
-        const scaleW = blockType === "bubble" ? 0.86 : 0.95;
-        const scaleH = blockType === "bubble" ? 0.90 : 0.95;
+        const scaleW = blockType === "bubble" ? (isVertical ? 0.76 : 0.84) : 0.92;
+        const scaleH = blockType === "bubble" ? 0.88 : 0.92;
 
         const adjustedWidth = block.widthPercent * scaleW;
         const adjustedHeight = block.heightPercent * scaleH;
@@ -129,7 +129,7 @@ function TranslateableImage({
 
         // 🌟 2. TẠO DÁNG HÌNH ELIP / OVAL CHUẨN MANGA ĐỂ KHÔNG CHE 4 GÓC TRANH
         let borderRadius = "50%";
-        let background = "rgba(255, 255, 255, 0.96)";
+        let background = "rgba(255, 255, 255, 0.92)";
         let textColor = "#000000";
         // Ép padding 2 bên sườn (12% - 14%) để chữ tự động xếp thành cột dọc thay vì dàn ngang
         let boxPadding = isVertical ? "6% 14%" : "6% 10%";
@@ -151,15 +151,15 @@ function TranslateableImage({
         const textLen = block.translatedText.length;
         const fontSize = isHorizontal
           ? textLen > 90
-            ? "clamp(6.5px, 0.6vw, 8px)"
+            ? "clamp(5.5px, 0.5vw, 6.5px)"
             : textLen > 40
-            ? "clamp(7.5px, 0.7vw, 9px)"
+            ? "clamp(6.5px, 0.65vw, 8.0px)"
             : "clamp(8.5px, 0.8vw, 10px)"
           : textLen > 90
             ? "clamp(8px, 0.72vw, 9.5px)"
             : textLen > 40
-            ? "clamp(9px, 0.82vw, 10.5px)"
-            : "clamp(10px, 0.92vw, 11.5px)";
+            ? "clamp(9.5px, 0.9vw, 11px)"
+            : "clamp(10.5px, 1.0vw, 12px)";
 
         return (
           <div 

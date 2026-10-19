@@ -13,7 +13,7 @@ model User {
   email    String  @unique
   name     String?
   password String?
-  image              String?
+  image    String?
   role     String  @default("USER") // USER hoặc ADMIN
 
   resetToken       String?   @unique
@@ -36,8 +36,8 @@ model User {
   forumComments      ForumComment[]
   forumCommentVotes  ForumCommentVote[]
 
-  hostedRooms PartyRoom[]  @relation("HostRooms")
-  joinedRooms RoomMember[] @relation("MemberRooms")
+  hostedRooms      PartyRoom[]     @relation("HostRooms")
+  joinedRooms      RoomMember[]    @relation("MemberRooms")
   hostedMangaRooms MangaCoRoom[]   @relation("MangaRoomHost")
   mangaRoomMembers MangaCoMember[]
 }
@@ -78,6 +78,7 @@ model Manga {
   mangaHistories MangaHistory[]
   fandomPrefix   String         @default("")
   mangaViewLogs  MangaViewLog[]
+  mangaCoRooms   MangaCoRoom[]
 }
 
 model Episode {
@@ -126,6 +127,7 @@ model Chapter {
   createdAt      DateTime       @default(now())
   comments       Comment[]
   mangaHistories MangaHistory[]
+  mangaCoRooms   MangaCoRoom[]
 }
 
 // Bảng lưu điểm đánh giá truyện
@@ -309,15 +311,15 @@ model Community {
 
 // 3. Bảng Bài viết chính
 model ForumPost {
-  id          String       @id @default(uuid())
-  title       String
-  content     String       @db.Text
-  mediaUrl    String?
-  category    PostCategory @default(GENERAL) // Lọc theo Anime/Manga
-  tags        String[] // Mảng các tag tự do (VD: #Review, #Spoiler)
-  isSpoiler   Boolean      @default(false) // Cờ đánh dấu spoiler
-  upvoteCount Int          @default(0)
-  downvoteCount Int      @default(0)
+  id            String       @id @default(uuid())
+  title         String
+  content       String       @db.Text
+  mediaUrl      String?
+  category      PostCategory @default(GENERAL) // Lọc theo Anime/Manga
+  tags          String[] // Mảng các tag tự do (VD: #Review, #Spoiler)
+  isSpoiler     Boolean      @default(false) // Cờ đánh dấu spoiler
+  upvoteCount   Int          @default(0)
+  downvoteCount Int          @default(0)
 
   authorId String
   author   User   @relation(fields: [authorId], references: [id])
@@ -410,7 +412,7 @@ model PartyRoom {
   animeId   String? // Phim đang chiếu (Cho phép null lúc mới tạo phòng)
   episodeId String? // Tập đang chiếu
 
-  themeConfig Json?    @default("{\"accent\":\"#3b82f6\",\"glow\":\"rgba(59,130,246,0.5)\",\"bgUrl\":\"\"}")
+  themeConfig Json? @default("{\"accent\":\"#3b82f6\",\"glow\":\"rgba(59,130,246,0.5)\",\"bgUrl\":\"\"}")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -460,31 +462,33 @@ model MangaViewLog {
 }
 
 model MangaCoRoom {
-  id            String            @id @default(cuid())
+  id            String   @id @default(cuid())
   name          String
-  inviteCode    String            @unique
-  isPrivate     Boolean           @default(false)
+  inviteCode    String   @unique
+  isPrivate     Boolean  @default(false)
   mangaId       String?
   chapterId     String?
-  currentPage   Int               @default(0)
-  scrollPercent Float             @default(0)
-  isHostLocked  Boolean           @default(true)
+  currentPage   Int      @default(0)
+  scrollPercent Float    @default(0)
+  isHostLocked  Boolean  @default(true)
   hostId        String
-  host          User              @relation("MangaRoomHost", fields: [hostId], references: [id])
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
+  host          User     @relation("MangaRoomHost", fields: [hostId], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  manga         Manga?   @relation(fields: [mangaId], references: [id], onDelete: SetNull)
+  chapter       Chapter? @relation(fields: [chapterId], references: [id], onDelete: SetNull)
 
-  members       MangaCoMember[]
+  members MangaCoMember[]
 }
 
 model MangaCoMember {
-  id        String       @id @default(cuid())
-  roomId    String
-  userId    String
-  status    String       @default("JOINED") // "JOINED" | "PENDING" | "REJECTED" | "BANNED"
-  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  room      MangaCoRoom  @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  joinedAt  DateTime     @default(now())
+  id       String      @id @default(cuid())
+  roomId   String
+  userId   String
+  status   String      @default("JOINED") // "JOINED" | "PENDING" | "REJECTED" | "BANNED"
+  user     User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  room     MangaCoRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  joinedAt DateTime    @default(now())
 
   @@unique([roomId, userId])
 }

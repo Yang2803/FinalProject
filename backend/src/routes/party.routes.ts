@@ -69,7 +69,7 @@ router.get('/rooms/:inviteCode', async (req: Request, res: Response): Promise<an
     const room = await prisma.partyRoom.findUnique({
       where: { inviteCode },
       include: {
-        host: { select: { id: true, name: true} },
+        host: { select: { id: true, name: true, image: true } },
         anime: { select: { id: true, title: true } },
         episode: { 
           select: { 
@@ -90,7 +90,7 @@ router.get('/rooms/:inviteCode', async (req: Request, res: Response): Promise<an
         
         // Chỉ lấy những thành viên ĐÃ ĐƯỢC DUYỆT (JOINED) để hiển thị danh sách trong phòng
         members: {
-          include: { user: { select: { id: true, name: true} } }
+          include: { user: { select: { id: true, name: true, image: true} } }
         }
       }
     });
@@ -268,7 +268,7 @@ router.get('/rooms', async (req: Request, res: Response): Promise<any> => {
   try {
     const rooms = await prisma.partyRoom.findMany({
       include: {
-        host: { select: { id: true, name: true} },
+        host: { select: { id: true, name: true, image: true } },
         members: { where: { status: 'JOINED' } }, // Chỉ đếm những người đã duyệt
         episode: { select: { title: true } },
         anime: { select: { title: true } }

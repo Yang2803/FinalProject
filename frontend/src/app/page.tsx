@@ -172,8 +172,8 @@ export default function Home() {
           fetch("http://localhost:5000/api/anime"),
         ]);
 
-        if (mangaRes.ok) setRecentMangas((await mangaRes.json()).slice(0, 10));
-        if (animeRes.ok) setRecentAnimes((await animeRes.json()).slice(0, 10));
+        if (mangaRes.ok) setRecentMangas((await mangaRes.json()).slice(0, 12));
+        if (animeRes.ok) setRecentAnimes((await animeRes.json()).slice(0, 12));
 
         // Fetch danh sách phòng Watch Party đang mở (lấy tối đa 4 phòng)
         try {
