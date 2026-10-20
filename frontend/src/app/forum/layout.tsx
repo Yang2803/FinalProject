@@ -101,9 +101,9 @@ export default function ForumLayout({ children }: { children: React.ReactNode })
           
           <div className="flex flex-wrap gap-2 relative z-10">
             {isLoading ? (
-              <span className="text-gray-500 text-xs italic">Đang quét...</span>
+              <span className="text-gray-500 text-xs italic">Scanning...</span>
             ) : trendingTags.length === 0 ? (
-              <span className="text-gray-500 text-xs italic">Chưa có thẻ nổi bật</span>
+              <span className="text-gray-500 text-xs italic">No trending tags available</span>
             ) : (
               trendingTags.map((tag) => (
                 <Link key={tag} href={`/forum?tag=${tag}`}>
@@ -127,9 +127,9 @@ export default function ForumLayout({ children }: { children: React.ReactNode })
 
           <div className="space-y-3 relative z-10">
             {isLoading ? (
-              <span className="text-gray-500 text-xs italic">Đang cập nhật...</span>
+              <span className="text-gray-500 text-xs italic">Updating...</span>
             ) : !stats?.topCommunities || stats.topCommunities.length === 0 ? (
-              <span className="text-gray-500 text-xs italic">Chưa có cộng đồng nào</span>
+              <span className="text-gray-500 text-xs italic">No Community Yet.</span>
             ) : (
               stats.topCommunities.map((community, index) => (
                 <Link 
@@ -224,7 +224,7 @@ export default function ForumLayout({ children }: { children: React.ReactNode })
 
                   <span className="text-[10px] font-black text-purple-300 bg-purple-950/40 border border-purple-800/40 px-2 py-0.5 rounded-md shrink-0">
                     {activeUserTab === 'posters' 
-                      ? `${(user._count as Record<string, number>).forumPosts} Bài` 
+                      ? `${(user._count as Record<string, number>).forumPosts} Posts` 
                       : activeUserTab === 'commenters' 
                       ? `${(user._count as Record<string, number>).forumComments} Cmt` 
                       : `${(user._count as Record<string, number>).forumVotes} Vote`}
@@ -246,9 +246,9 @@ export default function ForumLayout({ children }: { children: React.ReactNode })
 
           <div className="space-y-3.5 relative z-10">
             {isLoading ? (
-              <span className="text-gray-500 text-xs italic">Đang cập nhật...</span>
+              <span className="text-gray-500 text-xs italic">Updating...</span>
             ) : !stats?.hotPosts || stats.hotPosts.length === 0 ? (
-              <span className="text-gray-500 text-xs italic">Chưa có bài viết hot</span>
+              <span className="text-gray-500 text-xs italic">No hot posts available</span>
             ) : (
               stats.hotPosts.map((post) => (
                 <Link key={post.id} href={`/forum/${post.id}`} className="group/post block">
@@ -260,7 +260,7 @@ export default function ForumLayout({ children }: { children: React.ReactNode })
                       <span className="text-emerald-400 font-bold">▲</span> {post.upvoteCount}
                     </span>
                     <span className="flex items-center gap-1">
-                      💬 {post._count.forumComments} bình luận
+                      💬 {post._count.forumComments} comment
                     </span>
                   </div>
                 </Link>

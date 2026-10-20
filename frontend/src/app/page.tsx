@@ -73,41 +73,41 @@ interface LiveMangaRoom {
 
 // Danh sách Thể loại & Chủ đề chuẩn bị sẵn cho UI
 const GENRE_PILLS = [
-  { id: "ALL", label: "✨ Tất cả", prompt: "" },
+  { id: "ALL", label: "✨ All", prompt: "" },
   {
     id: "Action",
     label: "⚔️ Action",
-    prompt: "Gợi ý các bộ Anime/Manga thể loại Hành động (Action) đánh nhau mãn nhãn",
+    prompt: "Suggest Anime/Manga in the Action genre with intense fights",
   },
   {
     id: "Fantasy",
     label: "🔮 Fantasy",
-    prompt: "Gợi ý các bộ Anime/Manga thể loại Phép thuật / Thế giới giả tưởng (Fantasy)",
+    prompt: "Suggest Anime/Manga in the Fantasy genre with magic and imaginary worlds",
   },
   {
     id: "Supernatural",
     label: "👻 Supernatural",
-    prompt: "Gợi ý các bộ Anime/Manga thể loại Siêu nhiên, chú thuật, trừ tà",
+    prompt: "Suggest Anime/Manga in the Supernatural genre with ghosts, curses, and otherworldly phenomena",
   },
   {
     id: "Romance",
     label: "💘 Romance",
-    prompt: "Gợi ý các bộ Anime/Manga thể loại Tình cảm lãng mạn (Romance)",
+    prompt: "Suggest Anime/Manga in the Romance genre with heartwarming love stories",
   },
   {
     id: "Comedy",
     label: "😂 Comedy",
-    prompt: "Gợi ý các bộ Anime/Manga thể loại Hài hước giải trí (Comedy)",
+    prompt: "Suggest Anime/Manga in the Comedy genre with humor and entertainment",
   },
   {
     id: "School",
     label: "🏫 School Life",
-    prompt: "Gợi ý các bộ Anime/Manga lấy bối cảnh Học đường",
+    prompt: "Suggest Anime/Manga set in a school environment",
   },
   {
     id: "Mystery",
     label: "🕵️ Mystery",
-    prompt: "Gợi ý các bộ Anime/Manga Trinh thám, Bí ẩn, Plot twist",
+    prompt: "Suggest Anime/Manga in the Mystery genre with thrilling plots and twists",
   },
 ];
 
@@ -478,7 +478,7 @@ export default function Home() {
                     }`}
                   >
                     <span>
-                      {activeSpotlight.type === "ANIME" ? "▶️ Xem Phim Ngay" : "📖 Đọc Truyện Ngay"}
+                      {activeSpotlight.type === "ANIME" ? "▶️ Watching Now" : "📖 Reading Now"}
                     </span>
                   </Link>
 
@@ -487,7 +487,7 @@ export default function Home() {
                     className="px-5 py-3 rounded-xl font-bold text-sm bg-gray-800/90 hover:bg-gray-700 text-gray-200 border border-gray-700 flex items-center gap-2 transition backdrop-blur-md"
                   >
                     <span>
-                      {activeSpotlight.type === "ANIME" ? "🎉 Phòng Xem Chung" : "👥 Phòng Đọc Chung"}
+                      {activeSpotlight.type === "ANIME" ? "🎉 Watch Party" : "👥 Co-Reading Room"}
                     </span>
                   </Link>
                 </div>
@@ -580,7 +580,7 @@ export default function Home() {
                   </span>
                 </h3>
                 <p className="text-xs text-gray-400 mt-0.5">
-                  Quên tên phim? Nhớ mang máng cốt truyện hoặc chỉ có 1 tấm ảnh chụp màn hình? Hãy để AI tìm giúp bạn!
+                  Forgot the movie title? Only vaguely remember the plot or just have a screenshot? Let AI help you find it!
                 </p>
               </div>
             </div>
@@ -590,13 +590,13 @@ export default function Home() {
                 href="/ai-search?mode=image"
                 className="flex-1 md:flex-none justify-center px-4 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white text-xs font-bold flex items-center gap-2 shadow-lg shadow-purple-600/20 transition"
               >
-                <span>📷 Tìm bằng Hình Ảnh</span>
+                <span>📷 Search by Image</span>
               </Link>
               <Link
                 href="/ai-search"
                 className="flex-1 md:flex-none justify-center px-4 py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-cyan-400 border border-gray-700 text-xs font-bold flex items-center gap-1.5 transition"
               >
-                <span>🔍 Tìm theo Cốt Truyện</span>
+                <span>🔍 Search by Plot</span>
               </Link>
             </div>
           </div>
@@ -604,7 +604,7 @@ export default function Home() {
           <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
             <div className="flex items-center gap-2 overflow-x-auto pb-1 lg:pb-0 no-scrollbar">
               <span className="text-xs font-bold text-gray-500 uppercase tracking-wider mr-1 shrink-0">
-                Thể loại:
+                Genre:
               </span>
               {GENRE_PILLS.map((genre) => {
                 const isSelected = selectedGenre === genre.id;
@@ -630,11 +630,11 @@ export default function Home() {
                 <Link
                   href={`/ai-search?prompt=${encodeURIComponent(
                     GENRE_PILLS.find((g) => g.id === selectedGenre)?.prompt ||
-                      `Gợi ý các bộ Anime và Manga thể loại ${selectedGenre} hay nhất trong hệ thống`
+                      `Suggest the best ${selectedGenre} anime and manga in the system`
                   )}`}
                   className="text-xs font-bold text-purple-400 hover:text-purple-300 bg-purple-950/40 border border-purple-500/30 px-3 py-1.5 rounded-lg transition whitespace-nowrap"
                 >
-                  ✨ Nhờ AI gợi ý bộ {selectedGenre} &rarr;
+                  ✨ AI suggest genre {selectedGenre} &rarr;
                 </Link>
               )}
               
@@ -654,14 +654,14 @@ export default function Home() {
                   Continue Watching & Reading
                 </h2>
                 <span className="text-xs px-2.5 py-0.5 rounded-full bg-blue-500/15 text-blue-400 border border-blue-500/30 font-semibold">
-                  {continueList.length} tác phẩm gần đây
+                  {continueList.length} recent items
                 </span>
               </div>
               <Link
                 href="/profile"
                 className="text-xs font-bold text-gray-400 hover:text-white transition"
               >
-                Lịch sử đầy đủ &rarr;
+                Full History &rarr;
               </Link>
             </div>
 
@@ -703,7 +703,7 @@ export default function Home() {
                       {item.progressText}
                     </p>
                     <div className="mt-2 flex items-center gap-1.5 text-[11px] font-bold text-blue-400 group-hover:translate-x-1 transition-transform">
-                      <span>{item.type === "ANIME" ? "▶️ Xem tiếp ngay" : "📖 Đọc tiếp ngay"}</span>
+                      <span>{item.type === "ANIME" ? "▶️ Continue Watching" : "📖 Continue Reading"}</span>
                       <span>&rarr;</span>
                     </div>
                   </div>
@@ -864,7 +864,7 @@ export default function Home() {
                   </div>
                 ) : topAnimes.length === 0 ? (
                   <p className="text-gray-500 text-sm text-center py-10">
-                    Chưa có dữ liệu lượt xem
+                    No view count data available.
                   </p>
                 ) : (
                   topAnimes.slice(0, 10).map((anime, index) => (
@@ -900,7 +900,7 @@ export default function Home() {
                           {anime.title}
                         </h4>
                         <p className="text-xs text-gray-500 mt-1">
-                          {anime.periodViews} lượt xem
+                          {anime.periodViews} views
                         </p>
                       </div>
                     </Link>
@@ -943,7 +943,7 @@ export default function Home() {
                   </div>
                 ) : topMangas.length === 0 ? (
                   <p className="text-gray-500 text-sm text-center py-10">
-                    Chưa có lượt đọc nào
+                    No reading data available.
                   </p>
                 ) : (
                   topMangas.slice(0, 10).map((manga, index) => (
@@ -979,7 +979,7 @@ export default function Home() {
                           {manga.title}
                         </h4>
                         <p className="text-xs text-gray-500 mt-1">
-                          {manga.periodViews} lượt đọc
+                          {manga.periodViews} views
                         </p>
                       </div>
                     </Link>
@@ -1011,13 +1011,13 @@ export default function Home() {
                 href="/party"
                 className="px-4 py-2 rounded-xl bg-blue-600/15 hover:bg-blue-600/25 text-blue-400 border border-blue-500/30 text-xs font-bold transition"
               >
-                🎉 Sảnh Watch Party &rarr;
+                🎉 Watch Party &rarr;
               </Link>
               <Link
                 href="/manga-room"
                 className="px-4 py-2 rounded-xl bg-green-600/15 hover:bg-green-600/25 text-green-400 border border-green-500/30 text-xs font-bold transition"
               >
-                📖 Sảnh Co-Reading &rarr;
+                📖 Co-Reading &rarr;
               </Link>
             </div>
           </div>
@@ -1029,20 +1029,20 @@ export default function Home() {
               <div>
                 <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-800">
                   <h3 className="font-bold text-blue-400 flex items-center gap-2 text-base">
-                    <span>🎬 Phòng Xem Anime (Watch Party)</span>
+                    <span>🎬 Watch Party Room</span>
                   </h3>
                 </div>
 
                 {livePartyRooms.length === 0 ? (
                   <div className="py-10 text-center space-y-3">
                     <p className="text-gray-400 text-sm">
-                      Hiện chưa có phòng xem phim công khai nào đang phát.
+                      Currently, there are no public watch parties in progress.
                     </p>
                     <Link
                       href="/party"
                       className="inline-block px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition shadow-lg shadow-blue-600/20"
                     >
-                      + Tạo Phòng Xem Chung Ngay
+                      + Create Watch Party Now
                     </Link>
                   </div>
                 ) : (
@@ -1066,7 +1066,7 @@ export default function Home() {
                                 LIVE
                               </span>
                               <span className="text-[11px] text-gray-400 font-semibold">
-                                👥 {memberCount} người
+                                👥 {memberCount} people
                               </span>
                             </div>
 
@@ -1074,7 +1074,7 @@ export default function Home() {
                               {room.name}
                             </h4>
                             <p className="text-xs text-gray-400 truncate mt-0.5">
-                              {room.anime?.title || "Đang chọn phim..."}
+                              {room.anime?.title || "Selecting a movie..."}
                               {room.episode?.title ? ` • ${room.episode.title}` : ""}
                             </p>
                           </div>
@@ -1084,7 +1084,7 @@ export default function Home() {
                               Mã: <strong className="text-gray-300">{room.inviteCode}</strong>
                             </span>
                             <span className="font-bold text-blue-400 group-hover:translate-x-0.5 transition-transform">
-                              Tham gia &rarr;
+                              Join &rarr;
                             </span>
                           </div>
                         </Link>
@@ -1100,20 +1100,20 @@ export default function Home() {
               <div>
                 <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-800">
                   <h3 className="font-bold text-green-400 flex items-center gap-2 text-base">
-                    <span>📖 Phòng Đọc Manga (Co-Reading)</span>
+                    <span>📖 Co-Reading Room</span>
                   </h3>
                 </div>
 
                 {liveMangaRooms.length === 0 ? (
                   <div className="py-10 text-center space-y-3">
                     <p className="text-gray-400 text-sm">
-                      Hiện chưa có phòng đọc truyện chung nào đang mở.
+                      Currently, there are no public co-reading rooms in progress.
                     </p>
                     <Link
                       href="/manga-room"
                       className="inline-block px-4 py-2 rounded-xl bg-green-600 hover:bg-green-500 text-white text-xs font-bold transition shadow-lg shadow-green-600/20"
                     >
-                      + Tạo Phòng Đọc Chung Ngay
+                      + Create Co-Reading Room Now
                     </Link>
                   </div>
                 ) : (
@@ -1136,25 +1136,25 @@ export default function Home() {
                                 READING
                               </span>
                               <span className="text-[11px] text-gray-400 font-semibold">
-                                👥 {memberCount} bạn đọc
+                                👥 {memberCount} people
                               </span>
                             </div>
 
                             <h4 className="font-bold text-sm text-white truncate group-hover:text-green-400 transition">
-                              {mRoom.name || `Phòng #${targetCode}`}
+                              {mRoom.name || `Room #${targetCode}`}
                             </h4>
                             <p className="text-xs text-gray-400 truncate mt-0.5">
-                              {mRoom.manga?.title || "Đang chọn truyện..."}
+                              {mRoom.manga?.title || "Selecting a manga..."}
                               {mRoom.chapter?.title ? ` • ${mRoom.chapter.title}` : ""}
                             </p>
                           </div>
 
                           <div className="flex items-center justify-between pt-2 border-t border-gray-800/80 text-[11px]">
                             <span className="text-gray-500">
-                              Mã: <strong className="text-gray-300">{targetCode}</strong>
+                              Code: <strong className="text-gray-300">{targetCode}</strong>
                             </span>
                             <span className="font-bold text-green-400 group-hover:translate-x-0.5 transition-transform">
-                              Vào đọc &rarr;
+                              Join &rarr;
                             </span>
                           </div>
                         </Link>

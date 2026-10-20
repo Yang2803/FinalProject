@@ -107,7 +107,7 @@ function TranslateableImage({
           ${blocks.length > 0 ? "bg-gray-800/90 hover:bg-gray-700" : "bg-blue-600/90 hover:bg-blue-500"}
         `}
       >
-        {isTranslating ? "✨ Đang quét..." : 
+        {isTranslating ? "✨ Scanning..." : 
          blocks.length > 0 ? (showTranslation ? "👁️ Hide translation" : "👁️ Show translation") : 
          "✨ Translate with AI"}
       </button>
@@ -364,14 +364,14 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
       });
 
       if (res.ok) {
-        alert("🎉 Đã đăng bài lên Forum thành công! Bạn có thể tiếp tục đọc truyện.");
+        alert("🎉 Successfully posted to the forum! You can continue reading the manga.");
         setIsForumModalOpen(false);
         setPostTitle(""); setPostContent(""); setPostTags([]); setPostIsSpoiler(false);
         setPostMediaFile(null); setPostMediaPreview(null); setAttachedLink(null);
       } else {
-        const data = await res.json(); alert(data.error || "Lỗi khi đăng bài!");
+        const data = await res.json(); alert(data.error || "Error posting to the forum!");
       }
-    } catch (error) { alert("Đã xảy ra lỗi kết nối đến máy chủ."); } finally { setIsPostingToForum(false); }
+    } catch (error) { alert("An error occurred while connecting to the server."); } finally { setIsPostingToForum(false); }
   };
 
   // =====================================================================
@@ -561,7 +561,7 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
             className="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-sm font-bold transition shadow-lg shadow-blue-500/20 flex items-center gap-1.5 shrink-0"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
-            <span className="hidden sm:inline">Thảo luận</span>
+            <span className="hidden sm:inline">Discuss</span>
           </button>
 
           {/* Menu Chọn ngôn ngữ dịch AI */}
@@ -569,7 +569,7 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
             className="flex items-center gap-2 p-1 rounded-lg shrink-0 border"
             style={{ backgroundColor: currentTheme.cardBg, borderColor: 'rgba(128,128,128,0.2)' }}
           >
-            <span className="text-xs font-bold opacity-70 pl-2">Dịch:</span>
+            <span className="text-xs font-bold opacity-70 pl-2">Translate:</span>
             <select 
               value={targetLang}
               onChange={(e) => setTargetLang(e.target.value)}
@@ -594,7 +594,7 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
               color: currentTheme.text
             }}
           >
-            ⚙️ <span className="hidden sm:inline">Cài đặt đọc</span>
+            ⚙️ <span className="hidden sm:inline">Reading Settings</span>
           </button>
         </div>
       </div>
@@ -622,7 +622,7 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
               className="my-12 w-full px-4 flex flex-col md:flex-row justify-between items-center gap-4 p-6 rounded-2xl border transition-colors"
               style={{ backgroundColor: currentTheme.cardBg, borderColor: 'rgba(128,128,128,0.2)' }}
             >
-              <p className="opacity-70 font-medium md:hidden mb-2">Hết chương</p>
+              <p className="opacity-70 font-medium md:hidden mb-2">End of Chapter</p>
               
               {chapter.prevChapterId ? (
                 <Link 
@@ -780,21 +780,21 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
             style={{ backgroundColor: currentTheme.cardBg, borderColor: 'rgba(128,128,128,0.2)' }}
           >
             <div className="flex items-center justify-between mb-5 border-b pb-3" style={{ borderColor: 'rgba(128,128,128,0.2)' }}>
-              <h3 className="font-extrabold text-base">Cài Đặt Trình Đọc</h3>
+              <h3 className="font-extrabold text-base">Settings</h3>
               <button onClick={() => setIsSettingsModalOpen(false)} className="opacity-60 hover:opacity-100">✕</button>
             </div>
 
             {/* 1. Chọn chế độ cuộn / lật trang */}
             <div className="mb-5">
               <label className="block text-xs font-bold uppercase tracking-wider mb-2 opacity-70">
-                Kiểu Đọc
+                Reading Mode
               </label>
               <div className="grid grid-cols-3 gap-2">
                 <button 
                   onClick={() => updateSettings({ mode: 'VERTICAL' })}
                   className={`p-2 rounded-xl text-xs font-bold border transition ${settings.mode === 'VERTICAL' ? 'border-blue-500 bg-blue-600/20 text-blue-400 font-black' : 'border-gray-500/20 opacity-70'}`}
                 >
-                  Cuộn Dọc
+                  Scroll (Vertical)
                 </button>
                 <button 
                   onClick={() => updateSettings({ mode: 'PAGED_RTL' })}
@@ -808,7 +808,7 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
                   className={`p-2 rounded-xl text-xs font-bold border transition ${settings.mode === 'PAGED_LTR' ? 'border-blue-500 bg-blue-600/20 text-blue-400 font-black' : 'border-gray-500/20 opacity-70'}`}
                   title="Chuẩn phương Tây (Trái sang Phải)"
                 >
-                  Lật Trái-Phải
+                  Western (LTR)
                 </button>
               </div>
             </div>
@@ -816,7 +816,7 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
             {/* 2. Chọn màu nền */}
             <div className="mb-5">
               <label className="block text-xs font-bold uppercase tracking-wider mb-2 opacity-70">
-                Màu Nền Bảo Vệ Mắt
+                Background Color
               </label>
               <div className="grid grid-cols-2 gap-2">
                 {(Object.keys(BG_THEMES) as BackgroundTheme[]).map((themeKey) => (
@@ -837,7 +837,7 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
             {settings.mode === 'VERTICAL' && (
               <div className="mb-6">
                 <label className="block text-xs font-bold uppercase tracking-wider mb-2 opacity-70">
-                  Độ Rộng Khung Hình
+                  Maximum Width
                 </label>
                 <div className="grid grid-cols-3 gap-2">
                   {(['fit', 'medium', 'full'] as const).map((w) => (
@@ -846,7 +846,7 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
                       onClick={() => updateSettings({ maxWidth: w })}
                       className={`p-2 rounded-xl text-xs font-bold border transition ${settings.maxWidth === w ? 'border-blue-500 bg-blue-600/20 text-blue-400 font-black' : 'border-gray-500/20 opacity-70'}`}
                     >
-                      {w === 'fit' ? 'Vừa (768px)' : w === 'medium' ? 'Rộng (1024px)' : 'Toàn màn'}
+                      {w === 'fit' ? 'Fit (768px)' : w === 'medium' ? 'Medium (1024px)' : 'Full (100%)'}
                     </button>
                   ))}
                 </div>
@@ -857,7 +857,7 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
               onClick={() => setIsSettingsModalOpen(false)}
               className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition shadow-lg shadow-blue-600/20"
             >
-              Đóng Cài Đặt
+              Close Settings
             </button>
           </div>
         </div>
@@ -872,7 +872,7 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
             
             <div className="flex justify-between items-center p-5 border-b border-gray-800">
               <h2 className="text-xl font-bold text-gray-100 flex items-center gap-2">
-                Đăng bài lên Forum
+                Post to Forum
               </h2>
               <button 
                 onClick={() => setIsForumModalOpen(false)} 
@@ -893,7 +893,7 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
                   onClick={handleInsertMangaLink}
                   className="w-full bg-blue-900/30 hover:bg-blue-900/50 text-blue-400 border border-blue-800/50 border-dashed py-2 rounded-lg text-sm font-bold transition flex justify-center items-center gap-2"
                 >
-                  🔗 Trích xuất liên kết trang truyện này
+                  🔗 Extract the link to this comic.
                 </button>
               ) : (
                 <div className="bg-blue-900/20 border border-blue-800/50 rounded-lg p-3 flex items-center justify-between">
@@ -908,7 +908,7 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
               )}
 
               <textarea 
-                placeholder="Nội dung bài viết, giả thuyết, cảm nhận của bạn..." 
+                placeholder="Content of the post, theories, your thoughts..." 
                 value={postContent} onChange={e => setPostContent(e.target.value)}
                 className="w-full bg-transparent border border-gray-800 rounded-lg px-4 py-3 outline-none resize-none h-32 text-sm text-gray-200 focus:border-blue-500 transition custom-scrollbar leading-relaxed"
               />
@@ -935,7 +935,7 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
                   ))}
                 </div>
                 <input 
-                  type="text" placeholder="Nhập tag tự do và nhấn Enter (VD: #Manga, #Giathuyet...)" 
+                  type="text" placeholder="Enter tags and press Enter (e.g., #Manga, #Theory...)" 
                   value={postTagInput} onChange={e => setPostTagInput(e.target.value)} onKeyDown={handleKeyDownTag}
                   className="w-full bg-transparent outline-none text-sm text-gray-300"
                 />
@@ -950,7 +950,7 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
                 >
                   <option value="MANGA">📖 Manga</option>
                   <option value="ANIME">🎬 Anime</option>
-                  <option value="GENERAL">📍 Chung</option>
+                  <option value="GENERAL">📍All</option>
                 </select>
 
                 <input type="file" accept="image/*,video/*" hidden ref={postFileInputRef} onChange={handlePostFileChange} />
@@ -966,7 +966,7 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
               <div className="flex items-center gap-3">
                 <label className="hidden sm:flex items-center gap-2 text-sm text-gray-400 cursor-pointer hover:text-gray-200 transition">
                   <input type="checkbox" checked={postIsSpoiler} onChange={(e) => setPostIsSpoiler(e.target.checked)} className="rounded bg-gray-800 border-gray-700 text-red-500 focus:ring-red-500 focus:ring-offset-gray-900" />
-                  Chứa Spoiler?
+                  Contains Spoiler?
                 </label>
 
                 <button 
@@ -974,7 +974,7 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
                   disabled={isPostingToForum} 
                   className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2.5 rounded-lg text-sm font-bold transition disabled:opacity-50 shadow-lg shadow-blue-500/20"
                 >
-                  {isPostingToForum ? "Đang gửi..." : "Đăng bài"}
+                  {isPostingToForum ? "Uploading..." : "Post"}
                 </button>
               </div>
             </div>

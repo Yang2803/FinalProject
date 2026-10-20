@@ -46,13 +46,13 @@ export const BG_THEMES: Record<
     cardBg: '#1e222d'
   },
   sepia: {
-    name: 'Giấy Cổ (Sepia)',
+    name: 'Sepia',
     bg: '#fbf0d9',
     text: '#5f4b32',
     cardBg: '#efe2c5'
   },
   light: {
-    name: 'Sáng',
+    name: 'Light',
     bg: '#ffffff',
     text: '#374151',
     cardBg: '#f3f4f6'

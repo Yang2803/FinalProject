@@ -289,7 +289,7 @@ export default function ForumFeed() {
 
   // XỬ LÝ XÓA
   const handleDeletePost = async (postId: string) => {
-    if (!confirm("Bạn có chắc chắn muốn xóa bài đăng này?")) return;
+    if (!confirm("Are you sure you want to delete this post?")) return;
     try {
       const res = await fetch(`http://localhost:5000/api/forum/posts/${postId}`, {
         method: "DELETE",
@@ -298,7 +298,7 @@ export default function ForumFeed() {
       });
       if (res.ok) {
         setPosts(posts.filter(p => p.id !== postId)); // Xóa khỏi giao diện
-        alert("Đã xóa bài viết!");
+        alert("The post has been deleted!");
       }
     } catch (error) { alert("Lỗi khi xóa!"); }
   };
@@ -491,7 +491,7 @@ export default function ForumFeed() {
           onClick={() => setIsModalOpen(true)}
           className="flex-1 bg-gray-800/40 hover:bg-gray-800/80 rounded-full px-6 py-3 text-sm text-gray-400 cursor-text transition-all duration-300 border border-gray-700/50 hover:border-gray-500 group-hover:bg-gray-800/60"
         >
-          Chia sẻ giả thuyết, fanfic hoặc thảo luận của bạn...
+          Share your theories, fanfiction, or discussions...
         </div>
 
         <button onClick={() => setIsModalOpen(true)} className="p-3 text-blue-400 hover:text-white hover:bg-blue-600 transition-all duration-300 bg-blue-900/20 rounded-full border border-blue-500/20 hover:shadow-[0_0_15px_rgba(59,130,246,0.5)]">
@@ -699,8 +699,8 @@ export default function ForumFeed() {
                                 {isEditing ? (
                                   <div className="mt-3 flex gap-2">
                                     <input autoFocus type="text" value={editCommentContent} onChange={e => setEditCommentContent(e.target.value)} className="flex-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 text-gray-100" />
-                                    <button onClick={() => submitEditComment(comment.id)} className="bg-green-600 hover:bg-green-500 text-white text-xs font-bold px-4 rounded-lg transition-colors">Lưu</button>
-                                    <button onClick={() => setEditingCommentId(null)} className="text-gray-400 hover:text-white text-xs px-3 transition-colors">Hủy</button>
+                                    <button onClick={() => submitEditComment(comment.id)} className="bg-green-600 hover:bg-green-500 text-white text-xs font-bold px-4 rounded-lg transition-colors">Save</button>
+                                    <button onClick={() => setEditingCommentId(null)} className="text-gray-400 hover:text-white text-xs px-3 transition-colors">Cancel</button>
                                   </div>
                                 ) : (
                                   <p className="text-[14px] text-gray-300 mt-2 leading-relaxed">{comment.content}</p>
@@ -820,9 +820,9 @@ export default function ForumFeed() {
                     value={category} onChange={e => setCategory(e.target.value as "GENERAL" | "ANIME" | "MANGA")}
                     className="bg-gray-800 appearance-none text-sm font-bold px-4 py-2.5 pr-10 rounded-xl outline-none cursor-pointer border border-gray-700 focus:border-blue-500 hover:border-gray-500 transition-all text-gray-300"
                   >
-                    <option value="GENERAL">📍 Thảo luận chung</option>
-                    <option value="ANIME">🎬 Phân loại Anime</option>
-                    <option value="MANGA">📖 Phân loại Manga</option>
+                    <option value="GENERAL">📍All Discussion</option>
+                    <option value="ANIME">🎬 Anime</option>
+                    <option value="MANGA">📖 Manga</option>
                   </select>
                   <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 group-hover:text-gray-300 transition-colors">▼</div>
                 </div>
@@ -836,10 +836,10 @@ export default function ForumFeed() {
 
               <div className="flex gap-3 w-full sm:w-auto">
                 <button onClick={handleAIAnalyze} disabled={isAnalyzing} className="flex-1 sm:flex-none bg-gradient-to-r from-purple-600/20 to-pink-600/20 text-pink-300 border border-purple-500/50 hover:from-purple-600 hover:to-pink-600 hover:text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm hover:shadow-[0_0_15px_rgba(168,85,247,0.4)] flex items-center justify-center gap-2 disabled:opacity-50">
-                  {isAnalyzing ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : "🪄 AI Hỗ Trợ"}
+                  {isAnalyzing ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : "🪄 AI Support"}
                 </button>
                 <button onClick={handleSubmit} disabled={isPosting} className="flex-1 sm:flex-none bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white px-8 py-2.5 rounded-xl text-sm font-black transition-all shadow-[0_0_10px_rgba(59,130,246,0.3)] hover:shadow-[0_0_20px_rgba(59,130,246,0.5)] disabled:opacity-50">
-                  {isPosting ? "Đang đẩy lên..." : "Đăng Bài"}
+                  {isPosting ? "Uploading..." : "Post"}
                 </button>
               </div>
             </div>

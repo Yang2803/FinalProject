@@ -76,7 +76,7 @@ export default function AiSearchChatPage() {
             id: "welcome",
             role: "model",
             content:
-              "Hi! I'm the AI Assistant from Smart Anime Platform 🌸. Bạn đang muốn tìm Anime/Manga theo cốt truyện hay muốn tải ảnh lên (📷) để mình nhận diện giúp nào?",
+              "Hi! I'm the AI Assistant from Smart Anime Platform 🌸. Are you looking for Anime/Manga based on a storyline, or would you like to upload an image (📷) so I can help identify it?",
           },
         ]);
       }
@@ -101,7 +101,7 @@ export default function AiSearchChatPage() {
       role: "user",
       content:
         userMsg ||
-        "Hãy cho tôi biết bức ảnh này thuộc bộ Anime hay Manga nào?",
+        "Please identify which Anime or Manga this image belongs to and who the characters are.",
       imageUrl: imageBase64ToSend || undefined,
     };
 
@@ -149,7 +149,7 @@ export default function AiSearchChatPage() {
           id: "err",
           role: "model",
           content:
-            "Xin lỗi, đường truyền ma thuật đang bị nhiễu hoặc ảnh quá nặng. Cậu thử lại sau nhé! 💦",
+            "Sorry, the magical connection is being disrupted or the image is too heavy. Please try again later! 💦",
         },
       ]);
     } finally {
@@ -233,7 +233,7 @@ export default function AiSearchChatPage() {
   if (!session)
     return (
       <div className="min-h-screen bg-[#0f0f11] text-white flex items-center justify-center">
-        Vui lòng đăng nhập để sử dụng AI.
+        Please log in to use the AI.
       </div>
     );
 
@@ -258,7 +258,7 @@ export default function AiSearchChatPage() {
 
         <div className="flex-1 overflow-y-auto px-3 custom-scrollbar space-y-1">
           <p className="text-xs text-gray-500 font-bold px-2 py-2 uppercase">
-            Lịch sử tìm kiếm
+            Search History
           </p>
           {sessions.map((s) => (
             <button
@@ -378,10 +378,10 @@ export default function AiSearchChatPage() {
               />
               <div className="text-xs text-gray-200 pr-2">
                 <p className="font-bold text-purple-400 flex items-center gap-1">
-                  <span>✨ Ảnh đã sẵn sàng</span>
+                  <span>✨ Image is ready</span>
                 </p>
                 <p className="text-[11px] text-gray-400 mt-0.5">
-                  Nhập thêm câu hỏi hoặc bấm gửi ngay để AI tìm phim/truyện
+                  Enter additional questions or click submit to search for Anime/Manga
                 </p>
               </div>
               <button
@@ -391,7 +391,7 @@ export default function AiSearchChatPage() {
                   setImageMimeType("");
                 }}
                 className="w-7 h-7 rounded-full bg-gray-800 hover:bg-red-500 text-gray-400 hover:text-white text-xs flex items-center justify-center transition cursor-pointer"
-                title="Xóa ảnh đính kèm"
+                title="Remove attached image"
               >
                 ✕
               </button>
@@ -418,7 +418,7 @@ export default function AiSearchChatPage() {
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={isLoading}
-              title="Tải ảnh lên để tìm Anime/Manga"
+              title="Upload an image to search for Anime/Manga"
               className="absolute left-2.5 top-2 w-10 h-10 rounded-full bg-gray-800 hover:bg-gray-700 text-cyan-400 flex items-center justify-center transition z-10 border border-gray-700 cursor-pointer disabled:opacity-50"
             >
               📷
@@ -430,8 +430,8 @@ export default function AiSearchChatPage() {
               onChange={(e) => setInput(e.target.value)}
               placeholder={
                 selectedImage
-                  ? "Nhập thêm yêu cầu (hoặc bấm gửi luôn)..."
-                  : "Bạn muốn tìm phim gì? Hoặc bấm 📷 để tìm bằng hình ảnh..."
+                  ? "Enter additional requests (or click submit now)..."
+                  : "What are you looking for? Or click 📷 to search by image..."
               }
               className="relative w-full bg-gray-900 border border-gray-700 rounded-full py-4 pl-14 pr-14 text-sm outline-none text-white focus:bg-gray-800 transition"
               disabled={isLoading}
@@ -445,8 +445,7 @@ export default function AiSearchChatPage() {
             </button>
           </form>
           <p className="text-center text-[10px] text-gray-500 mt-3">
-            AI Assistant có thể nhận diện cảnh phim Anime, trang truyện Manga và
-            nhân vật từ ảnh tải lên.
+            AI Assistant can identify Anime scenes, Manga pages, and characters from uploaded images.
           </p>
         </div>
       </div>
