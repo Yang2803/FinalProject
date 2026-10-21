@@ -109,7 +109,7 @@ export function MangaVoiceChat({
       token={token}
       serverUrl={process.env.NEXT_PUBLIC_LIVEKIT_URL}
       connect={true}
-      audio={true}
+      audio={false}
       video={false}
     >
       <VoiceControls />
