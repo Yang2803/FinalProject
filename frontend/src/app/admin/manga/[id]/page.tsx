@@ -54,7 +54,7 @@ export default function AdminMangaDetails({ params }: { params: Promise<{ id: st
   useEffect(() => {
     const fetchMangaDetails = async () => {
       try {
-        const res = await fetch(`http://localhost:5000/api/admin/manga/${mangaId}`);
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/admin/manga/${mangaId}`);
         if (!res.ok) throw new Error("Unable to load manga information");
         
         const data: MangaData = await res.json();
@@ -103,7 +103,7 @@ export default function AdminMangaDetails({ params }: { params: Promise<{ id: st
       }
 
       // Gửi dữ liệu cập nhật về Backend
-      const res = await fetch(`http://localhost:5000/api/admin/manga/${mangaId}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/admin/manga/${mangaId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -137,7 +137,7 @@ export default function AdminMangaDetails({ params }: { params: Promise<{ id: st
     if (!confirmDelete) return;
 
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/manga/${mangaId}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/admin/manga/${mangaId}`, {
         method: "DELETE"
       });
       const data = await res.json();
@@ -158,7 +158,7 @@ export default function AdminMangaDetails({ params }: { params: Promise<{ id: st
     if (!confirmDelete) return;
 
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/chapter/${chapterId}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/admin/chapter/${chapterId}`, {
         method: "DELETE"
       });
       const data = await res.json();

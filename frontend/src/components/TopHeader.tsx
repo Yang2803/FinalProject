@@ -19,7 +19,7 @@ export default function TopHeader() {
     const fetchUnreadCount = async () => {
       if (!session?.user?.id) return;
       try {
-        const res = await fetch(`http://localhost:5000/api/notifications/${session.user.id}`);
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/notifications/${session.user.id}`);
         if (res.ok) {
           const data = await res.json();
           setUnreadCount(data.unreadCount);

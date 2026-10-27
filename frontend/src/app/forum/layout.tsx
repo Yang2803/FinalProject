@@ -49,8 +49,8 @@ export default function ForumLayout({ children }: { children: React.ReactNode })
     const fetchSidebarData = async () => {
       try {
         const [tagsRes, statsRes] = await Promise.all([
-          fetch("http://localhost:5000/api/forum/trending-tags"),
-          fetch("http://localhost:5000/api/forum/sidebar-stats")
+          fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/trending-tags`),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/sidebar-stats`)
         ]);
 
         if (tagsRes.ok) setTrendingTags(await tagsRes.json());

@@ -122,7 +122,7 @@ export default function WatchEpisodePage() {
     if (!postTitle || !postContent) return alert("Nhập nội dung để AI phân tích!");
     setIsAnalyzingForum(true);
     try {
-      const res = await fetch("http://localhost:5000/api/forum/analyze", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/analyze`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: postTitle, content: postContent })
       });
@@ -197,7 +197,7 @@ export default function WatchEpisodePage() {
       }
 
       // 3. Gọi API Đăng bài
-      const res = await fetch("http://localhost:5000/api/forum/posts", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/posts`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
@@ -250,7 +250,7 @@ export default function WatchEpisodePage() {
     }, 1000);
 
     try {
-      const res = await fetch("http://localhost:5000/api/anime/generate-dub", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/anime/generate-dub`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ episodeId: episode.id, subtitleUrl, targetLang })
@@ -310,7 +310,7 @@ export default function WatchEpisodePage() {
   useEffect(() => {
     const fetchVideoData = async () => {
       try {
-        const resAnime = await fetch(`http://localhost:5000/api/anime/${animeId}`);
+        const resAnime = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/anime/${animeId}`);
         if (resAnime.ok) {
           const data = await resAnime.json();
           setAnimeTitle(data.title);
@@ -334,7 +334,7 @@ export default function WatchEpisodePage() {
       
       try {
         const chapterPromises = episode.mappedChapterIds.map(id =>
-          fetch(`http://localhost:5000/api/chapter/${id}`).then(res => res.json())
+          fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/chapter/${id}`).then(res => res.json())
         );
         const chapters = await Promise.all(chapterPromises);
         setLinkedChapters(chapters);
@@ -350,7 +350,7 @@ export default function WatchEpisodePage() {
     const saveHistory = async () => {
       if (!session?.user?.id || !animeId || !episodeId) return;
       try {
-        await fetch("http://localhost:5000/api/history/anime", {
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/history/anime`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ userId: session.user.id, animeId, episodeId })
@@ -378,7 +378,7 @@ export default function WatchEpisodePage() {
       hasLoggedView.current = true; 
 
       try {
-        await fetch(`http://localhost:5000/api/anime/${animeId}/view`, {
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/anime/${animeId}/view`, {
           method: 'POST',
         });
       } catch (error) {
@@ -538,7 +538,7 @@ export default function WatchEpisodePage() {
     }, 600);
 
     try {
-      const res = await fetch("http://localhost:5000/api/anime/translate-sub", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/anime/translate-sub`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ episodeId, targetLang })

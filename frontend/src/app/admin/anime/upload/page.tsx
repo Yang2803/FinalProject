@@ -34,7 +34,7 @@ export default function UploadAnimePage() {
     
     setIsGeneratingDesc(true);
     try {
-      const res = await fetch("http://localhost:5000/api/admin/generate-anime-desc", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/admin/generate-anime-desc`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title }),
@@ -85,7 +85,7 @@ export default function UploadAnimePage() {
       }
 
       // 2. Gửi thông tin về Backend để lưu vào Database
-      const res = await fetch("http://localhost:5000/api/admin/anime", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/admin/anime`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

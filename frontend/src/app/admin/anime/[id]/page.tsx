@@ -42,7 +42,7 @@ export default function AdminAnimeDetailPage() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const res = await fetch(`http://localhost:5000/api/admin/anime/${animeId}`);
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/admin/anime/${animeId}`);
         if (res.ok) {
           const data = await res.json();
           setAnime(data);
@@ -90,7 +90,7 @@ export default function AdminAnimeDetailPage() {
       }
 
       // Gửi dữ liệu cập nhật về Backend
-      const res = await fetch(`http://localhost:5000/api/admin/anime/${animeId}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/admin/anime/${animeId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -126,7 +126,7 @@ export default function AdminAnimeDetailPage() {
 
     try {
       setLoading(true);
-      const res = await fetch(`http://localhost:5000/api/admin/anime/${animeId}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/admin/anime/${animeId}`, {
         method: "DELETE"
       });
 
@@ -150,7 +150,7 @@ export default function AdminAnimeDetailPage() {
     if (!confirmDelete) return;
 
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/episode/${epId}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/admin/episode/${epId}`, {
         method: "DELETE"
       });
 

@@ -95,7 +95,7 @@ export default function ForumFeed() {
 
         if (isMounted) setLoadingPosts(true);
         // 🌟 BỔ SUNG: { cache: "no-store" } để cấm Next.js/Trình duyệt lưu cache cũ
-        const fetchUrl = `http://localhost:5000/api/forum/posts?category=${currentCategory}${currentTag ? `&tag=${currentTag}` : ''}`;
+        const fetchUrl = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/posts?category=${currentCategory}${currentTag ? `&tag=${currentTag}` : ''}`;
         
         const res = await fetch(fetchUrl, {
           cache: "no-store", 
@@ -150,7 +150,7 @@ export default function ForumFeed() {
     if (!title || !content) return alert("Nhập nội dung trước khi dùng AI nhé!");
     setIsAnalyzing(true);
     try {
-      const res = await fetch("http://localhost:5000/api/forum/analyze", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/analyze`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title, content })
@@ -227,7 +227,7 @@ export default function ForumFeed() {
       // 🌟 3. PHÂN NHÁNH LOGIC: SỬA BÀI HAY TẠO BÀI MỚI?
       if (editingPost) {
         // 👉 TRƯỜNG HỢP: SỬA BÀI (GỌI API PUT)
-        const res = await fetch(`http://localhost:5000/api/forum/posts/${editingPost.id}`, {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/posts/${editingPost.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ 
@@ -250,7 +250,7 @@ export default function ForumFeed() {
 
       } else {
         // 👉 TRƯỜNG HỢP: TẠO BÀI MỚI (GỌI API POST)
-        const res = await fetch("http://localhost:5000/api/forum/posts", {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/posts`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ 
@@ -291,7 +291,7 @@ export default function ForumFeed() {
   const handleDeletePost = async (postId: string) => {
     if (!confirm("Are you sure you want to delete this post?")) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/forum/posts/${postId}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/posts/${postId}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ authorId: session?.user?.id })
@@ -310,7 +310,7 @@ export default function ForumFeed() {
   }
 
   try {
-    const res = await fetch(`http://localhost:5000/api/forum/posts/${postId}/vote`, {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/posts/${postId}/vote`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId: session.user.id, type })
@@ -337,7 +337,7 @@ export default function ForumFeed() {
       setActiveCommentPostId(null); // Đóng nếu đang mở
     } else {
       setActiveCommentPostId(postId);
-      const res = await fetch(`http://localhost:5000/api/forum/posts/${postId}/comments`);
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/posts/${postId}/comments`);
       if (res.ok) setComments(await res.json());
     }
   };
@@ -347,7 +347,7 @@ export default function ForumFeed() {
     if (!newComment.trim()) return;
     if (!session?.user?.id) return alert("Đăng nhập để bình luận!");
     try {
-      const res = await fetch(`http://localhost:5000/api/forum/posts/${postId}/comments`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/posts/${postId}/comments`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: newComment, authorId: session.user.id, parentId })
       });
@@ -364,7 +364,7 @@ export default function ForumFeed() {
   const submitEditComment = async (commentId: string) => {
     if (!editCommentContent.trim()) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/forum/comments/${commentId}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/comments/${commentId}`, {
         method: "PUT", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: editCommentContent, authorId: session?.user?.id })
       });
@@ -380,7 +380,7 @@ export default function ForumFeed() {
   const handleDeleteComment = async (commentId: string) => {
     if (!confirm("Xóa bình luận này?")) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/forum/comments/${commentId}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/comments/${commentId}`, {
         method: "DELETE", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ authorId: session?.user?.id })
       });
@@ -394,7 +394,7 @@ export default function ForumFeed() {
   const handleVoteComment = async (commentId: string, type: 'UP' | 'DOWN') => {
     if (!session?.user?.id) return alert("Đăng nhập để vote!");
     try {
-      const res = await fetch(`http://localhost:5000/api/forum/comments/${commentId}/vote`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/comments/${commentId}/vote`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId: session.user.id, type })
       });

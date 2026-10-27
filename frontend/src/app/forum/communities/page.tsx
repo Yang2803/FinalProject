@@ -44,7 +44,7 @@ export default function CommunitiesPage() {
     let isMounted = true;
     const fetchCommunities = async () => {
       try {
-        const res = await fetch("http://localhost:5000/api/communities", {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/communities`, {
           cache: "no-store",
         });
         if (res.ok) {
@@ -115,7 +115,7 @@ export default function CommunitiesPage() {
       }
 
       // Gọi API tạo Community
-      const res = await fetch("http://localhost:5000/api/communities", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/communities`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 

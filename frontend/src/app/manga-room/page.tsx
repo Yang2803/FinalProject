@@ -51,7 +51,7 @@ export default function MangaCoReadingLobby() {
 
     const loadRooms = async () => {
       try {
-       const resRoom = await fetch("http://localhost:5000/api/manga-room/rooms");
+       const resRoom = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/manga-room/rooms`);
         if (resRoom.ok) {
           const data: ActiveMangaRoom[] = await resRoom.json();
           if (isMounted) setActiveRooms(data);
@@ -84,7 +84,7 @@ export default function MangaCoReadingLobby() {
 
     setIsCreating(true);
     try {
-      const res = await fetch("http://localhost:5000/api/manga-room/rooms", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/manga-room/rooms`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

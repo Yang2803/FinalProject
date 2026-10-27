@@ -67,7 +67,7 @@ export default function CommunityDetailPage() {
     let isMounted = true;
     const fetchCommunityDetail = async () => {
       try {
-        const res = await fetch(`http://localhost:5000/api/communities/${communityId}`);
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/communities/${communityId}`);
         if (res.ok) {
           const data = await res.json();
           if (isMounted) setCommunity(data);
@@ -87,7 +87,7 @@ export default function CommunityDetailPage() {
     if (!session?.user?.id) return alert("Đăng nhập để tham gia!");
     setIsProcessingJoin(true);
     try {
-      const res = await fetch(`http://localhost:5000/api/communities/${communityId}/join`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/communities/${communityId}/join`, {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: session.user.id })
       });
       if (res.ok) {
@@ -129,7 +129,7 @@ export default function CommunityDetailPage() {
         finalCoverUrl = cloudData.secure_url;
       }
 
-      const res = await fetch(`http://localhost:5000/api/communities/${communityId}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/communities/${communityId}`, {
         method: "PUT", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: editComName, description: editComDesc, coverImage: finalCoverUrl, userId: session?.user?.id })
       });
@@ -151,7 +151,7 @@ export default function CommunityDetailPage() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => { if (e.target.files && e.target.files[0]) { const file = e.target.files[0]; setMediaFile(file); setMediaPreview(URL.createObjectURL(file)); } };
   const handleKeyDownTag = (e: React.KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter' && tagInput.trim() !== '') { e.preventDefault(); const newTag = tagInput.trim().replace(/^#/, ''); if (!tags.includes(newTag)) setTags([...tags, newTag]); setTagInput(""); } };
   const removeTag = (tagToRemove: string) => setTags(tags.filter(t => t !== tagToRemove));
-  const handleAIAnalyze = async () => { if (!title || !content) return alert("Nhập nội dung!"); setIsAnalyzing(true); try { const res = await fetch("http://localhost:5000/api/forum/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title, content }) }); const data = await res.json(); setTags(Array.from(new Set([...tags, ...data.tags]))); setIsSpoiler(data.isSpoiler); } catch (error) { alert("Lỗi AI"); } finally { setIsAnalyzing(false); } };
+  const handleAIAnalyze = async () => { if (!title || !content) return alert("Nhập nội dung!"); setIsAnalyzing(true); try { const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/analyze`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title, content }) }); const data = await res.json(); setTags(Array.from(new Set([...tags, ...data.tags]))); setIsSpoiler(data.isSpoiler); } catch (error) { alert("Lỗi AI"); } finally { setIsAnalyzing(false); } };
   
   const handleSubmitPost = async () => {
     if (!title || !content) return alert("Vui lòng nhập đủ nội dung!");
@@ -169,19 +169,19 @@ export default function CommunityDetailPage() {
         finalMediaUrl = cloudData.secure_url;
       }
       if (editingPost) {
-        const res = await fetch(`http://localhost:5000/api/forum/posts/${editingPost.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title, content, category, tags, isSpoiler, mediaUrl: finalMediaUrl, authorId: session.user.id }) });
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/posts/${editingPost.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title, content, category, tags, isSpoiler, mediaUrl: finalMediaUrl, authorId: session.user.id }) });
         if (res.ok) { setCommunity(prev => prev ? { ...prev, posts: prev.posts.map(p => p.id === editingPost.id ? { ...p, title, content, category, tags, isSpoiler, mediaUrl: finalMediaUrl } : p) } : prev); alert("Đã cập nhật!"); resetForm(); }
       } else {
-        const res = await fetch("http://localhost:5000/api/forum/posts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title, content, category, tags, isSpoiler, mediaUrl: finalMediaUrl, authorId: session.user.id, communityId }) });
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/posts`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title, content, category, tags, isSpoiler, mediaUrl: finalMediaUrl, authorId: session.user.id, communityId }) });
         if (res.ok) { const data = await res.json(); if (data.post) { const newPost = { ...data.post, author: { name: session.user.name, image: session.user.image } }; setCommunity(prev => prev ? { ...prev, posts: [newPost, ...prev.posts] } : prev); } resetForm(); }
       }
     } catch (error) { alert("Lỗi kết nối."); } finally { setIsPosting(false); }
   };
-  const handleDeletePost = async (postId: string) => { if (!confirm("Xóa bài đăng này?")) return; try { const res = await fetch(`http://localhost:5000/api/forum/posts/${postId}`, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ authorId: session?.user?.id }) }); if (res.ok) { setCommunity(prev => prev ? { ...prev, posts: prev.posts.filter(p => p.id !== postId) } : prev); } } catch (error) { alert("Lỗi xóa!"); } };
+  const handleDeletePost = async (postId: string) => { if (!confirm("Xóa bài đăng này?")) return; try { const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/posts/${postId}`, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ authorId: session?.user?.id }) }); if (res.ok) { setCommunity(prev => prev ? { ...prev, posts: prev.posts.filter(p => p.id !== postId) } : prev); } } catch (error) { alert("Lỗi xóa!"); } };
   const handleVote = async (postId: string, type: 'UP' | 'DOWN') => { 
     if (!session?.user?.id) return alert("Đăng nhập để vote!"); 
     try { 
-      const res = await fetch(`http://localhost:5000/api/forum/posts/${postId}/vote`, { 
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/posts/${postId}/vote`, { 
         method: "POST", 
         headers: { "Content-Type": "application/json" }, 
         body: JSON.stringify({ userId: session.user.id, type }) 
@@ -201,11 +201,11 @@ export default function CommunityDetailPage() {
       console.error("Lỗi vote", error); 
     } 
   };
-  const toggleComments = async (postId: string) => { if (activeCommentPostId === postId) { setActiveCommentPostId(null); } else { setActiveCommentPostId(postId); const res = await fetch(`http://localhost:5000/api/forum/posts/${postId}/comments`); if (res.ok) setComments(await res.json()); } };
-  const handlePostComment = async (postId: string, parentId: string | null = null) => { if (!newComment.trim()) return; if (!session?.user?.id) return alert("Đăng nhập để bình luận!"); try { const res = await fetch(`http://localhost:5000/api/forum/posts/${postId}/comments`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content: newComment, authorId: session.user.id, parentId }) }); if (res.ok) { const addedComment = await res.json(); setComments([...comments, addedComment]); setNewComment(""); setReplyingToCommentId(null); } } catch (error) { alert("Lỗi gửi bình luận"); } };
-  const submitEditComment = async (commentId: string) => { if (!editCommentContent.trim()) return; try { const res = await fetch(`http://localhost:5000/api/forum/comments/${commentId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content: editCommentContent, authorId: session?.user?.id }) }); if (res.ok) { const updated = await res.json(); setComments(comments.map(c => c.id === commentId ? updated : c)); setEditingCommentId(null); } } catch (error) { alert("Lỗi sửa comment"); } };
-  const handleDeleteComment = async (commentId: string) => { if (!confirm("Xóa bình luận này?")) return; try { const res = await fetch(`http://localhost:5000/api/forum/comments/${commentId}`, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ authorId: session?.user?.id }) }); if (res.ok) setComments(comments.filter(c => c.id !== commentId)); } catch (error) { alert("Lỗi xóa comment"); } };
-  const handleVoteComment = async (commentId: string, type: 'UP' | 'DOWN') => { if (!session?.user?.id) return alert("Đăng nhập để vote!"); try { const res = await fetch(`http://localhost:5000/api/forum/comments/${commentId}/vote`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: session.user.id, type }) }); if (res.ok) { const data = await res.json(); setComments(comments.map(c => c.id === commentId ? { ...c, upvoteCount: data.upvoteCount } : c)); } } catch (error) { console.error("Lỗi vote comment", error); } };
+  const toggleComments = async (postId: string) => { if (activeCommentPostId === postId) { setActiveCommentPostId(null); } else { setActiveCommentPostId(postId); const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/posts/${postId}/comments`); if (res.ok) setComments(await res.json()); } };
+  const handlePostComment = async (postId: string, parentId: string | null = null) => { if (!newComment.trim()) return; if (!session?.user?.id) return alert("Đăng nhập để bình luận!"); try { const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/posts/${postId}/comments`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content: newComment, authorId: session.user.id, parentId }) }); if (res.ok) { const addedComment = await res.json(); setComments([...comments, addedComment]); setNewComment(""); setReplyingToCommentId(null); } } catch (error) { alert("Lỗi gửi bình luận"); } };
+  const submitEditComment = async (commentId: string) => { if (!editCommentContent.trim()) return; try { const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/comments/${commentId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content: editCommentContent, authorId: session?.user?.id }) }); if (res.ok) { const updated = await res.json(); setComments(comments.map(c => c.id === commentId ? updated : c)); setEditingCommentId(null); } } catch (error) { alert("Lỗi sửa comment"); } };
+  const handleDeleteComment = async (commentId: string) => { if (!confirm("Xóa bình luận này?")) return; try { const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/comments/${commentId}`, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ authorId: session?.user?.id }) }); if (res.ok) setComments(comments.filter(c => c.id !== commentId)); } catch (error) { alert("Lỗi xóa comment"); } };
+  const handleVoteComment = async (commentId: string, type: 'UP' | 'DOWN') => { if (!session?.user?.id) return alert("Đăng nhập để vote!"); try { const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/comments/${commentId}/vote`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: session.user.id, type }) }); if (res.ok) { const data = await res.json(); setComments(comments.map(c => c.id === commentId ? { ...c, upvoteCount: data.upvoteCount } : c)); } } catch (error) { console.error("Lỗi vote comment", error); } };
 
   // ==========================================
   // 🎨 5. RENDERING

@@ -51,14 +51,14 @@ export default function EditEpisodePage() {
   useEffect(() => {
     const fetchAllData = async () => {
       try {
-        const animeRes = await fetch(`http://localhost:5000/api/admin/anime/${animeId}`);
+        const animeRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/admin/anime/${animeId}`);
         if (animeRes.ok) {
           const animeData = await animeRes.json();
           setAnimeTitle(animeData.title);
           if (animeData.mangaId) setMangaId(animeData.mangaId);
         }
 
-        const epRes = await fetch(`http://localhost:5000/api/admin/episode-detail/${episodeId}`);
+        const epRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/admin/episode-detail/${episodeId}`);
         if (epRes.ok) {
           const epData = await epRes.json();
           setEpisodeTitle(epData.title);
@@ -73,7 +73,7 @@ export default function EditEpisodePage() {
           router.push(`/admin/anime/${animeId}`);
         }
 
-        const mangaRes = await fetch("http://localhost:5000/api/manga");
+        const mangaRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/manga`);
         if (mangaRes.ok) {
           const mangaData = await mangaRes.json();
           const mangaList = Array.isArray(mangaData) ? mangaData : (mangaData.mangas || []);
@@ -96,7 +96,7 @@ export default function EditEpisodePage() {
         return;
       }
       try {
-        const res = await fetch(`http://localhost:5000/api/admin/manga/${mangaId}/chapters`);
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/admin/manga/${mangaId}/chapters`);
         const data = await res.json();
         setAvailableChapters(Array.isArray(data) ? data : []);
       } catch (err) {
@@ -133,7 +133,7 @@ export default function EditEpisodePage() {
 
     setIsMapping(true);
     try {
-      const res = await fetch("http://localhost:5000/api/admin/auto-map-chapters", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/admin/auto-map-chapters`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         // 🌟 BƠM BIẾN TÀNG HÌNH adaptedFrom VÀO PAYLOAD ĐỂ GỬI LÊN BACKEND CHUẨN XÁC NHƯ BÊN UPLOAD
@@ -191,7 +191,7 @@ export default function EditEpisodePage() {
       // --- A: UPLOAD VIDEO MỚI (NẾU CÓ) ---
       if (videoFile) {
         const safeVideoType = videoFile.type || "application/octet-stream";
-        const urlRes = await fetch("http://localhost:5000/api/admin/get-upload-url", {
+        const urlRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/admin/get-upload-url`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ fileName: videoFile.name, fileType: safeVideoType })
@@ -212,7 +212,7 @@ export default function EditEpisodePage() {
           .map(async (sub) => {
             const currentFile = sub.file as File;
             const safeSubType = currentFile.type || "text/plain";
-            const subUrlRes = await fetch("http://localhost:5000/api/admin/get-upload-url", {
+            const subUrlRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/admin/get-upload-url`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ fileName: currentFile.name, fileType: safeSubType })
@@ -225,7 +225,7 @@ export default function EditEpisodePage() {
       );
 
       // --- C: GỬI LÊN BACKEND ---
-      const backendRes = await fetch(`http://localhost:5000/api/admin/episode/${episodeId}`, {
+      const backendRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/admin/episode/${episodeId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -77,7 +77,7 @@ export function MangaVoiceChat({
     const fetchToken = async () => {
       try {
         const res = await fetch(
-          `http://localhost:5000/api/manga-room/rooms/${roomId}/voice-token?userId=${encodeURIComponent(
+          `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/manga-room/rooms/${roomId}/voice-token?userId=${encodeURIComponent(
             userId
           )}&userName=${encodeURIComponent(userName)}`
         );

@@ -64,14 +64,14 @@ export default function ForumPostDetailPage({ params }: { params: Promise<{ id: 
     const fetchData = async () => {
       try {
         // Lấy chi tiết bài viết
-        const postRes = await fetch(`http://localhost:5000/api/forum/posts/${postId}`);
+        const postRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/posts/${postId}`);
         if (postRes.ok) {
           const postData = await postRes.json();
           setPost(postData);
         }
 
         // 🌟 Lấy luôn danh sách bình luận của bài viết này
-        const cmtRes = await fetch(`http://localhost:5000/api/forum/posts/${postId}/comments`);
+        const cmtRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/posts/${postId}/comments`);
         if (cmtRes.ok) {
           const cmtData = await cmtRes.json();
           setComments(cmtData);
@@ -96,7 +96,7 @@ export default function ForumPostDetailPage({ params }: { params: Promise<{ id: 
   if (!post) return;
 
   try {
-    const res = await fetch(`http://localhost:5000/api/forum/posts/${post.id}/vote`, {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/posts/${post.id}/vote`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId: session.user.id, type })
@@ -124,7 +124,7 @@ export default function ForumPostDetailPage({ params }: { params: Promise<{ id: 
     if (!newComment.trim()) return;
     if (!session?.user?.id) return alert("Vui lòng đăng nhập để bình luận!");
     try {
-      const res = await fetch(`http://localhost:5000/api/forum/posts/${postId}/comments`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/posts/${postId}/comments`, {
         method: "POST", 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: newComment, authorId: session.user.id, parentId })
@@ -142,7 +142,7 @@ export default function ForumPostDetailPage({ params }: { params: Promise<{ id: 
   const submitEditComment = async (commentId: string) => {
     if (!editCommentContent.trim()) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/forum/comments/${commentId}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/comments/${commentId}`, {
         method: "PUT", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: editCommentContent, authorId: session?.user?.id })
       });
@@ -158,7 +158,7 @@ export default function ForumPostDetailPage({ params }: { params: Promise<{ id: 
   const handleDeleteComment = async (commentId: string) => {
     if (!confirm("Bạn có chắc muốn xóa bình luận này?")) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/forum/comments/${commentId}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/comments/${commentId}`, {
         method: "DELETE", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ authorId: session?.user?.id })
       });
@@ -172,7 +172,7 @@ export default function ForumPostDetailPage({ params }: { params: Promise<{ id: 
   const handleVoteComment = async (commentId: string, type: 'UP' | 'DOWN') => {
     if (!session?.user?.id) return alert("Đăng nhập để vote nhé!");
     try {
-      const res = await fetch(`http://localhost:5000/api/forum/comments/${commentId}/vote`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/comments/${commentId}/vote`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId: session.user.id, type })
       });

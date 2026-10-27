@@ -50,7 +50,7 @@ export default function AiSearchChatPage() {
   // Load danh sách Session khi mới vào
   useEffect(() => {
     if (session?.user?.id) {
-      fetch(`http://localhost:5000/api/chat/sessions/${session.user.id}`)
+      fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/chat/sessions/${session.user.id}`)
         .then((res) => res.json())
         .then((data) => setSessions(data))
         .catch(console.error);
@@ -63,7 +63,7 @@ export default function AiSearchChatPage() {
       if (activeSessionId) {
         try {
           const res = await fetch(
-            `http://localhost:5000/api/chat/session/${activeSessionId}`
+            `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/chat/session/${activeSessionId}`
           );
           const data = await res.json();
           setMessages(data);
@@ -109,7 +109,7 @@ export default function AiSearchChatPage() {
     setIsLoading(true);
 
     try {
-      const res = await fetch("http://localhost:5000/api/chat/send", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/chat/send`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -136,7 +136,7 @@ export default function AiSearchChatPage() {
       if (!(targetSessionId ?? activeSessionId)) {
         setActiveSessionId(data.sessionId);
         const sessionRes = await fetch(
-          `http://localhost:5000/api/chat/sessions/${session.user.id}`
+          `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/chat/sessions/${session.user.id}`
         );
         const sessionData = await sessionRes.json();
         setSessions(sessionData);

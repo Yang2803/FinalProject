@@ -67,7 +67,7 @@ function TranslateableImage({
       : `${window.location.origin}${imgUrl}`;
 
     try {
-      const res = await fetch("http://localhost:5000/api/manga/translate-page", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/manga/translate-page`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ imageUrl: absoluteImageUrl, targetLang })
@@ -304,7 +304,7 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
     if (!postTitle || !postContent) return alert("Nhập nội dung để AI phân tích!");
     setIsAnalyzingForum(true);
     try {
-      const res = await fetch("http://localhost:5000/api/forum/analyze", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/analyze`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: postTitle, content: postContent })
       });
@@ -354,7 +354,7 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
         finalContent += `\n\n📖 Đang đọc: [${attachedLink.title}](${attachedLink.url})`;
       }
 
-      const res = await fetch("http://localhost:5000/api/forum/posts", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/posts`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
@@ -380,7 +380,7 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
   useEffect(() => {
     const fetchChapter = async () => {
       try {
-        const res = await fetch(`http://localhost:5000/api/chapter/${chapterId}`);
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/chapter/${chapterId}`);
         if (res.ok) {
           const data = await res.json();
           setChapter(data);
@@ -398,7 +398,7 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
     const recordHistory = async () => {
       if (session?.user?.id && mangaId && chapterId) {
         try {
-          await fetch("http://localhost:5000/api/history/manga", {
+          await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/history/manga`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ userId: session.user.id, mangaId, chapterId })
@@ -418,7 +418,7 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
       lastLoggedChapter.current = chapterId;
 
       try {
-        await fetch(`http://localhost:5000/api/manga/${mangaId}/view`, {
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/manga/${mangaId}/view`, {
           method: 'POST',
         });
       } catch (error) {

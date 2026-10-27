@@ -39,7 +39,7 @@ export default function ProfilePage() {
     const fetchHistory = async () => {
       if (!session?.user?.id) return;
       try {
-        const res = await fetch(`http://localhost:5000/api/history/${session.user.id}`);
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/history/${session.user.id}`);
         if (res.ok) {
           const data = await res.json();
           setMangaHistory(data.mangaHistory || []);
@@ -105,12 +105,12 @@ export default function ProfilePage() {
   // Tính danh hiệu dựa trên mức độ hoạt động
   const otakuRank =
     totalActivity >= 20
-      ? "🏆 Otaku Huyền Thoại"
+      ? "🏆 Legendary Otaku"
       : totalActivity >= 10
-      ? "⚡ Tín Đồ Anime/Manga"
+      ? "⚡ Anime/Manga Lovers"
       : totalActivity >= 3
-      ? "🌟 Nhà Thám Hiểm Mới"
-      : "🌱 Tân Binh Khởi Đầu";
+      ? "🌟 New Explorer"
+      : "🌱 Rookie Start";
 
   return (
     <div className="min-h-screen bg-[#0f0f11] text-white font-sans pb-14">

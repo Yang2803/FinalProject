@@ -31,7 +31,7 @@ export default function ReadingListPage() {
     const fetchReadingList = async () => {
       if (!session?.user?.id) return;
       try {
-        const res = await fetch(`http://localhost:5000/api/reading-list/${session.user.id}`);
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/reading-list/${session.user.id}`);
         if (res.ok) {
           const data = await res.json();
           setMangas(data);
@@ -56,7 +56,7 @@ export default function ReadingListPage() {
 
     try {
       // Tận dụng luôn API Toggle đã viết từ trước để xóa
-      const res = await fetch("http://localhost:5000/api/reading-list/toggle", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/reading-list/toggle`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId: session?.user?.id, mangaId })

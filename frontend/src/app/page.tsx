@@ -168,8 +168,8 @@ export default function Home() {
     const fetchHomepageData = async () => {
       try {
         const [mangaRes, animeRes] = await Promise.all([
-          fetch("http://localhost:5000/api/manga"),
-          fetch("http://localhost:5000/api/anime"),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/manga`),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/anime`),
         ]);
 
         if (mangaRes.ok) setRecentMangas((await mangaRes.json()).slice(0, 12));
@@ -177,7 +177,7 @@ export default function Home() {
 
         // Fetch danh sách phòng Watch Party đang mở (lấy tối đa 4 phòng)
         try {
-          const partyRes = await fetch("http://localhost:5000/api/party/rooms");
+          const partyRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/party/rooms`);
           if (partyRes.ok) {
             const partyData = await partyRes.json();
             const roomsArray = Array.isArray(partyData) ? partyData : partyData.rooms || [];
@@ -189,9 +189,9 @@ export default function Home() {
 
         // Fetch danh sách phòng Đọc Manga đang mở (thử cả 2 đường dẫn phổ biến, lấy tối đa 4 phòng)
         try {
-          let mangaRoomRes = await fetch("http://localhost:5000/api/manga-room/rooms");
+          let mangaRoomRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/manga-room/rooms`);
           if (!mangaRoomRes.ok) {
-            mangaRoomRes = await fetch("http://localhost:5000/api/manga-rooms");
+            mangaRoomRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/manga-rooms`);
           }
           if (mangaRoomRes.ok) {
             const mangaRoomData = await mangaRoomRes.json();
@@ -226,9 +226,9 @@ export default function Home() {
       try {
         // Thử lấy từ endpoint tổng hợp /api/history/:userId hoặc từng phần
         const [generalRes, animeHistRes, mangaHistRes] = await Promise.allSettled([
-          fetch(`http://localhost:5000/api/history/${userId}`),
-          fetch(`http://localhost:5000/api/history/anime/${userId}`),
-          fetch(`http://localhost:5000/api/history/manga/${userId}`),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/history/${userId}`),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/history/anime/${userId}`),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/history/manga/${userId}`),
         ]);
 
         // Hàm chuẩn hóa 1 bản ghi lịch sử bất kỳ thành ContinueItem
@@ -327,7 +327,7 @@ export default function Home() {
     const fetchTopAnime = async () => {
       setLoadingTopAnime(true);
       try {
-        const res = await fetch(`http://localhost:5000/api/anime/top?period=${topAnimePeriod}`);
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/anime/top?period=${topAnimePeriod}`);
         if (res.ok) setTopAnimes(await res.json());
       } catch (error) {
         console.error("Lỗi Top Anime:", error);
@@ -343,7 +343,7 @@ export default function Home() {
     const fetchTopManga = async () => {
       setLoadingTopManga(true);
       try {
-        const res = await fetch(`http://localhost:5000/api/manga/top?period=${topMangaPeriod}`);
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/manga/top?period=${topMangaPeriod}`);
         if (res.ok) setTopMangas(await res.json());
       } catch (error) {
         console.error("Lỗi Top Manga:", error);

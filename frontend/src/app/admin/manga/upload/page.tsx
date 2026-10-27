@@ -51,7 +51,7 @@ export default function UploadMangaPage() {
     
     setIsGeneratingDesc(true);
     try {
-      const res = await fetch("http://localhost:5000/api/admin/generate-manga-desc", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/admin/generate-manga-desc`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title }),
@@ -107,7 +107,7 @@ export default function UploadMangaPage() {
         uploadedCoverUrl = cloudinaryData.secure_url;
       }
 
-      const res = await fetch("http://localhost:5000/api/admin/manga", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/admin/manga`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

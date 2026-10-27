@@ -33,7 +33,13 @@ const server = http.createServer(app);
 initSocket(server); // 🌟 Khởi tạo toàn bộ Socket.io tại đây chỉ với 1 dòng
 
 // CẤU HÌNH MIDDLEWARE
-app.use(cors({ origin: "*", methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"] }));
+app.use(
+  cors({
+    origin: true, // Tự động cho phép cả localhost:3000 lẫn Vercel và hỗ trợ credentials
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    credentials: true,
+  })
+);
 app.use(express.json({ limit: "20mb" }));
 app.use(express.urlencoded({ limit: "20mb", extended: true }));
 

@@ -25,7 +25,7 @@ export default function SearchPage() {
       if (!query) return;
       setLoading(true);
       try {
-        const res = await fetch(`http://localhost:5000/api/search?q=${encodeURIComponent(query)}`);
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/search?q=${encodeURIComponent(query)}`);
         const data = await res.json();
         setResults(data);
       } catch (error) {

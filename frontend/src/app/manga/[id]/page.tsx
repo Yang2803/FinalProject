@@ -32,7 +32,7 @@ export default function PublicMangaDetails({ params }: { params: Promise<{ id: s
   useEffect(() => {
     const fetchManga = async () => {
       try {
-        const res = await fetch(`http://localhost:5000/api/manga/${mangaId}`);
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/manga/${mangaId}`);
         if (res.ok) {
           const data = await res.json();
           setManga(data);
@@ -63,7 +63,7 @@ export default function PublicMangaDetails({ params }: { params: Promise<{ id: s
       try {
         // Truyền kèm userId nếu người dùng đã đăng nhập
         const userIdQuery = session?.user?.id ? `?userId=${session.user.id}` : "";
-        const res = await fetch(`http://localhost:5000/api/rating/${mangaId}${userIdQuery}`);
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/rating/${mangaId}${userIdQuery}`);
         
         if (res.ok) {
           const data = await res.json();
@@ -81,7 +81,7 @@ export default function PublicMangaDetails({ params }: { params: Promise<{ id: s
     const checkReadingListStatus = async () => {
       if (!session?.user?.id) return;
       try {
-        const res = await fetch(`http://localhost:5000/api/reading-list/status?userId=${session.user.id}&mangaId=${mangaId}`);
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/reading-list/status?userId=${session.user.id}&mangaId=${mangaId}`);
         if (res.ok) {
           const data = await res.json();
           setIsInReadingList(data.isInList);
@@ -102,7 +102,7 @@ export default function PublicMangaDetails({ params }: { params: Promise<{ id: s
     if (!session) return alert("Vui lòng đăng nhập để đánh giá!");
     setUserRating(score); // Đổi màu sao ngay lập tức cho mượt
     
-    const res = await fetch("http://localhost:5000/api/rating", {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/rating`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId: session.user.id, mangaId, score })
@@ -110,7 +110,7 @@ export default function PublicMangaDetails({ params }: { params: Promise<{ id: s
 
     // Nếu gửi đánh giá thành công, tải lại thống kê để cập nhật điểm trung bình mới
     if (res.ok) {
-      const updatedRes = await fetch(`http://localhost:5000/api/rating/${mangaId}?userId=${session.user.id}`);
+      const updatedRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/rating/${mangaId}?userId=${session.user.id}`);
       if (updatedRes.ok) {
         const data = await updatedRes.json();
         setAvgRating(data.average);
@@ -127,7 +127,7 @@ export default function PublicMangaDetails({ params }: { params: Promise<{ id: s
 
     setIsToggling(true);
     try {
-      const res = await fetch("http://localhost:5000/api/reading-list/toggle", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/reading-list/toggle`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -33,7 +33,7 @@ export default function AdminAnimeListPage() {
   useEffect(() => {
     const fetchAnimes = async () => {
       try {
-        const res = await fetch("http://localhost:5000/api/admin/anime");
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/admin/anime`);
         if (res.ok) {
           const data = await res.json();
           setAnimes(data);
@@ -56,7 +56,7 @@ export default function AdminAnimeListPage() {
     if (!confirmDelete) return;
 
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/anime/${id}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/admin/anime/${id}`, {
         method: "DELETE"
       });
 

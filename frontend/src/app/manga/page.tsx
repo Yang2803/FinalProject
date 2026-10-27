@@ -20,7 +20,7 @@ export default function PublicMangaList() {
   useEffect(() => {
     const fetchMangas = async () => {
       try {
-        const res = await fetch("http://localhost:5000/api/manga");
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/manga`);
         if (res.ok) {
           const data = await res.json();
           setMangas(data);

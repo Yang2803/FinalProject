@@ -142,7 +142,7 @@ export default function UploadChapterPage({ params }: { params: Promise<{ id: st
     
     setIsAutoFilling(true);
     try {
-      const res = await fetch("http://localhost:5000/api/admin/chapter/auto-fill", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/admin/chapter/auto-fill`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mangaId, chapterNumber: Number(chapterNumber) })
@@ -191,7 +191,7 @@ export default function UploadChapterPage({ params }: { params: Promise<{ id: st
       );
 
       // 🌟 3. ĐẨY TOÀN BỘ DATA MỚI XUỐNG BACKEND
-      const backendRes = await fetch("http://localhost:5000/api/admin/chapter", {
+      const backendRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/admin/chapter`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 

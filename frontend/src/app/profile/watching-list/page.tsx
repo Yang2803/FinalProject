@@ -39,7 +39,7 @@ export default function ProfileWatchingListPage() {
       if (!session?.user?.id) return;
       
       try {
-        const res = await fetch(`http://localhost:5000/api/watchlist/${session.user.id}`);
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/watchlist/${session.user.id}`);
         if (res.ok) {
           const data = await res.json();
           setWatchList(data);
@@ -61,7 +61,7 @@ export default function ProfileWatchingListPage() {
     if (!confirm("Are you sure you want to remove this anime from your watchlist?")) return;
 
     try {
-      const res = await fetch("http://localhost:5000/api/watchlist/toggle", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/watchlist/toggle`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId: session?.user?.id, animeId })

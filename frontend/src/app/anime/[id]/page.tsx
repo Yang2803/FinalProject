@@ -42,7 +42,7 @@ export default function UserAnimeDetailPage({ params }: { params: Promise<{ id: 
   useEffect(() => {
     const fetchAnime = async () => {
       try {
-        const res = await fetch(`http://localhost:5000/api/anime/${animeId}`);
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/anime/${animeId}`);
         if (res.ok) setAnime(await res.json());
       } catch (error) {
         console.error("Lỗi tải phim:", error);
@@ -54,7 +54,7 @@ export default function UserAnimeDetailPage({ params }: { params: Promise<{ id: 
     const fetchRatingInfo = async () => {
       try {
         const userIdQuery = session?.user?.id ? `?userId=${session.user.id}` : "";
-        const res = await fetch(`http://localhost:5000/api/rating/anime/${animeId}${userIdQuery}`);
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/rating/anime/${animeId}${userIdQuery}`);
         if (res.ok) {
           const data = await res.json();
           setAvgRating(data.average);
@@ -69,7 +69,7 @@ export default function UserAnimeDetailPage({ params }: { params: Promise<{ id: 
     const checkWatchListStatus = async () => {
       if (!session?.user?.id) return;
       try {
-        const res = await fetch(`http://localhost:5000/api/watchlist/status?userId=${session.user.id}&animeId=${animeId}`);
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/watchlist/status?userId=${session.user.id}&animeId=${animeId}`);
         if (res.ok) {
           const data = await res.json();
           setIsInWatchList(data.isInList);
@@ -89,14 +89,14 @@ export default function UserAnimeDetailPage({ params }: { params: Promise<{ id: 
     if (!session) return alert("Vui lòng đăng nhập để đánh giá!");
     setUserRating(score);
     
-    const res = await fetch("http://localhost:5000/api/rating/anime", {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/rating/anime`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId: session.user.id, animeId, score })
     });
 
     if (res.ok) {
-      const updatedRes = await fetch(`http://localhost:5000/api/rating/anime/${animeId}?userId=${session.user.id}`);
+      const updatedRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/rating/anime/${animeId}?userId=${session.user.id}`);
       if (updatedRes.ok) {
         const data = await updatedRes.json();
         setAvgRating(data.average);
@@ -110,7 +110,7 @@ export default function UserAnimeDetailPage({ params }: { params: Promise<{ id: 
     if (!session) return alert("Vui lòng đăng nhập để sử dụng tính năng này!");
     setIsToggling(true);
     try {
-      const res = await fetch("http://localhost:5000/api/watchlist/toggle", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/watchlist/toggle`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId: session.user.id, animeId })

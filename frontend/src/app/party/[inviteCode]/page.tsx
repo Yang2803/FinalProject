@@ -140,7 +140,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
       if (!session?.user?.id) return;
 
       try {
-        const res = await fetch(`http://localhost:5000/api/party/rooms/${inviteCode}`);
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/party/rooms/${inviteCode}`);
         if (res.ok) {
           const roomData: PartyRoom = await res.json();
           setRoom(roomData);
@@ -174,7 +174,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
           let isNewRequest = false;
 
           if (!isMember && roomData.hostId !== session.user.id) {
-            await fetch(`http://localhost:5000/api/party/rooms/${inviteCode}/join`, {
+            await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/party/rooms/${inviteCode}/join`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ userId: session.user.id })
@@ -201,7 +201,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
           
 
           if (!globalSocket) {
-            globalSocket = io("http://localhost:5000");
+            globalSocket = io(process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000");
           }
 
           // 🌟 CHÌA KHÓA CHỐNG SPAM NẰM Ở ĐÂY: Chỉ gửi lệnh tham gia đúng 1 lần
@@ -268,7 +268,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
           // 🌟 1. LẮNG NGHE YÊU CẦU XIN VÀO PHÒNG
           globalSocket.on("receive_join_request", () => {
             // Khi có tín hiệu, TẤT CẢ mọi người (bao gồm trưởng phòng) tải lại danh sách để UI cập nhật ngay lập tức
-            fetch(`http://localhost:5000/api/party/rooms/${inviteCode}`)
+            fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/party/rooms/${inviteCode}`)
               .then(res => res.json())
               .then(updatedRoom => setRoom(updatedRoom));
           });
@@ -286,7 +286,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
               }
             } else {
               // Nếu người khác được duyệt/từ chối, cập nhật lại danh sách bên cột chat
-              fetch(`http://localhost:5000/api/party/rooms/${inviteCode}`)
+              fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/party/rooms/${inviteCode}`)
                 .then(res => res.json())
                 .then(updatedRoom => setRoom(updatedRoom));
             }
@@ -334,7 +334,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
     if (myMembership?.status === "JOINED" && !voiceToken) {
       const fetchVoiceToken = async () => {
         try {
-          const res = await fetch(`http://localhost:5000/api/party/rooms/${room.id}/voice-token?userName=${encodeURIComponent(session.user.name || "Ẩn danh")}`);
+          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/party/rooms/${room.id}/voice-token?userName=${encodeURIComponent(session.user.name || "Ẩn danh")}`);
           if (res.ok) {
             const data = await res.json();
             setVoiceToken(data.token);
@@ -400,7 +400,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
 
   useEffect(() => {
     if (isModalOpen && animeList.length === 0) {
-      fetch("http://localhost:5000/api/anime")
+      fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/anime`)
         .then(res => res.json())
         .then(data => setAnimeList(data))
         .catch(err => console.error("Lỗi tải list anime", err));
@@ -409,7 +409,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
 
   useEffect(() => {
     if (selectedAnimeId) {
-      fetch(`http://localhost:5000/api/anime/${selectedAnimeId}`)
+      fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/anime/${selectedAnimeId}`)
         .then(res => res.json())
         .then(data => {
           setEpisodeList(data.episodes || []);
@@ -432,7 +432,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
   const handleApproveMember = async (targetUserId: string, action: "APPROVE" | "REJECT") => {
     if (!room) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/party/rooms/${room.id}/approve`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/party/rooms/${room.id}/approve`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ hostId: session?.user?.id, targetUserId, action })
@@ -469,7 +469,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
     if (!selectedAnimeId || !selectedEpisodeId || !room) return;
     setIsChangingVideo(true);
     try {
-      const res = await fetch(`http://localhost:5000/api/party/rooms/${room.id}/change-video`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/party/rooms/${room.id}/change-video`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ hostId: session?.user?.id, animeId: selectedAnimeId, episodeId: selectedEpisodeId })
@@ -496,7 +496,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
     if (joinedMembers.length > 1 && !confirm("Bạn có chắc chắn muốn giải tán phòng? Mọi thành viên sẽ bị thoát và toàn bộ dữ liệu phòng sẽ bị xóa.")) return;
     
     try {
-      await fetch(`http://localhost:5000/api/party/rooms/${room.id}`, {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/party/rooms/${room.id}`, {
         method: "DELETE",
       });
 

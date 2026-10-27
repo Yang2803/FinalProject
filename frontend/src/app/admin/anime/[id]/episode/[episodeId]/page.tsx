@@ -23,7 +23,7 @@ export default function AdminEpisodeDetailsPage() {
   useEffect(() => {
     const loadEpisodeData = async () => {
       try {
-        const res = await fetch(`http://localhost:5000/api/admin/episode-detail/${episodeId}`);
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/admin/episode-detail/${episodeId}`);
         if (res.ok) {
           const data = await res.json();
           setTitle(data.title);
@@ -48,7 +48,7 @@ export default function AdminEpisodeDetailsPage() {
 
     setIsCrawlLoading(true);
     try {
-      const res = await fetch("http://localhost:5000/api/admin/episode/auto-fill", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/admin/episode/auto-fill`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ animeId, episodeNumber })
@@ -88,7 +88,7 @@ export default function AdminEpisodeDetailsPage() {
       .filter(name => name.length > 0);
 
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/episode/${episodeId}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/admin/episode/${episodeId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

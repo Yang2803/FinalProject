@@ -21,7 +21,7 @@ export default function CommentSection({ targetType, targetId }: { targetType: "
     // 2. Logic gọi API được tối ưu để tự động sinh ra query (VD: animeId=..., mangaId=...)
     const fetchComments = async () => {
       const query = `${targetType}Id=${targetId}`; 
-      const res = await fetch(`http://localhost:5000/api/comments?${query}`);
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/comments?${query}`);
       if (res.ok) {
         const data = await res.json();
         setComments(data);
@@ -44,7 +44,7 @@ export default function CommentSection({ targetType, targetId }: { targetType: "
         [`${targetType}Id`]: targetId 
       };
 
-      const res = await fetch("http://localhost:5000/api/comments", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/comments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)

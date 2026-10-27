@@ -40,7 +40,7 @@ export default function UploadEpisodePage() {
 
   // Lấy tên Anime
   useEffect(() => {
-    fetch(`http://localhost:5000/api/admin/anime/${animeId}`)
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/admin/anime/${animeId}`)
       .then(res => res.json())
       .then(data => {
         if (data && data.title) {
@@ -55,7 +55,7 @@ export default function UploadEpisodePage() {
 
   // Lấy danh sách Manga
   useEffect(() => {
-    fetch("http://localhost:5000/api/manga") 
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/manga`) 
       .then(res => res.json())
       .then(data => {
          const mangaList = Array.isArray(data) ? data : (data.mangas || []);
@@ -72,7 +72,7 @@ export default function UploadEpisodePage() {
         return;
       }
       try {
-        const res = await fetch(`http://localhost:5000/api/admin/manga/${mangaId}/chapters`);
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/admin/manga/${mangaId}/chapters`);
         const data = await res.json();
         setAvailableChapters(Array.isArray(data) ? data : []);
       } catch (err) {
@@ -108,7 +108,7 @@ export default function UploadEpisodePage() {
 
     setIsMapping(true);
     try {
-      const res = await fetch("http://localhost:5000/api/admin/auto-map-chapters", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/admin/auto-map-chapters`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ animeName: animeTitle, episodeNumber: Number(episodeNumber), mangaId, adaptedFrom })
@@ -143,7 +143,7 @@ export default function UploadEpisodePage() {
     setIsAutoFilling(true);
     try {
       // 1. Sửa lại đúng đường dẫn API
-      const res = await fetch("http://localhost:5000/api/admin/episode/auto-fill", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/admin/episode/auto-fill`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         // 2. Gửi đúng biến animeId (Lấy từ params) thay vì animeTitle
@@ -202,7 +202,7 @@ export default function UploadEpisodePage() {
     try {
       // --- PHẦN A: UPLOAD VIDEO ---
       const safeVideoType = videoFile.type || "application/octet-stream";
-      const urlRes = await fetch("http://localhost:5000/api/admin/get-upload-url", {
+      const urlRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/admin/get-upload-url`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ fileName: videoFile.name, fileType: safeVideoType })
@@ -222,7 +222,7 @@ export default function UploadEpisodePage() {
             const currentFile = sub.file as File;
             const safeSubType = currentFile.type || "text/plain";
             
-            const subUrlRes = await fetch("http://localhost:5000/api/admin/get-upload-url", {
+            const subUrlRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/admin/get-upload-url`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ fileName: currentFile.name, fileType: safeSubType })
@@ -240,7 +240,7 @@ export default function UploadEpisodePage() {
       );
 
       // --- PHẦN C: LƯU VÀO DATABASE ---
-      const backendRes = await fetch("http://localhost:5000/api/admin/episode", {
+      const backendRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/admin/episode`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

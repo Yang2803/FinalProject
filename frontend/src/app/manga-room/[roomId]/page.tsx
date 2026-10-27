@@ -150,7 +150,7 @@ export default function MangaCoReadingRoom({
   // Tải chi tiết chapter
   const fetchChapterDetail = async (chapId: string) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/chapter/${chapId}`);
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/chapter/${chapId}`);
       if (res.ok) {
         const data = await res.json();
         setChapter(data);
@@ -165,7 +165,7 @@ export default function MangaCoReadingRoom({
     const initRoom = async () => {
       try {
         setLoading(true);
-        const resRoom = await fetch(`http://localhost:5000/api/manga-room/rooms/${roomId}`);
+        const resRoom = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/manga-room/rooms/${roomId}`);
         if (!resRoom.ok) throw new Error("Không tìm thấy phòng");
         const roomData: RoomData = await resRoom.json();
         setRoom(roomData);
@@ -187,7 +187,7 @@ export default function MangaCoReadingRoom({
   const openMangaSelector = async () => {
     setIsSelectMangaOpen(true);
     try {
-      const res = await fetch("http://localhost:5000/api/manga");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/manga`);
       if (res.ok) {
         const data = await res.json();
         setMangaList(Array.isArray(data) ? data : data.mangas || []);
@@ -200,7 +200,7 @@ export default function MangaCoReadingRoom({
   const handleSelectManga = async (mangaId: string) => {
     setSelectedMangaId(mangaId);
     try {
-      const res = await fetch(`http://localhost:5000/api/manga/${mangaId}`);
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/manga/${mangaId}`);
       if (res.ok) {
         const data = await res.json();
         setChaptersOfManga(data.chapters || []);
@@ -214,7 +214,7 @@ export default function MangaCoReadingRoom({
     if (!room) return;
     setIsUpdatingChapter(true);
     try {
-      const res = await fetch(`http://localhost:5000/api/manga-room/rooms/${room.id}/change-chapter`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/manga-room/rooms/${room.id}/change-chapter`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -301,7 +301,7 @@ export default function MangaCoReadingRoom({
   const handleDisbandRoom = async () => {
     if (confirm("Bạn có chắc chắn muốn giải tán phòng? Tất cả thành viên sẽ bị đưa về sảnh!")) {
       try {
-        await fetch(`http://localhost:5000/api/manga-room/rooms/${room?.id}`, {
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/manga-room/rooms/${room?.id}`, {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ hostId: session?.user?.id }),

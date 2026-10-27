@@ -103,7 +103,7 @@ export default function EditChapterPage({ params }: { params: Promise<{ id: stri
   useEffect(() => {
     const fetchChapter = async () => {
       try {
-        const res = await fetch(`http://localhost:5000/api/admin/chapter/${chapterId}`);
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/admin/chapter/${chapterId}`);
         if (!res.ok) throw new Error("Chapter information cannot be loaded.");
         const data = await res.json();
         
@@ -175,7 +175,7 @@ export default function EditChapterPage({ params }: { params: Promise<{ id: stri
     
     setIsAutoFilling(true);
     try {
-      const res = await fetch("http://localhost:5000/api/admin/chapter/auto-fill", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/admin/chapter/auto-fill`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mangaId, chapterNumber: Number(chapterNumber) })
@@ -230,7 +230,7 @@ export default function EditChapterPage({ params }: { params: Promise<{ id: stri
       );
 
       // 🌟 3. GỬI KÈM DATA MỚI XUỐNG BACKEND
-      const backendRes = await fetch(`http://localhost:5000/api/admin/chapter/${chapterId}`, {
+      const backendRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/admin/chapter/${chapterId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 

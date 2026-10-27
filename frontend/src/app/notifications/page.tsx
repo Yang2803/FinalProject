@@ -31,14 +31,14 @@ export default function NotificationsPage() {
       if (!session?.user?.id) return;
       try {
         // 1. Tải danh sách thông báo
-        const res = await fetch(`http://localhost:5000/api/notifications/${session.user.id}`);
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/notifications/${session.user.id}`);
         if (res.ok) {
           const data = await res.json();
           setNotifications(data.notifications);
         }
 
         // 2. Đánh dấu tất cả là đã đọc
-        await fetch(`http://localhost:5000/api/notifications/${session.user.id}/read`, {
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/notifications/${session.user.id}/read`, {
           method: "PUT"
         });
 

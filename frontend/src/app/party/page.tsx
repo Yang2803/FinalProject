@@ -41,7 +41,7 @@ export default function WatchPartyLobby() {
 
     const loadRooms = async () => {
       try {
-        const res = await fetch("http://localhost:5000/api/party/rooms");
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/party/rooms`);
         if (res.ok) {
           const data = await res.json();
           if (isMounted) setActiveRooms(data);
@@ -77,7 +77,7 @@ export default function WatchPartyLobby() {
 
     setIsCreating(true);
     try {
-      const res = await fetch("http://localhost:5000/api/party/rooms", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/party/rooms`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
