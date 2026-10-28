@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 
-export default function ResetPasswordPage() {
+function ResetPasswordContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token"); // Bóc tách chuỗi ?token=... trên url
   const router = useRouter();
@@ -88,5 +88,19 @@ export default function ResetPasswordPage() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#0f0f11] text-white flex items-center justify-center">
+          Loading...
+        </div>
+      }
+    >
+      <ResetPasswordContent />
+    </Suspense>
   );
 }

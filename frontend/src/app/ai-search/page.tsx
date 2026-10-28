@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, Suspense } from "react";
 import { useSession } from "next-auth/react";
 import { useSearchParams, useRouter } from "next/navigation";
 import ReactMarkdown from "react-markdown";
@@ -19,7 +19,7 @@ interface ChatSession {
   updatedAt: string;
 }
 
-export default function AiSearchChatPage() {
+function AiSearchChatContent() {
   const { data: session } = useSession();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -450,5 +450,19 @@ export default function AiSearchChatPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AiSearchChatPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#0f0f11] text-white flex items-center justify-center">
+          Loading AI Assistant...
+        </div>
+      }
+    >
+      <AiSearchChatContent />
+    </Suspense>
   );
 }

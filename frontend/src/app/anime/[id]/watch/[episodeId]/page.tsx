@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, Suspense } from "react";
 // 🌟 1. THÊM BỔ SUNG useSearchParams để đọc tham số thời gian ?t=... từ URL
 import { useParams, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -40,7 +40,7 @@ interface ChapterData {
 // =====================================================================
 // 3. PAGE CHÍNH: XEM PHIM & SPLIT-SCREEN MANGA
 // =====================================================================
-export default function WatchEpisodePage() {
+function WatchEpisodeContent() {
   const params = useParams();
   // 🌟 2. BẮT THAM SỐ THỜI GIAN (VD: ?t=600) TỪ URL
   const searchParams = useSearchParams();
@@ -1002,5 +1002,13 @@ export default function WatchEpisodePage() {
       )}
 
     </div>
+  );
+}
+
+export default function WatchEpisodePage() {
+  return (
+    <Suspense fallback={<div className="text-white text-center mt-20">Loading episode...</div>}>
+      <WatchEpisodeContent />
+    </Suspense>
   );
 }

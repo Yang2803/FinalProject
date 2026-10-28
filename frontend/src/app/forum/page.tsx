@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, Suspense } from "react";
 import { useSession } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -46,7 +46,7 @@ interface ForumCommentItem {
   upvoteCount: number;
 }
 
-export default function ForumFeed() {
+function ForumFeedContent() {
   
   const { data: session } = useSession();
   const searchParams = useSearchParams();
@@ -849,3 +849,17 @@ export default function ForumFeed() {
       )}
     </>
   )};
+
+  export default function ForumFeed() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#0f0f11] text-white flex items-center justify-center">
+          Loading Forum...
+        </div>
+      }
+    >
+      <ForumFeedContent />
+    </Suspense>
+  );
+}

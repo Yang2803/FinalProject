@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 
@@ -10,7 +10,7 @@ interface SearchResultItem {
   coverImage: string;
   description: string | null;
 }
-export default function SearchPage() {
+function SearchContent() {
   const searchParams = useSearchParams();
   const query = searchParams.get("q");
   
@@ -95,5 +95,19 @@ export default function SearchPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function SearchPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="p-10 text-white animate-pulse">
+          Searching...
+        </div>
+      }
+    >
+      <SearchContent />
+    </Suspense>
   );
 }
