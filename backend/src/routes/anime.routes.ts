@@ -191,7 +191,7 @@ router.post('/api/admin/episode', async (req: Request, res: Response): Promise<a
 
         const notificationsToInsert = usersInWatchList.map((item: any) => ({
           userId: item.userId,
-          title: "Tập mới ra lò! 🎬",
+          title: "New Episode is out now! 🎬",
           message: `${animeTitleStr} vừa cập nhật: Tập ${episodeNumber} - ${newEpisode.title}`,
           linkUrl: `/anime/${animeId}/watch/${newEpisode.id}`, 
           isRead: false

@@ -177,7 +177,7 @@ export default function CommunityDetailPage() {
       }
     } catch (error) { alert("Lỗi kết nối."); } finally { setIsPosting(false); }
   };
-  const handleDeletePost = async (postId: string) => { if (!confirm("Xóa bài đăng này?")) return; try { const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/posts/${postId}`, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ authorId: session?.user?.id }) }); if (res.ok) { setCommunity(prev => prev ? { ...prev, posts: prev.posts.filter(p => p.id !== postId) } : prev); } } catch (error) { alert("Lỗi xóa!"); } };
+  const handleDeletePost = async (postId: string) => { if (!confirm("Delete this post?")) return; try { const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/posts/${postId}`, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ authorId: session?.user?.id }) }); if (res.ok) { setCommunity(prev => prev ? { ...prev, posts: prev.posts.filter(p => p.id !== postId) } : prev); } } catch (error) { alert("Error delete post!"); } };
   const handleVote = async (postId: string, type: 'UP' | 'DOWN') => { 
     if (!session?.user?.id) return alert("Đăng nhập để vote!"); 
     try { 
@@ -202,10 +202,10 @@ export default function CommunityDetailPage() {
     } 
   };
   const toggleComments = async (postId: string) => { if (activeCommentPostId === postId) { setActiveCommentPostId(null); } else { setActiveCommentPostId(postId); const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/posts/${postId}/comments`); if (res.ok) setComments(await res.json()); } };
-  const handlePostComment = async (postId: string, parentId: string | null = null) => { if (!newComment.trim()) return; if (!session?.user?.id) return alert("Đăng nhập để bình luận!"); try { const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/posts/${postId}/comments`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content: newComment, authorId: session.user.id, parentId }) }); if (res.ok) { const addedComment = await res.json(); setComments([...comments, addedComment]); setNewComment(""); setReplyingToCommentId(null); } } catch (error) { alert("Lỗi gửi bình luận"); } };
-  const submitEditComment = async (commentId: string) => { if (!editCommentContent.trim()) return; try { const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/comments/${commentId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content: editCommentContent, authorId: session?.user?.id }) }); if (res.ok) { const updated = await res.json(); setComments(comments.map(c => c.id === commentId ? updated : c)); setEditingCommentId(null); } } catch (error) { alert("Lỗi sửa comment"); } };
-  const handleDeleteComment = async (commentId: string) => { if (!confirm("Xóa bình luận này?")) return; try { const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/comments/${commentId}`, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ authorId: session?.user?.id }) }); if (res.ok) setComments(comments.filter(c => c.id !== commentId)); } catch (error) { alert("Lỗi xóa comment"); } };
-  const handleVoteComment = async (commentId: string, type: 'UP' | 'DOWN') => { if (!session?.user?.id) return alert("Đăng nhập để vote!"); try { const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/comments/${commentId}/vote`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: session.user.id, type }) }); if (res.ok) { const data = await res.json(); setComments(comments.map(c => c.id === commentId ? { ...c, upvoteCount: data.upvoteCount } : c)); } } catch (error) { console.error("Lỗi vote comment", error); } };
+  const handlePostComment = async (postId: string, parentId: string | null = null) => { if (!newComment.trim()) return; if (!session?.user?.id) return alert("Please log in to comment!"); try { const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/posts/${postId}/comments`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content: newComment, authorId: session.user.id, parentId }) }); if (res.ok) { const addedComment = await res.json(); setComments([...comments, addedComment]); setNewComment(""); setReplyingToCommentId(null); } } catch (error) { alert("Error posting comment"); } };
+  const submitEditComment = async (commentId: string) => { if (!editCommentContent.trim()) return; try { const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/comments/${commentId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content: editCommentContent, authorId: session?.user?.id }) }); if (res.ok) { const updated = await res.json(); setComments(comments.map(c => c.id === commentId ? updated : c)); setEditingCommentId(null); } } catch (error) { alert("Error editing comment"); } };
+  const handleDeleteComment = async (commentId: string) => { if (!confirm("Delete this comment?")) return; try { const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/comments/${commentId}`, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ authorId: session?.user?.id }) }); if (res.ok) setComments(comments.filter(c => c.id !== commentId)); } catch (error) { alert("Error deleting comment"); } };
+  const handleVoteComment = async (commentId: string, type: 'UP' | 'DOWN') => { if (!session?.user?.id) return alert("Please log in to vote!"); try { const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/comments/${commentId}/vote`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: session.user.id, type }) }); if (res.ok) { const data = await res.json(); setComments(comments.map(c => c.id === commentId ? { ...c, upvoteCount: data.upvoteCount } : c)); } } catch (error) { console.error("Error voting comment", error); } };
 
   // ==========================================
   // 🎨 5. RENDERING
@@ -218,7 +218,7 @@ export default function CommunityDetailPage() {
   return (
     <div className="max-w-4xl mx-auto px-4 pb-12 relative">
       <Link href="/forum/communities" className="inline-flex items-center gap-2 text-gray-400 hover:text-blue-400 transition mb-4 font-bold text-sm">
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg> Quay lại
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg> return to Communities
       </Link>
 
       {/* HEADER CỘNG ĐỒNG */}
@@ -238,9 +238,9 @@ export default function CommunityDetailPage() {
               <div className="flex items-center gap-4 text-sm font-bold text-gray-500">
                 <button onClick={() => isAdmin && setIsMembersModalOpen(true)} className={`flex items-center gap-1.5 ${isAdmin ? 'hover:text-blue-400 transition' : ''}`}>
                   <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-                  {community._count.members} Thành viên
+                  {community._count.members} Members
                 </button>
-                <span className="flex items-center gap-1.5"><svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>{community.posts.length} Bài viết</span>
+                <span className="flex items-center gap-1.5"><svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>{community.posts.length} Posts</span>
               </div>
             </div>
             
@@ -249,15 +249,15 @@ export default function CommunityDetailPage() {
               {isAdmin ? (
                 <>
                   <button onClick={() => setIsMembersModalOpen(true)} className="bg-gray-800 hover:bg-gray-700 text-white px-5 py-2.5 rounded-full font-bold transition text-sm flex items-center gap-2 border border-gray-700">
-                    👥 <span className="hidden sm:inline">Thành viên</span>
+                    👥 <span className="hidden sm:inline">Members</span>
                   </button>
                   <button onClick={openEditCommunity} className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-full font-bold transition text-sm flex items-center gap-2 shadow-lg shadow-blue-600/20">
-                    ⚙️ <span className="hidden sm:inline">Cài đặt</span>
+                    ⚙️ <span className="hidden sm:inline">Settings</span>
                   </button>
                 </>
               ) : (
                 <button onClick={handleToggleJoin} disabled={isProcessingJoin} className={`px-8 py-3 rounded-full font-bold transition shadow-lg whitespace-nowrap disabled:opacity-50 ${isMember ? 'bg-transparent border-2 border-gray-600 text-gray-300 hover:border-red-500 hover:text-red-500' : 'bg-blue-600 border-2 border-blue-600 text-white hover:bg-blue-500 hover:border-blue-500'}`}>
-                  {isProcessingJoin ? "Đang xử lý..." : (isMember ? "Đã tham gia" : "Tham gia nhóm")}
+                  {isProcessingJoin ? "Processing..." : (isMember ? "Joined" : "Join Group")}
                 </button>
               )}
             </div>
@@ -268,12 +268,12 @@ export default function CommunityDetailPage() {
       {/* FEED BÀI VIẾT (Giữ nguyên cấu trúc đã có) */}
       <div>
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-white border-b-2 border-blue-500 pb-2 inline-block">Bài viết trong nhóm</h2>
-          <button onClick={() => setIsModalOpen(true)} className="text-sm font-bold text-blue-400 hover:text-blue-300 bg-blue-900/20 hover:bg-blue-900/40 px-4 py-2 rounded-lg transition">+ Viết bài mới</button>
+          <h2 className="text-xl font-bold text-white border-b-2 border-blue-500 pb-2 inline-block">Posts in community</h2>
+          <button onClick={() => setIsModalOpen(true)} className="text-sm font-bold text-blue-400 hover:text-blue-300 bg-blue-900/20 hover:bg-blue-900/40 px-4 py-2 rounded-lg transition">+ Write a new post</button>
         </div>
         <div className="space-y-6">
           {community.posts.length === 0 ? (
-            <div className="text-center py-16 bg-[#1a1d24] rounded-2xl border border-gray-800"><p className="text-gray-400">Chưa có bài viết nào.</p></div>
+            <div className="text-center py-16 bg-[#1a1d24] rounded-2xl border border-gray-800"><p className="text-gray-400">No post have been upload yet.</p></div>
           ) : (
             community.posts.map((post) => (
               <div key={post.id} className="bg-[#1a1d24] rounded-xl border border-gray-800 p-5 shadow-sm hover:border-gray-700 transition">
@@ -339,7 +339,7 @@ export default function CommunityDetailPage() {
                         </span>
                       </button>
                     </div>
-                    <button onClick={() => toggleComments(post.id)} className="flex items-center gap-2 hover:text-blue-400 hover:bg-gray-800/50 px-3 py-2 rounded-full transition text-sm font-medium"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg> Bình luận</button>
+                    <button onClick={() => toggleComments(post.id)} className="flex items-center gap-2 hover:text-blue-400 hover:bg-gray-800/50 px-3 py-2 rounded-full transition text-sm font-medium"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg> Comment</button>
                   </div>
                   {(session?.user?.id === post.authorId || isAdmin) && (
                     <div className="flex gap-2">
@@ -353,8 +353,8 @@ export default function CommunityDetailPage() {
                 {activeCommentPostId === post.id && (
                   <div className="mt-4 pt-4 border-t border-gray-800">
                     <div className="flex gap-3 mb-6">
-                      <input type="text" placeholder="Viết bình luận của bạn..." value={newComment} onChange={e => { setNewComment(e.target.value); setReplyingToCommentId(null); }} className="flex-1 bg-gray-900 border border-gray-800 rounded-full px-4 py-2.5 text-sm outline-none focus:border-blue-500" />
-                      <button onClick={() => handlePostComment(post.id, null)} className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-full text-sm font-bold">Gửi</button>
+                      <input type="text" placeholder="Write your comment..." value={newComment} onChange={e => { setNewComment(e.target.value); setReplyingToCommentId(null); }} className="flex-1 bg-gray-900 border border-gray-800 rounded-full px-4 py-2.5 text-sm outline-none focus:border-blue-500" />
+                      <button onClick={() => handlePostComment(post.id, null)} className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-full text-sm font-bold">Post</button>
                     </div>
                     
                     <div className="space-y-4">
@@ -424,12 +424,12 @@ export default function CommunityDetailPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
           <div className="bg-[#1a1d24] w-full max-w-2xl rounded-2xl border border-gray-800 shadow-2xl flex flex-col max-h-[90vh]">
             <div className="flex justify-between items-center p-5 border-b border-gray-800">
-              <h2 className="text-xl font-bold text-gray-100">{editingPost ? "Sửa bài viết" : `Đăng bài vào ${community.name}`}</h2>
+              <h2 className="text-xl font-bold text-gray-100">{editingPost ? "Edit post" : `Post in ${community.name}`}</h2>
               <button onClick={resetForm} className="text-gray-400 hover:text-white transition bg-gray-800 hover:bg-gray-700 w-8 h-8 rounded-full flex items-center justify-center">✕</button>
             </div>
             <div className="p-5 overflow-y-auto custom-scrollbar flex-1 space-y-4">
-              <input type="text" placeholder="Tiêu đề bài viết..." value={title} onChange={e => setTitle(e.target.value)} className="w-full bg-transparent border border-gray-800 rounded-lg px-4 py-3 outline-none font-bold text-lg focus:border-blue-500 transition" />
-              <textarea placeholder="Nội dung bài viết..." value={content} onChange={e => setContent(e.target.value)} className="w-full bg-transparent border border-gray-800 rounded-lg px-4 py-3 outline-none resize-none h-32 text-sm text-gray-200 focus:border-blue-500 transition custom-scrollbar" />
+              <input type="text" placeholder="Title..." value={title} onChange={e => setTitle(e.target.value)} className="w-full bg-transparent border border-gray-800 rounded-lg px-4 py-3 outline-none font-bold text-lg focus:border-blue-500 transition" />
+              <textarea placeholder="Content..." value={content} onChange={e => setContent(e.target.value)} className="w-full bg-transparent border border-gray-800 rounded-lg px-4 py-3 outline-none resize-none h-32 text-sm text-gray-200 focus:border-blue-500 transition custom-scrollbar" />
               {mediaPreview && (
                 <div className="relative rounded-xl overflow-hidden border border-gray-800 bg-gray-900 aspect-video flex items-center justify-center">
                   {mediaFile?.type.startsWith('video/') ? <video src={mediaPreview} controls className="max-h-full max-w-full" /> : <img src={mediaPreview} className="max-h-full max-w-full object-contain" />}
@@ -441,20 +441,20 @@ export default function CommunityDetailPage() {
                   {isSpoiler && <span className="bg-red-900/50 text-red-400 text-xs px-2.5 py-1 rounded border border-red-500">⚠️ Spoiler</span>}
                   {tags.map(tag => <span key={tag} className="bg-blue-900/40 border border-blue-800/50 text-blue-300 text-xs px-2.5 py-1 rounded flex items-center gap-1">#{tag} <button onClick={() => removeTag(tag)} className="hover:text-red-400 ml-1">✕</button></span>)}
                 </div>
-                <input type="text" placeholder="Nhập tag và Enter..." value={tagInput} onChange={e => setTagInput(e.target.value)} onKeyDown={handleKeyDownTag} className="w-full bg-transparent outline-none text-sm text-gray-300" />
+                <input type="text" placeholder="Enter tag and press Enter..." value={tagInput} onChange={e => setTagInput(e.target.value)} onKeyDown={handleKeyDownTag} className="w-full bg-transparent outline-none text-sm text-gray-300" />
               </div>
             </div>
             <div className="p-5 border-t border-gray-800 flex justify-between items-center bg-gray-900/50 rounded-b-2xl">
               <div className="flex items-center gap-3">
                 <select value={category} onChange={e => setCategory(e.target.value as "GENERAL" | "ANIME" | "MANGA")} className="bg-gray-800 text-sm px-3 py-2 rounded-lg outline-none border border-gray-700 hover:border-gray-600 transition">
-                  <option value="GENERAL">📍 Chung</option><option value="ANIME">🎬 Anime</option><option value="MANGA">📖 Manga</option>
+                  <option value="GENERAL">📍 General</option><option value="ANIME">🎬 Anime</option><option value="MANGA">📖 Manga</option>
                 </select>
                 <input type="file" accept="image/*,video/*" hidden ref={fileInputRef} onChange={handleFileChange} />
                 <button onClick={() => fileInputRef.current?.click()} className="text-gray-400 hover:text-green-400 transition p-2 bg-gray-800 rounded-lg border border-gray-700"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg></button>
               </div>
               <div className="flex gap-3">
                 <button onClick={handleAIAnalyze} disabled={isAnalyzing} className="bg-purple-600/20 text-purple-400 border border-purple-600 hover:bg-purple-600 hover:text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center">{isAnalyzing ? "..." : "🪄 AI Check"}</button>
-                <button onClick={handleSubmitPost} disabled={isPosting} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-lg text-sm font-bold">{isPosting ? "Đang xử lý..." : "Post"}</button>
+                <button onClick={handleSubmitPost} disabled={isPosting} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-lg text-sm font-bold">{isPosting ? "Processing..." : "Post"}</button>
               </div>
             </div>
           </div>
@@ -466,34 +466,34 @@ export default function CommunityDetailPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
           <div className="bg-[#1a1d24] w-full max-w-lg rounded-2xl border border-gray-800 shadow-2xl flex flex-col">
             <div className="flex justify-between items-center p-5 border-b border-gray-800">
-              <h2 className="text-xl font-bold text-gray-100">Cài đặt Cộng đồng</h2>
+              <h2 className="text-xl font-bold text-gray-100">Community Settings</h2>
               <button onClick={() => setIsEditCommunityModalOpen(false)} className="text-gray-400 hover:text-white transition w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-800">✕</button>
             </div>
             <div className="p-5 space-y-4">
               <div>
-                <label className="block text-sm font-bold text-gray-400 mb-1.5">Tên cộng đồng</label>
+                <label className="block text-sm font-bold text-gray-400 mb-1.5">Community Name</label>
                 <input type="text" value={editComName} onChange={e => setEditComName(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2.5 outline-none text-white focus:border-blue-500 transition" />
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-400 mb-1.5">Mô tả chi tiết</label>
+                <label className="block text-sm font-bold text-gray-400 mb-1.5">Detailed Description</label>
                 <textarea value={editComDesc} onChange={e => setEditComDesc(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2.5 outline-none text-white focus:border-blue-500 transition resize-none h-24 custom-scrollbar" />
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-400 mb-1.5">Ảnh bìa mới</label>
+                <label className="block text-sm font-bold text-gray-400 mb-1.5">New Cover Image</label>
                 <input type="file" accept="image/*" hidden ref={comCoverInputRef} onChange={e => { if (e.target.files && e.target.files[0]) { setEditComCover(e.target.files[0]); setEditComCoverPreview(URL.createObjectURL(e.target.files[0])); } }} />
                 {editComCoverPreview ? (
                   <div className="relative h-32 rounded-lg overflow-hidden border border-gray-700 cursor-pointer" onClick={() => comCoverInputRef.current?.click()}>
                     <img src={editComCoverPreview} alt="Cover" className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition"><span className="text-white font-bold text-sm">Đổi ảnh</span></div>
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition"><span className="text-white font-bold text-sm">Change Image</span></div>
                   </div>
                 ) : (
-                  <button onClick={() => comCoverInputRef.current?.click()} className="w-full py-4 border-2 border-dashed border-gray-700 rounded-lg text-gray-500 hover:text-blue-400 hover:border-blue-500 transition">Tải ảnh lên</button>
+                  <button onClick={() => comCoverInputRef.current?.click()} className="w-full py-4 border-2 border-dashed border-gray-700 rounded-lg text-gray-500 hover:text-blue-400 hover:border-blue-500 transition">Upload Image</button>
                 )}
               </div>
             </div>
             <div className="p-5 border-t border-gray-800 flex justify-end gap-3 bg-gray-900/50 rounded-b-2xl">
-              <button onClick={() => setIsEditCommunityModalOpen(false)} className="px-5 py-2.5 rounded-lg text-sm font-bold text-gray-400 hover:text-white transition">Hủy</button>
-              <button onClick={handleUpdateCommunity} disabled={isUpdatingCommunity} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2.5 rounded-lg text-sm font-bold transition disabled:opacity-50">{isUpdatingCommunity ? "Đang lưu..." : "Lưu thay đổi"}</button>
+              <button onClick={() => setIsEditCommunityModalOpen(false)} className="px-5 py-2.5 rounded-lg text-sm font-bold text-gray-400 hover:text-white transition">Cancel</button>
+              <button onClick={handleUpdateCommunity} disabled={isUpdatingCommunity} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2.5 rounded-lg text-sm font-bold transition disabled:opacity-50">{isUpdatingCommunity ? "Saving..." : "Save Changes"}</button>
             </div>
           </div>
         </div>
@@ -504,7 +504,7 @@ export default function CommunityDetailPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
           <div className="bg-[#1a1d24] w-full max-w-md rounded-2xl border border-gray-800 shadow-2xl flex flex-col max-h-[80vh]">
             <div className="flex justify-between items-center p-5 border-b border-gray-800">
-              <h2 className="text-xl font-bold text-gray-100">Thành viên ({community.members.length})</h2>
+              <h2 className="text-xl font-bold text-gray-100">Members ({community.members.length})</h2>
               <button onClick={() => setIsMembersModalOpen(false)} className="text-gray-400 hover:text-white transition w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-800">✕</button>
             </div>
             <div className="p-5 overflow-y-auto custom-scrollbar flex-1 space-y-3">

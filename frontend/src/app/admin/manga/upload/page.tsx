@@ -45,7 +45,7 @@ export default function UploadMangaPage() {
   // Gọi API để AI tự động viết tóm tắt dựa trên Title
   const handleGenerateDescription = async () => {
     if (!title) {
-      alert("Vui lòng nhập Tên Manga trước khi dùng AI!");
+      alert("Please enter the Manga Title before using AI!");
       return;
     }
     
@@ -164,7 +164,7 @@ export default function UploadMangaPage() {
 
           {/* 🌟 4. GIAO DIỆN NHẬP FANDOM PREFIX */}
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Fandom Prefix (Dùng cho Auto-fill Data)</label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Fandom Prefix (Used for Auto-fill Data)</label>
             <div className="flex bg-gray-700 border border-gray-600 rounded-md overflow-hidden focus-within:ring focus-within:ring-blue-500 transition">
               <span className="bg-gray-800 text-gray-400 text-sm px-3 py-2 border-r border-gray-600 select-none flex items-center">
                 https://
@@ -181,7 +181,7 @@ export default function UploadMangaPage() {
               </span>
             </div>
             <p className="text-xs text-gray-500 mt-1 italic">
-              * Bắt buộc phải có để tính năng 🪄 Auto-fill via AI ở trong trang Manga Chapter hoạt động.
+              * This is required for the 🪄 Auto-fill via AI feature in the Manga Chapter page to work.
             </p>
           </div>
 
@@ -217,7 +217,7 @@ export default function UploadMangaPage() {
                     Đang viết...
                   </>
                 ) : (
-                  "✨ AI Viết Tóm Tắt"
+                  "✨ AI Writes Summary"
                 )}
               </button>
             </div>

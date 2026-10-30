@@ -136,7 +136,7 @@ export default function UploadChapterPage({ params }: { params: Promise<{ id: st
   // 🌟 2. HÀM GỌI API AUTO-FILL MANGA CHAPTER
   const handleAutoFill = async () => {
     if (!chapterNumber) {
-      alert("Vui lòng nhập Số Chapter (Chapter Number) trước khi dùng Auto-fill!");
+      alert("Please enter Chapter Number before using Auto-fill!");
       return;
     }
     
@@ -155,10 +155,10 @@ export default function UploadChapterPage({ params }: { params: Promise<{ id: st
         setCharacters(resData.data.characters.join(", "));
         setPlotSummary(resData.data.plotSummary);
       } else {
-        alert(resData.error || "Không tìm thấy dữ liệu trên Wiki!");
+        alert(resData.error || "No data found on Wiki!");
       }
     } catch (error) {
-      alert("Lỗi kết nối đến Server AI.");
+      alert("Error connecting to AI Server.");
     } finally {
       setIsAutoFilling(false);
     }
@@ -248,7 +248,7 @@ export default function UploadChapterPage({ params }: { params: Promise<{ id: st
                   value={chapterNumber}
                   onChange={(e) => setChapterNumber(e.target.value)}
                   className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:border-blue-500 text-sm"
-                  placeholder="Ex: 1"
+                  placeholder="E.g. 1"
                 />
               </div>
 
@@ -262,7 +262,7 @@ export default function UploadChapterPage({ params }: { params: Promise<{ id: st
                     className="bg-purple-600 hover:bg-purple-500 disabled:bg-gray-600 text-white text-xs font-bold px-3 py-1 rounded transition flex items-center gap-1"
                   >
                     {isAutoFilling ? (
-                      <><div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Đang quét...</>
+                      <><div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Scanning...</>
                     ) : (
                       "🪄 Auto-fill"
                     )}
@@ -282,7 +282,7 @@ export default function UploadChapterPage({ params }: { params: Promise<{ id: st
             {/* 🌟 KHU VỰC CHARACTERS & PLOT */}
             <div className="space-y-6 border-t border-gray-700 pt-6">
               <div>
-                <label className="block text-xs font-bold text-gray-300 mb-2">Characters (Phân cách bằng dấu phẩy)</label>
+                <label className="block text-xs font-bold text-gray-300 mb-2">Characters (separated by commas)</label>
                 <input
                   type="text"
                   value={characters}
@@ -293,7 +293,7 @@ export default function UploadChapterPage({ params }: { params: Promise<{ id: st
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-300 mb-2">Plot Details (Cốt truyện chi tiết)</label>
+                <label className="block text-xs font-bold text-gray-300 mb-2">Plot Details</label>
                 <textarea
                   rows={4}
                   value={plotSummary}

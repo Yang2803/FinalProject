@@ -135,14 +135,14 @@ export function MangaRoomBGM({ roomId, isHost, socket }: MangaRoomBGMProps) {
             : "bg-gray-800 border-gray-700 text-gray-300 hover:text-white"
         }`}
       >
-        <span>{isPlaying && videoId ? "🎵 Đang phát" : "🎶 Nhạc nền"}</span>
+        <span>{isPlaying && videoId ? "🎵 Playing" : "🎶 Background Music"}</span>
       </button>
 
       {isOpenMenu && (
         <div className="absolute bottom-12 right-0 bg-[#16181f] border border-gray-700 p-3.5 rounded-xl shadow-2xl w-80 z-50 flex flex-col gap-3">
           <div className="flex justify-between items-center pb-2 border-b border-gray-800">
             <span className="text-xs font-bold text-white flex items-center gap-1.5">
-              <span>🎧 Nhạc nền phòng đọc</span>
+              <span>🎧 Background Music</span>
             </span>
             <button
               type="button"
@@ -155,7 +155,7 @@ export function MangaRoomBGM({ roomId, isHost, socket }: MangaRoomBGMProps) {
 
           {isHost ? (
             <div className="flex flex-col gap-1.5">
-              <span className="text-[11px] text-gray-400">Dán link YouTube:</span>
+              <span className="text-[11px] text-gray-400">Paste YouTube link:</span>
               <div className="flex gap-1.5">
                 <input
                   type="text"
@@ -169,13 +169,13 @@ export function MangaRoomBGM({ roomId, isHost, socket }: MangaRoomBGMProps) {
                   onClick={handleApplyUrl}
                   className="px-2.5 py-1 bg-purple-600 hover:bg-purple-500 text-white rounded text-xs font-bold transition cursor-pointer"
                 >
-                  Phát
+                  Play
                 </button>
               </div>
             </div>
           ) : (
             <p className="text-[11px] text-gray-400 italic">
-              {videoId ? "Nhạc đang được đồng bộ từ Trưởng phòng" : "Trưởng phòng chưa chọn bài nhạc nào"}
+              {videoId ? "Music is being synchronized from the host" : "The host has not selected any music yet"}
             </p>
           )}
 
@@ -194,7 +194,7 @@ export function MangaRoomBGM({ roomId, isHost, socket }: MangaRoomBGMProps) {
             </div>
           ) : bgmUrl ? (
             <div className="text-xs text-red-400 py-2 text-center bg-red-950/20 border border-red-900/40 rounded">
-              Đường link không hợp lệ!
+              Invalid link!
             </div>
           ) : null}
 
@@ -202,7 +202,7 @@ export function MangaRoomBGM({ roomId, isHost, socket }: MangaRoomBGMProps) {
           {videoId && isHost && (
             <div className="flex flex-col gap-2 pt-1 border-t border-gray-800">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-gray-400">Đồng bộ cả phòng:</span>
+                <span className="text-gray-400">Synchronize entire room:</span>
                 <button
                   type="button"
                   onClick={handleTogglePlay}
@@ -212,13 +212,13 @@ export function MangaRoomBGM({ roomId, isHost, socket }: MangaRoomBGMProps) {
                       : "bg-emerald-600 hover:bg-emerald-500 text-white"
                   }`}
                 >
-                  {isPlaying ? "⏸️ Tạm dừng" : "▶️ Tiếp tục"}
+                  {isPlaying ? "⏸️ Pause" : "▶️ Resume"}
                 </button>
               </div>
 
               {/* Cụm nút tua đồng bộ */}
               <div className="flex items-center justify-between bg-gray-900/80 p-1.5 rounded-lg border border-gray-800">
-                <span className="text-[11px] text-gray-400">Tua đồng bộ:</span>
+                <span className="text-[11px] text-gray-400">Synchronize:</span>
                 <div className="flex gap-1.5">
                   <button
                     type="button"

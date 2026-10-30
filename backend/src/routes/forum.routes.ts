@@ -258,8 +258,8 @@ router.post('/api/forum/posts/:id/comments', async (req: Request, res: Response)
           await prisma.notification.create({
             data: {
               userId: parentComment.authorId,
-              title: "Có người phản hồi bạn 💬",
-              message: `${replierName} vừa trả lời bình luận của bạn.`,
+              title: "Someone responded to you. 💬",
+              message: `${replierName} just replied to your comment.`,
               linkUrl: `/forum/${postId}`,
               isRead: false
             }
@@ -276,8 +276,8 @@ router.post('/api/forum/posts/:id/comments', async (req: Request, res: Response)
         await prisma.notification.create({
           data: {
             userId: post.authorId,
-            title: "Bình luận mới 📝",
-            message: `${replierName} vừa bình luận vào bài viết "${post.title}" của bạn.`,
+            title: "New comment 📝",
+            message: `${replierName} just commented on your post "${post.title}".`,
             linkUrl: `/forum/${postId}`,
             isRead: false
           }

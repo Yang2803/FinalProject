@@ -121,7 +121,7 @@ export default function AdminAnimeDetailPage() {
   // Hàm xử lý Xóa Anime
   const handleDeleteAnime = async () => {
     if (!anime) return;
-    const confirmDelete = confirm(`CẢNH BÁO: Bạn có chắc chắn muốn xóa bộ phim "${anime.title}"?\nHành động này sẽ XÓA TOÀN BỘ các tập phim và phụ đề bên trong. Không thể hoàn tác!`);
+    const confirmDelete = confirm(`WARNING: Are you sure you want to delete "${anime.title}"?\nThis action will DELETE ALL episodes and subtitles within. This cannot be undone!`);
     if (!confirmDelete) return;
 
     try {
@@ -146,7 +146,7 @@ export default function AdminAnimeDetailPage() {
 
   // Hàm xử lý Xóa Tập Phim
   const handleDeleteEpisode = async (epId: string, epTitle: string) => {
-    const confirmDelete = confirm(`Bạn có chắc muốn xóa "${epTitle}"? Không thể hoàn tác!`);
+    const confirmDelete = confirm(`Are you sure you want to delete "${epTitle}"? This cannot be undone!`);
     if (!confirmDelete) return;
 
     try {
@@ -261,7 +261,7 @@ export default function AdminAnimeDetailPage() {
 
                   {/* 🌟 FORM NHẬP FANDOM PREFIX */}
                   <div>
-                    <label className="block text-xs text-gray-400 font-bold mb-1">Fandom Prefix (Dùng cho Auto-fill Data)</label>
+                    <label className="block text-xs text-gray-400 font-bold mb-1">Fandom Prefix (Used for Auto-fill Data)</label>
                     <div className="flex bg-gray-900 border border-gray-700 rounded-lg overflow-hidden focus-within:border-blue-500 transition">
                       <span className="bg-gray-800 text-gray-500 text-sm px-3 py-2.5 border-r border-gray-700 select-none">
                         https://
@@ -278,7 +278,7 @@ export default function AdminAnimeDetailPage() {
                       </span>
                     </div>
                     <p className="text-[10px] text-gray-500 mt-1 italic">
-                      * Bắt buộc phải có để tính năng 🪄 Auto-fill via AI ở trong trang Chi tiết Tập phim có thể hoạt động.
+                      * This is required for the 🪄 Auto-fill via AI feature in the Episode Details page to work.
                     </p>
                   </div>
 

@@ -117,20 +117,20 @@ export default function UploadAnimePage() {
     <div className="min-h-screen bg-[#0f0f11] text-white p-8">
       <div className="max-w-3xl mx-auto bg-gray-800 p-8 rounded-2xl shadow-2xl border border-gray-700">
         <div className="flex justify-between items-center mb-8 border-b border-gray-700 pb-4">
-          <h1 className="text-3xl font-black text-blue-400">Thêm Bộ Anime Mới</h1>
+          <h1 className="text-3xl font-black text-blue-400">Add a new anime</h1>
           <Link href="/admin/anime" className="text-gray-400 hover:text-white transition">
-            &larr; Quay lại
+            &larr; Return to Anime List
           </Link>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Tên phim */}
           <div>
-            <label className="block text-sm font-bold text-gray-300 mb-2">Tên Anime (*)</label>
+            <label className="block text-sm font-bold text-gray-300 mb-2">Anime Title (*)</label>
             <input
               type="text"
               required
-              placeholder="Ví dụ: Overlord IV"
+              placeholder="e.g.: Overlord IV"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
@@ -139,7 +139,7 @@ export default function UploadAnimePage() {
 
           {/* 🌟 3. GIAO DIỆN NHẬP FANDOM PREFIX ĐÃ ĐƯỢC ĐỒNG BỘ STYLING */}
           <div>
-            <label className="block text-sm font-bold text-gray-300 mb-2">Fandom Prefix (Dùng cho Auto-fill Data)</label>
+            <label className="block text-sm font-bold text-gray-300 mb-2">Fandom Prefix (Used for Auto-fill Data)</label>
             <div className="flex bg-gray-900 border border-gray-700 rounded-xl overflow-hidden focus-within:border-blue-500 transition">
               <span className="bg-gray-800 text-gray-500 text-sm px-4 py-3 border-r border-gray-700 select-none flex items-center">
                 https://
@@ -148,7 +148,7 @@ export default function UploadAnimePage() {
                 type="text" 
                 value={fandomPrefix}
                 onChange={(e) => setFandomPrefix(e.target.value.toLowerCase().replace(/\s+/g, '-'))}
-                placeholder="Ví dụ: jujutsu-kaisen, naruto..."
+                placeholder="e.g.: jujutsu-kaisen, naruto..."
                 className="w-full bg-transparent p-3 text-sm outline-none text-white"
               />
               <span className="bg-gray-800 text-gray-500 text-sm px-4 py-3 border-l border-gray-700 select-none hidden sm:flex items-center">
@@ -156,26 +156,26 @@ export default function UploadAnimePage() {
               </span>
             </div>
             <p className="text-xs text-gray-500 mt-2 italic">
-              * Bắt buộc phải có để tính năng 🪄 Auto-fill via AI ở trong trang Chi tiết Tập phim có thể hoạt động.
+              * This is required for the 🪄 Auto-fill via AI feature in the Episode Details page to work.
             </p>
           </div>
 
           {/* Chọn ảnh bìa */}
           <div>
-            <label className="block text-sm font-bold text-gray-300 mb-2">Ảnh bìa phim (Cover)</label>
+            <label className="block text-sm font-bold text-gray-300 mb-2">Cover Image</label>
             <input
               type="file"
               accept="image/*"
               onChange={handleFileChange}
               className="block w-full text-sm text-gray-400 file:mr-4 file:py-2.5 file:px-6 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer transition"
             />
-            {coverFile && <p className="text-xs text-green-400 mt-2">✓ Đã chọn: {coverFile.name}</p>}
+            {coverFile && <p className="text-xs text-green-400 mt-2">✓ Selected: {coverFile.name}</p>}
           </div>
 
           {/* Tóm tắt nội dung + NÚT AI */}
           <div>
             <div className="flex justify-between items-center mb-2">
-              <label className="block text-sm font-bold text-gray-300">Tóm tắt nội dung</label>
+              <label className="block text-sm font-bold text-gray-300">Content Summary</label>
               
               <button
                 type="button"
@@ -186,17 +186,17 @@ export default function UploadAnimePage() {
                 {isGeneratingDesc ? (
                   <>
                     <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    Đang viết...
+                    Generating...
                   </>
                 ) : (
-                  "✨ AI Viết Tóm Tắt"
+                  "✨ AI Generate Summary"
                 )}
               </button>
             </div>
             
             <textarea
               rows={5}
-              placeholder="Nhập mô tả bộ phim hoặc dùng AI để tự động tạo..."
+              placeholder="Enter anime description or use AI to generate automatically..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition resize-none"

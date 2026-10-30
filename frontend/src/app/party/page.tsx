@@ -72,8 +72,8 @@ export default function WatchPartyLobby() {
   // HÀM TẠO PHÒNG MỚI
   // ==========================================
   const handleCreateRoom = async () => {
-    if (!session?.user?.id) return alert("Vui lòng đăng nhập để tạo phòng!");
-    if (!roomName.trim()) return alert("Vui lòng đặt tên cho phòng chiếu của bạn!");
+    if (!session?.user?.id) return alert("Please log in to create a room!");
+    if (!roomName.trim()) return alert("Please enter a name for your watch party room!");
 
     setIsCreating(true);
     try {
@@ -93,11 +93,11 @@ export default function WatchPartyLobby() {
         const data = await res.json();
         router.push(`/party/${data.room.inviteCode}`);
       } else {
-        alert("Có lỗi xảy ra khi tạo phòng.");
+        alert("An error occurred while creating the room.");
       }
     } catch (error) {
       console.error(error);
-      alert("Lỗi kết nối đến Server.");
+      alert("Error connecting to the server.");
     } finally {
       setIsCreating(false);
     }

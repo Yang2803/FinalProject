@@ -135,7 +135,7 @@ export default function ForumPostDetailPage({ params }: { params: Promise<{ id: 
         setNewComment("");
         setReplyingToCommentId(null);
       }
-    } catch (error) { alert("Lỗi gửi bình luận"); }
+    } catch (error) { alert("Error posting comment"); }
   };
 
   // SỬA BÌNH LUẬN
@@ -151,12 +151,12 @@ export default function ForumPostDetailPage({ params }: { params: Promise<{ id: 
         setComments(comments.map(c => c.id === commentId ? updated : c));
         setEditingCommentId(null);
       }
-    } catch (error) { alert("Lỗi sửa comment"); }
+    } catch (error) { alert("Error updating comment"); }
   };
 
   // XÓA BÌNH LUẬN
   const handleDeleteComment = async (commentId: string) => {
-    if (!confirm("Bạn có chắc muốn xóa bình luận này?")) return;
+    if (!confirm("Are you sure you want to delete this comment?")) return;
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/comments/${commentId}`, {
         method: "DELETE", headers: { "Content-Type": "application/json" },
@@ -165,12 +165,12 @@ export default function ForumPostDetailPage({ params }: { params: Promise<{ id: 
       if (res.ok) {
         setComments(comments.filter(c => c.id !== commentId));
       }
-    } catch (error) { alert("Lỗi xóa comment"); }
+    } catch (error) { alert("Delete error"); }
   };
 
   // VOTE BÌNH LUẬN
   const handleVoteComment = async (commentId: string, type: 'UP' | 'DOWN') => {
-    if (!session?.user?.id) return alert("Đăng nhập để vote nhé!");
+    if (!session?.user?.id) return alert("Please log in to vote!");
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/comments/${commentId}/vote`, {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -180,7 +180,7 @@ export default function ForumPostDetailPage({ params }: { params: Promise<{ id: 
         const data = await res.json();
         setComments(comments.map(c => c.id === commentId ? { ...c, upvoteCount: data.upvoteCount } : c));
       }
-    } catch (error) { console.error("Lỗi vote comment", error); }
+    } catch (error) { console.error("Error voting comment", error); }
   };
 
   // Hàm dịch thuật Link
@@ -227,9 +227,9 @@ export default function ForumPostDetailPage({ params }: { params: Promise<{ id: 
     return (
       <div className="min-h-screen bg-[#0f0f11] text-white flex flex-col items-center justify-center">
         <h1 className="text-4xl font-bold mb-4">404</h1>
-        <p className="text-gray-400 mb-6">Bài viết này không tồn tại hoặc đã bị xóa.</p>
+        <p className="text-gray-400 mb-6">This post does not exist or has been deleted.</p>
         <Link href="/forum" className="bg-blue-600 px-6 py-2 rounded-lg font-bold hover:bg-blue-500 transition">
-          Trở về Forum
+          Back to Forum
         </Link>
       </div>
     );
@@ -347,7 +347,7 @@ export default function ForumPostDetailPage({ params }: { params: Promise<{ id: 
             <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
             </svg>
-            <span>{comments.length} thảo luận</span>
+            <span>{comments.length} Discussions</span>
           </div>
         </div>
 
@@ -446,7 +446,7 @@ export default function ForumPostDetailPage({ params }: { params: Promise<{ id: 
             })}
             
             {comments.length === 0 && (
-              <p className="text-gray-500 italic text-center py-8">Chưa có bình luận nào. Hãy là người đầu tiên chia sẻ suy nghĩ của bạn!</p>
+              <p className="text-gray-500 italic text-center py-8">No comments yet. Be the first to share your thoughts!</p>
             )}
           </div>
         </div>

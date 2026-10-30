@@ -601,7 +601,7 @@ function WatchEpisodeContent() {
       {/* THANH ĐIỀU HƯỚNG CÓ NÚT BẬT TẮT MANGA */}
       <div className="p-4 bg-gray-900/80 backdrop-blur-md sticky top-0 z-50 flex items-center gap-4">
         <Link href={`/anime/${animeId}`} className="text-gray-400 hover:text-white bg-gray-800 px-4 py-2 rounded-lg transition shrink-0">
-          &larr; Trở về
+          &larr; Return
         </Link>
         <div className="flex-1 truncate">
           <h1 className="text-lg font-bold text-blue-400 truncate">{animeTitle}</h1>

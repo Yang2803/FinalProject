@@ -237,13 +237,13 @@ export default function EditEpisodePage() {
         })
       });
 
-      if (!backendRes.ok) throw new Error("Lỗi lưu dữ liệu cập nhật");
+      if (!backendRes.ok) throw new Error("Error saving update data");
 
       alert("Cập nhật tập phim thành công!");
       router.push(`/admin/anime/${animeId}`);
 
     } catch (error) {
-      alert(error instanceof Error ? `Lỗi: ${error.message}` : "Có lỗi xảy ra");
+      alert(error instanceof Error ? `Lỗi: ${error.message}` : "An error occurred.");
     } finally {
       setIsSubmitting(false);
       setUploadProgress(0);
@@ -313,20 +313,20 @@ export default function EditEpisodePage() {
                   <label className="block text-sm font-semibold text-blue-300">Sync with Manga (Optional)</label>
                   {!mangaId ? (
                     <div className="mt-2 flex flex-col gap-1">
-                      <span className="text-xs text-red-400 italic">* Chưa tìm thấy Manga liên kết. Vui lòng chọn thủ công:</span>
+                      <span className="text-xs text-red-400 italic">* No related manga found. Please select manually:</span>
                       <select 
                         className="bg-gray-900 text-white text-sm px-3 py-1.5 rounded border border-gray-600 outline-none focus:border-blue-500"
                         onChange={(e) => setMangaId(e.target.value)}
                         value={mangaId || ""}
                       >
-                        <option value="">-- Chọn bộ Manga để liên kết --</option>
+                        <option value="">-- Select a Manga to link --</option>
                         {allMangas.map(m => (
                           <option key={m.id} value={m.id}>{m.title}</option>
                         ))}
                       </select>
                     </div>
                   ) : (
-                     <span className="text-xs text-green-400 font-bold block mt-1">✓ Đã liên kết với Manga ID</span>
+                     <span className="text-xs text-green-400 font-bold block mt-1">✓ Already linked with Manga ID</span>
                   )}
                 </div>
 
@@ -336,18 +336,18 @@ export default function EditEpisodePage() {
                   disabled={isMapping || !episodeNumber || !mangaId}
                   className="bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 text-white text-sm font-bold px-4 py-2 rounded-lg transition shrink-0 shadow-lg"
                 >
-                  {isMapping ? "✨ AI đang phân tích..." : "✨ Auto Map bằng AI"}
+                  {isMapping ? "✨ Analyzing..." : "✨ Auto Map"}
                 </button>
              </div>
              
              {/* Danh sách các nút Chapter */}
              <div className="mt-4 border-t border-blue-900/50 pt-4">
                 <label className="block text-sm text-blue-300 mb-3 font-medium">
-                  Các chapter tương ứng: <span className="text-xs text-gray-400 italic">(Nhấn để chọn thủ công hoặc dùng nút AI ở trên)</span>
+                  Corresponding Chapters: <span className="text-xs text-gray-400 italic">(Click to select manually or use the AI button above)</span>
                 </label>
                 
                 {availableChapters.length === 0 ? (
-                  <p className="text-sm text-gray-500 italic">Vui lòng chọn bộ Manga để xem danh sách chapter...</p>
+                  <p className="text-sm text-gray-500 italic">Please select a manga to view the list of chapters...</p>
                 ) : (
                   <div className="flex flex-wrap gap-2 max-h-[200px] overflow-y-auto custom-scrollbar p-1">
                     {availableChapters.map(chapter => {
@@ -412,7 +412,7 @@ export default function EditEpisodePage() {
                     <input
                       type="text"
                       required
-                      placeholder="Nhãn (VD: Tiếng Việt)"
+                      placeholder="Label (e.g.: Vietnamese)"
                       value={sub.label}
                       onChange={(e) => updateSubtitleField(sub.id, "label", e.target.value)}
                       className="w-full sm:w-1/3 bg-gray-800 border border-gray-700 rounded p-2 text-sm text-white outline-none"
@@ -440,7 +440,7 @@ export default function EditEpisodePage() {
             {isSubmitting && uploadProgress > 0 ? (
               <div className="w-full bg-gray-800 rounded-xl p-4 border border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.2)]">
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-bold text-blue-400 animate-pulse">Đang tải video mới lên Cloudflare R2...</span>
+                  <span className="text-sm font-bold text-blue-400 animate-pulse">Uploading new video to lên Cloudflare R2...</span>
                   <span className="text-sm font-black text-white">{uploadProgress}%</span>
                 </div>
                 
@@ -452,7 +452,7 @@ export default function EditEpisodePage() {
                   ></div>
                 </div>
                 
-                <p className="text-xs text-gray-400 mt-3 text-center italic">Vui lòng không đóng tab trình duyệt trong lúc tải.</p>
+                <p className="text-xs text-gray-400 mt-3 text-center italic">Please do not close the browser tab while uploading.</p>
               </div>
             ) : (
               <button
@@ -460,7 +460,7 @@ export default function EditEpisodePage() {
                 disabled={isSubmitting}
                 className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition disabled:opacity-50 flex justify-center items-center"
               >
-                {isSubmitting ? "Đang xử lý & Lưu dữ liệu..." : "Save Changes"}
+                {isSubmitting ? "Processing & Saving Data..." : "Save Changes"}
               </button>
             )}
           </div>

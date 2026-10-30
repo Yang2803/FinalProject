@@ -235,7 +235,7 @@ export default function AdminMangaDetails({ params }: { params: Promise<{ id: st
 
               {/* FORM NHẬP FANDOM PREFIX */}
               <div>
-                <label className="block text-xs text-gray-400 font-bold mb-1">Fandom Prefix (Dùng cho Auto-fill Data)</label>
+                <label className="block text-xs text-gray-400 font-bold mb-1">Fandom Prefix (Used for Auto-fill Data)</label>
                 <div className="flex bg-gray-900 border border-gray-700 rounded-lg overflow-hidden focus-within:border-blue-500 transition">
                   <span className="bg-gray-800 text-gray-500 text-sm px-3 py-2.5 border-r border-gray-700 select-none">
                     https://

@@ -196,7 +196,7 @@ export function useMangaRoom({
       if (typeof window !== "undefined") {
         sessionStorage.removeItem(`manga_room_approved_${roomId}`);
       }
-      alert("Trưởng phòng đã giải tán phòng đọc này!");
+      alert("The host is disbanding the room! You will be redirected to the lobby.");
       router.push("/manga-room");
     });
 

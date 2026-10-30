@@ -169,7 +169,7 @@ export default function EditChapterPage({ params }: { params: Promise<{ id: stri
   // 🌟 2. HÀM GỌI API AUTO-FILL MANGA CHAPTER
   const handleAutoFill = async () => {
     if (!chapterNumber) {
-      alert("Vui lòng nhập Số Chapter (Chapter Number) trước khi dùng Auto-fill!");
+      alert("Please enter Chapter Number before using Auto-fill!");
       return;
     }
     
@@ -188,11 +188,11 @@ export default function EditChapterPage({ params }: { params: Promise<{ id: stri
         setCharacters(resData.data.characters.join(", "));
         setPlotSummary(resData.data.plotSummary);
       } else {
-        alert(resData.error || "Không tìm thấy dữ liệu trên Wiki!");
+        alert(resData.error || "No data found on Wiki!");
       }
     } catch (error) {
-      console.error("Lỗi Auto-fill:", error);
-      alert("Lỗi kết nối đến Server AI.");
+      console.error("Auto-fill Error:", error);
+      alert("Error connecting to AI Server.");
     } finally {
       setIsAutoFilling(false);
     }
@@ -318,7 +318,7 @@ export default function EditChapterPage({ params }: { params: Promise<{ id: stri
 
             <div className="space-y-6 border-t border-gray-700 pt-6">
               <div>
-                <label className="block text-xs font-bold text-gray-300 mb-2">Characters (Phân cách bằng dấu phẩy)</label>
+                <label className="block text-xs font-bold text-gray-300 mb-2">Characters (separated by commas)</label>
                 <input
                   type="text"
                   value={characters}
@@ -329,7 +329,7 @@ export default function EditChapterPage({ params }: { params: Promise<{ id: stri
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-300 mb-2">Plot Details (Cốt truyện chi tiết)</label>
+                <label className="block text-xs font-bold text-gray-300 mb-2">Plot Details</label>
                 <textarea
                   rows={4}
                   value={plotSummary}

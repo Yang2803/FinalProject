@@ -21,12 +21,12 @@ interface FloatingReaction {
 }
 
 const REACTION_LIST = [
-  { emoji: "🔥", label: "Cháy quá" },
-  { emoji: "😭", label: "Cảm động" },
+  { emoji: "🔥", label: "Too hot" },
+  { emoji: "😭", label: "Moved" },
   { emoji: "😱", label: "Plot twist" },
-  { emoji: "🤣", label: "Hề hước" },
-  { emoji: "❤️", label: "Yêu thích" },
-  { emoji: "👏", label: "Đỉnh chóp" },
+  { emoji: "🤣", label: "Funny" },
+  { emoji: "❤️", label: "Love it" },
+  { emoji: "👏", label: "Brilliant" },
 ];
 
 const POCKET_POSITIONS = [22, 68, 38, 80, 18, 54, 30, 74, 46, 62];
@@ -152,7 +152,7 @@ export function MangaRoomReactions({
           }`}
           title="Thả cảm xúc tương tác"
         >
-          <span>✨ Cảm xúc</span>
+          <span>✨ Emotion</span>
         </button>
 
         {isOpen && (

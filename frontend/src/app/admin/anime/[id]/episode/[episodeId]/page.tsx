@@ -118,7 +118,7 @@ export default function AdminEpisodeDetailsPage() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 pb-4 border-b border-gray-800">
           <div>
             <h1 className="text-2xl font-bold text-blue-400">Episode Page Details Configuration</h1>
-            <p className="text-gray-400 text-sm mt-1">Cấu hình dữ liệu Cốt truyện, Nhân vật xuất hiện và Chương chuyển thể</p>
+            <p className="text-gray-400 text-sm mt-1">Configure the plot details, characters, and adapted chapters</p>
           </div>
           
           {/* NÚT AUTO-FILL THẦN THÁNH */}
@@ -144,7 +144,7 @@ export default function AdminEpisodeDetailsPage() {
         <form onSubmit={handleSave} className="space-y-5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Số thứ tự tập phim</label>
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Episode index number</label>
               <input
                 type="number"
                 value={episodeNumber}
@@ -166,7 +166,7 @@ export default function AdminEpisodeDetailsPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Characters (Phân cách bằng dấu phẩy)</label>
+            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Characters (Separated by commas)</label>
             <input
               type="text"
               value={characters}
@@ -177,7 +177,7 @@ export default function AdminEpisodeDetailsPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Plot Details (Cốt truyện chi tiết)</label>
+            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Plot Details</label>
             <textarea
               value={plotSummary}
               onChange={(e) => setPlotSummary(e.target.value)}
@@ -193,14 +193,14 @@ export default function AdminEpisodeDetailsPage() {
               onClick={() => router.back()}
               className="bg-gray-800 hover:bg-gray-700 text-gray-200 font-semibold text-sm px-5 py-2.5 rounded-xl transition"
             >
-              Hủy bỏ
+              Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
               className="bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm px-6 py-2.5 rounded-xl transition shadow-lg shadow-blue-500/20 disabled:opacity-50"
             >
-              {isSubmitting ? "Saving..." : "Lưu Thay Đổi"}
+              {isSubmitting ? "Saving..." : "Save Changes"}
             </button>
           </div>
         </form>

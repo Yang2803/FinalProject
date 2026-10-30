@@ -166,7 +166,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
 
           // 🌟 ĐÃ SỬA TẠI ĐÂY: Xử lý hiển thị thông báo từ chối và điều hướng (Không load lại trang)
           if (isMember?.status === "REJECTED") {
-            alert("Yêu cầu tham gia phòng của bạn đã bị từ chối.");
+            alert("Your request to join the room has been denied. You will be redirected to the lobby.");
             router.push("/party");
             return;
           }
@@ -278,10 +278,10 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
             if (data.targetUserId === session?.user?.id) {
               // Nếu TÔI là người bị réo tên
               if (data.action === "REJECT") {
-                alert("Yêu cầu tham gia phòng của bạn đã bị từ chối.");
+                alert("Your request to join the room has been denied. You will be redirected to the lobby.");
                 window.location.href = "/party"; 
               } else if (data.action === "APPROVE") {
-                alert("Bạn đã được Trưởng phòng duyệt tham gia!");
+                alert("Your request to join the room has been approved!");
                 window.location.reload(); // Tải lại nhẹ 1 lần để vào giao diện chính
               }
             } else {
@@ -295,7 +295,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
           // 🌟 LẮNG NGHE TÍN HIỆU GIẢI TÁN TỪ TRƯỞNG PHÒNG
           globalSocket.on("receive_disband_room", () => {
             localStorage.removeItem(`party_chat_${roomData.id}`);
-            alert("Trưởng phòng đã giải tán phòng chiếu! Bạn sẽ được đưa về Sảnh chờ.");
+            alert("The host has disbanded the room! You will be redirected to the lobby.");
             if (globalSocket) {
               globalSocket.disconnect();
               globalSocket = null;
@@ -493,7 +493,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
     if (!room) return;
     
     const joinedMembers = room.members.filter(m => m.status === "JOINED");
-    if (joinedMembers.length > 1 && !confirm("Bạn có chắc chắn muốn giải tán phòng? Mọi thành viên sẽ bị thoát và toàn bộ dữ liệu phòng sẽ bị xóa.")) return;
+    if (joinedMembers.length > 1 && !confirm("Are you sure you want to disband the room? All members will be redirected to the lobby and all the room data will be deleted.")) return;
     
     try {
       await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/party/rooms/${room.id}`, {
@@ -583,17 +583,17 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
     }
   };
 
-  if (loading) return <div className="min-h-screen bg-[#0f0f11] flex items-center justify-center text-white">Đang tải phòng...</div>;
-  if (!room) return <div className="min-h-screen bg-[#0f0f11] flex items-center justify-center text-white">Phòng không tồn tại.</div>;
+  if (loading) return <div className="min-h-screen bg-[#0f0f11] flex items-center justify-center text-white">Loading rooms...</div>;
+  if (!room) return <div className="min-h-screen bg-[#0f0f11] flex items-center justify-center text-white">Room does not exist.</div>;
 
   const myMembership = room.members.find(m => m.user.id === session?.user?.id);
   if (myMembership?.status === "PENDING" && !isHost) {
     return (
       <div className="min-h-screen bg-[#0f0f11] flex flex-col items-center justify-center text-white">
         <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-6"></div>
-        <h2 className="text-2xl font-bold mb-2">Phòng riêng tư (Private)</h2>
-        <p className="text-gray-400">Vui lòng đợi Trưởng phòng duyệt yêu cầu tham gia của bạn...</p>
-        <button onClick={() => window.location.reload()} className="mt-6 text-blue-400 hover:underline">Tải lại trang</button>
+        <h2 className="text-2xl font-bold mb-2">Private Room</h2>
+        <p className="text-gray-400">Please wait for the host to approve your request to join.</p>
+        <button onClick={() => window.location.reload()} className="mt-6 text-blue-400 hover:underline">Reload Page</button>
       </div>
     );
   }
@@ -643,13 +643,13 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
           <div className="bg-[#1a1d24] w-[400px] p-6 rounded-2xl border border-gray-800 shadow-2xl">
             <h2 className="text-xl font-bold mb-4 flex items-center justify-between">
-              📺 Chọn Phim Mới
+              📺 Choose another anime
               <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-white">✕</button>
             </h2>
             
             <div className="space-y-4">
               <div>
-                <label className="block text-sm text-gray-400 mb-1">Chọn Anime</label>
+                <label className="block text-sm text-gray-400 mb-1">Choose Anime</label>
                 <select 
                   value={selectedAnimeId} 
                   onChange={(e) => {
@@ -662,7 +662,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
                   }}
                   className="w-full bg-gray-900 border border-gray-800 rounded-lg p-3 text-sm outline-none focus:border-blue-500"
                 >
-                  <option value="">-- Chọn một bộ phim --</option>
+                  <option value="">-- Choose an anime --</option>
                   {animeList.map(anime => (
                     <option key={anime.id} value={anime.id}>{anime.title}</option>
                   ))}
@@ -670,16 +670,16 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
               </div>
 
               <div>
-                <label className="block text-sm text-gray-400 mb-1">Chọn Tập</label>
+                <label className="block text-sm text-gray-400 mb-1">Choose Episode</label>
                 <select 
                   value={selectedEpisodeId} 
                   onChange={(e) => setSelectedEpisodeId(e.target.value)}
                   disabled={!selectedAnimeId || episodeList.length === 0}
                   className="w-full bg-gray-900 border border-gray-800 rounded-lg p-3 text-sm outline-none focus:border-blue-500 disabled:opacity-50"
                 >
-                  <option value="">{episodeList.length === 0 ? '-- Chọn Anime trước --' : '-- Chọn một tập --'}</option>
+                  <option value="">{episodeList.length === 0 ? '-- Choose an anime first --' : '-- Choose an episode --'}</option>
                   {episodeList.map(ep => (
-                    <option key={ep.id} value={ep.id}>Tập {ep.episodeNumber} - {ep.title}</option>
+                    <option key={ep.id} value={ep.id}>Episode {ep.episodeNumber} - {ep.title}</option>
                   ))}
                 </select>
               </div>
@@ -689,7 +689,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
                 disabled={!selectedEpisodeId || isChangingVideo}
                 className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg mt-2 transition disabled:opacity-50"
               >
-                {isChangingVideo ? "Đang xử lý..." : "Bắt đầu phát!"}
+                {isChangingVideo ? "Processing..." : "Start Watching!"}
               </button>
             </div>
           </div>
@@ -701,10 +701,10 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
         <div className="flex items-center justify-between mb-4 shrink-0">
           <div>
             <h1 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">{room.name}</h1>
-            <p className="text-sm text-gray-400">Mã phòng: <span className="font-bold text-white bg-gray-800 px-2 py-0.5 rounded">{room.inviteCode}</span></p>
+            <p className="text-sm text-gray-400">Code: <span className="font-bold text-white bg-gray-800 px-2 py-0.5 rounded">{room.inviteCode}</span></p>
           </div>
           <button onClick={handleLeaveRoom} className="bg-red-600/20 text-red-500 hover:bg-red-600 hover:text-white px-4 py-2 rounded-lg font-bold transition">
-            Rời phòng
+            Leave Room
           </button>
         </div>
 
@@ -714,7 +714,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
               <h2 className="text-xl font-bold">{room.episode.title}</h2>
               <p className="text-sm text-gray-500 mt-1 flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                Trực tiếp Watch Party
+                Live Watch Party
               </p>
             </div>
           </div>
@@ -748,17 +748,17 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
           ) : (
             <div className="text-gray-500 flex flex-col items-center">
               <svg className="w-16 h-16 mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" /></svg>
-              Trưởng phòng chưa chọn tập phim nào
+              Host has not selected an episode yet
             </div>
           )}
 
-          {!isHost && <div className="absolute inset-0 z-10" title="Đang đồng bộ với Trưởng phòng"></div>}
+          {!isHost && <div className="absolute inset-0 z-10" title="Syncing with Host"></div>}
         </div>
 
         {!isHost && !hasInteracted && room.episode && (
           <div className="text-center mb-2 animate-pulse">
             <span className="text-xs bg-yellow-500/20 text-yellow-400 px-3 py-1 rounded-full border border-yellow-500/50">
-              Hãy click bất kỳ đâu trên trang để cho phép phát âm thanh
+              Click anywhere on the page to allow audio playback
             </span>
           </div>
         )}
@@ -797,7 +797,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
             </div>
             
             <span className="text-xs text-gray-500 italic bg-gray-900 px-3 py-1 rounded-full border border-gray-800">
-              Trưởng phòng đang giữ remote
+              Host is holding the remote
             </span>
           </div>
         )}
@@ -812,7 +812,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
             style={{ backgroundColor: 'var(--room-accent)' }}
           ></div>
             <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
-              <span className="text-xl">👑</span> Bảng điều khiển Trưởng Phòng
+              <span className="text-xl">👑</span> Host Control Panel
             </h3>
             
             <div className="flex flex-wrap gap-4">
@@ -820,7 +820,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
                 onClick={() => setIsModalOpen(true)}
                 className="bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 px-5 py-2.5 rounded-lg text-sm font-bold transition"
               >
-                📺 Chọn Anime/Đổi tập khác
+                📺 Select Anime/Change Episode
               </button>
 
               {/* 🌟 NÚT MỞ MODAL ĐỔI THEME */}
@@ -829,7 +829,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
                 className="bg-gray-800 hover:bg-gray-700 text-white px-5 py-2.5 rounded-lg text-sm font-bold transition border shadow-sm active:scale-95 flex items-center gap-2"
                 style={{ borderColor: 'var(--room-accent)', color: 'var(--room-accent)' }}
               >
-                🎨 Tùy biến Theme
+                🎨 Customize Theme
               </button>
 
               {/* 🌟 NÚT GIẢI TÁN PHÒNG */}
@@ -837,7 +837,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
                 onClick={handleDisbandRoom}
                 className="bg-red-600 hover:bg-red-500 text-white px-5 py-2.5 rounded-lg text-sm font-bold transition shadow-lg shadow-red-900/20"
               >
-                🧨 Giải tán phòng
+                🧨 Break the room.
               </button>
             </div>
 
@@ -926,7 +926,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
           style={{ borderColor: 'rgba(255, 255, 255, 0.08)', boxShadow: '0 0 10px var(--room-glow)' }}
         >
           <h3 className="font-bold text-gray-300 mb-4 flex items-center justify-between">
-            <span>Đang xem ({joinedMembers.length})</span>
+            <span>Members ({joinedMembers.length})</span>
             <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
           </h3>
           <div className="space-y-3 max-h-[20vh] overflow-y-auto custom-scrollbar pr-2">
@@ -959,7 +959,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
           <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 flex flex-col gap-3">
             {messages.length === 0 ? (
               <div className="h-full flex items-center justify-center text-sm text-gray-500 italic text-center">
-                Chưa có tin nhắn nào. <br/> Hãy gửi lời chào đến mọi người nhé!
+                No messages received yet. <br/> Send a greeting to everyone!
               </div>
             ) : (
               messages.map((msg, index) => (
@@ -1004,7 +1004,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
               type="text" 
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
-              placeholder="Nhập tin nhắn..." 
+              placeholder="Enter message..." 
               className="flex-1 min-w-0 bg-gray-900 border border-gray-800 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 text-white transition" 
             />
             <button 
@@ -1013,7 +1013,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
               className="disabled:opacity-50 text-white px-4 py-2 rounded-lg font-bold text-sm transition shadow-md active:scale-95 shrink-0"
               style={{ backgroundColor: 'var(--room-accent)', boxShadow: '0 0 10px var(--room-glow)' }}
             >
-              Gửi
+              Send
             </button>
           </form>
         </div>
@@ -1024,14 +1024,14 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
           <div className="bg-[#14161d] w-full max-w-md rounded-2xl border border-gray-800 p-6 shadow-2xl relative">
             <div className="flex items-center justify-between mb-4 border-b border-gray-800 pb-3">
               <h3 className="text-lg font-black text-gray-100 flex items-center gap-2">
-                🎨 Tùy Biến Không Gian Phòng
+                🎨 Customize Room Space
               </h3>
               <button onClick={() => setIsThemeModalOpen(false)} className="text-gray-400 hover:text-white">✕</button>
             </div>
 
             {/* Danh sách bảng màu sẵn có */}
             <div className="mb-4">
-              <label className="block text-xs font-bold text-gray-400 mb-2 uppercase">Chọn Màu Neon</label>
+              <label className="block text-xs font-bold text-gray-400 mb-2 uppercase">Select Neon Color</label>
               <div className="grid grid-cols-2 gap-2">
                 {THEME_PRESETS.map((preset) => (
                   <button
@@ -1053,7 +1053,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
 
             {/* URL Hình nền */}
             <div className="mb-6">
-              <label className="block text-xs font-bold text-gray-400 mb-2 uppercase">URL Ảnh Nền (Tùy chọn)</label>
+              <label className="block text-xs font-bold text-gray-400 mb-2 uppercase">Background Image URL (Optional)</label>
               <input
                 type="text"
                 placeholder="https://example.com/wallpaper.jpg"
@@ -1069,7 +1069,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
                 onClick={() => setIsThemeModalOpen(false)} 
                 className="px-4 py-2 text-xs font-bold text-gray-400 hover:text-white"
               >
-                Hủy
+                Cancel
               </button>
               <button
                 onClick={() => {
@@ -1085,7 +1085,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
                 className="px-5 py-2 rounded-xl text-xs font-black text-white shadow-md active:scale-95 transition-all"
                 style={{ backgroundColor: 'var(--room-accent)', boxShadow: '0 0 12px var(--room-glow)' }}
               >
-                Lưu & Áp Dụng Ngay
+                Save & Apply Now
               </button>
             </div>
           </div>

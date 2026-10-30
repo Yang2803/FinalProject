@@ -47,10 +47,10 @@ export default function UploadEpisodePage() {
           setAnimeTitle(data.title);
           if (data.mangaId) setMangaId(data.mangaId);
         } else {
-          setAnimeTitle("Không tìm thấy dữ liệu phim");
+          setAnimeTitle("Cannot find anime data");
         }
       })
-      .catch(() => setAnimeTitle("Lỗi kết nối server"));
+      .catch(() => setAnimeTitle("Server connection error"));
   }, [animeId]);
 
   // Lấy danh sách Manga
@@ -120,7 +120,7 @@ export default function UploadEpisodePage() {
         if (data.foundNumbers && data.foundNumbers.length > 0) {
            alert(`✨ AI tìm thấy các chapter số: ${data.foundNumbers.join(', ')}`);
         } else {
-           alert(`✨ AI báo đây là tập Filler, không có Manga tương ứng!`);
+           alert(`✨ AI báo đây là tập Filler, there is no corresponding manga.!`);
         }
       } else {
         alert(data.message || "Lỗi AI mapping");
@@ -136,7 +136,7 @@ export default function UploadEpisodePage() {
   // 🌟 HÀM MỚI: XỬ LÝ NÚT AUTO-FILL (Đã đồng bộ 100% logic với trang Edit)
   const handleAutoFill = async () => {
     if (!episodeNumber) {
-      alert("Vui lòng điền số tập phim trước khi tự động quét dữ liệu!");
+      alert("Please enter the episode number before the data is automatically scanned!");
       return;
     }
 
@@ -161,13 +161,13 @@ export default function UploadEpisodePage() {
         setAdaptedFrom(adaptedFrom || "");
         setCharacters(characters ? (Array.isArray(characters) ? characters.join(", ") : characters) : "");
         
-        alert(`✨ Đã tự động điền thông tin dựa trên dữ liệu trang: "${result.sourceTitle}"!`);
+        alert(`✨ Automatically filled information based on data from: "${result.sourceTitle}"!`);
       } else {
-        alert(`❌ Lỗi: ${result.error || "Không thể tự động điền."}`);
+        alert(`❌ Error: ${result.error || "Cannot auto-fill data."}`);
       }
     } catch (error) {
-      console.error("Lỗi Auto-fill:", error);
-      alert("❌ Gặp sự cố khi kết nối tới máy chủ.");
+      console.error("Auto-fill Error:", error);
+      alert("❌ An error occurred while connecting to the server.");
     } finally {
       setIsAutoFilling(false);
     }
@@ -309,7 +309,7 @@ export default function UploadEpisodePage() {
                   disabled={isAutoFilling || episodeNumber === ""}
                   className="bg-fuchsia-600 hover:bg-fuchsia-500 disabled:bg-gray-700 text-white text-xs font-bold px-3 py-1 rounded shadow-lg transition"
                 >
-                  {isAutoFilling ? "🪄 Đang lấy data..." : "🪄 Auto-fill"}
+                  {isAutoFilling ? "🪄 Finding data..." : "🪄 Auto-fill"}
                 </button>
               </label>
               <input
@@ -325,14 +325,14 @@ export default function UploadEpisodePage() {
             <div className="col-span-1 md:col-span-2">
               <label className="block text-sm font-semibold text-gray-400 mb-2">Adapted From (Manga Chapter)</label>
               <input
-                type="text" placeholder="Ví dụ: Chapter 1 (p. 2-10)"
+                type="text" placeholder="E.g.: Chapter 1 (p. 2-10)"
                 value={adaptedFrom} onChange={(e) => setAdaptedFrom(e.target.value)}
                 className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-sm text-white outline-none focus:border-purple-500"
               />
             </div>
 
             <div className="col-span-1 md:col-span-2">
-              <label className="block text-sm font-semibold text-gray-400 mb-2">Characters (Phân cách bằng dấu phẩy)</label>
+              <label className="block text-sm font-semibold text-gray-400 mb-2">Characters (Comma-separated)</label>
               <input
                 type="text" placeholder="Naruto Uzumaki, Sasuke Uchiha..."
                 value={characters} onChange={(e) => setCharacters(e.target.value)}
@@ -341,9 +341,9 @@ export default function UploadEpisodePage() {
             </div>
 
             <div className="col-span-1 md:col-span-2">
-              <label className="block text-sm font-semibold text-gray-400 mb-2">Plot Details (Cốt truyện chi tiết)</label>
+              <label className="block text-sm font-semibold text-gray-400 mb-2">Plot Details (Detailed plot)</label>
               <textarea
-                rows={4} placeholder="Nhập tóm tắt nội dung tập phim..."
+                rows={4} placeholder="Enter a detailed summary of the episode..."
                 value={plotSummary} onChange={(e) => setPlotSummary(e.target.value)}
                 className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-sm text-white outline-none focus:border-purple-500 custom-scrollbar"
               />
@@ -369,20 +369,20 @@ export default function UploadEpisodePage() {
                   <label className="block text-sm font-semibold text-indigo-300">Sync with Manga (Optional)</label>
                   {!mangaId ? (
                     <div className="mt-2 flex flex-col gap-1">
-                      <span className="text-xs text-red-400 italic">* Chưa tìm thấy Manga liên kết. Vui lòng chọn thủ công:</span>
+                      <span className="text-xs text-red-400 italic">* No related manga found. Please select manually:</span>
                       <select 
                         className="bg-gray-900 text-white text-sm px-3 py-1.5 rounded border border-gray-600 outline-none focus:border-indigo-500"
                         onChange={(e) => setMangaId(e.target.value)}
                         value={mangaId || ""}
                       >
-                        <option value="">-- Chọn bộ Manga để liên kết --</option>
+                        <option value="">-- Select a Manga to link --</option>
                         {allMangas.map(m => (
                           <option key={m.id} value={m.id}>{m.title}</option>
                         ))}
                       </select>
                     </div>
                   ) : (
-                     <span className="text-xs text-green-400 font-bold block mt-1">✓ Đã liên kết với Manga ID</span>
+                     <span className="text-xs text-green-400 font-bold block mt-1">✓ Already linked with Manga ID</span>
                   )}
                 </div>
 
@@ -391,18 +391,18 @@ export default function UploadEpisodePage() {
                   disabled={isMapping || !episodeNumber || !mangaId}
                   className="bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-700 text-white text-sm font-bold px-4 py-2 rounded-lg transition shrink-0 shadow-lg shadow-indigo-500/20"
                 >
-                  {isMapping ? "✨ Đang phân tích..." : "✨ Auto Map"}
+                  {isMapping ? "✨ Anlalyzing..." : "✨ Auto Map"}
                 </button>
              </div>
              
              {/* Danh sách các nút Chapter */}
              <div className="mt-4 border-t border-indigo-900/50 pt-4">
                 <label className="block text-sm text-indigo-300 mb-3 font-medium">
-                  Các chapter tương ứng: <span className="text-xs text-gray-400 italic">(Nhấn để chọn thủ công hoặc dùng nút Auto Map ở trên)</span>
+                  The corresponding chapters: <span className="text-xs text-gray-400 italic">(Click to select manually or use the Auto Map button above)</span>
                 </label>
                 
                 {availableChapters.length === 0 ? (
-                  <p className="text-sm text-gray-500 italic">Vui lòng chọn bộ Manga để xem danh sách chapter...</p>
+                  <p className="text-sm text-gray-500 italic">Please select a manga to view the list of chapters...</p>
                 ) : (
                   <div className="flex flex-wrap gap-2 max-h-[200px] overflow-y-auto custom-scrollbar p-1">
                     {availableChapters.map(chapter => {
@@ -470,7 +470,7 @@ export default function UploadEpisodePage() {
             {loading && uploadProgress > 0 ? (
               <div className="w-full bg-gray-800 rounded-xl p-4 border border-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.2)]">
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-bold text-purple-400 animate-pulse">Đang tải video lên Cloudflare R2...</span>
+                  <span className="text-sm font-bold text-purple-400 animate-pulse">Uploading video to Cloudflare R2...</span>
                   <span className="text-sm font-black text-white">{uploadProgress}%</span>
                 </div>
                 
@@ -481,7 +481,7 @@ export default function UploadEpisodePage() {
                   ></div>
                 </div>
                 
-                <p className="text-xs text-gray-400 mt-3 text-center italic">Vui lòng không đóng tab trình duyệt trong lúc tải.</p>
+                <p className="text-xs text-gray-400 mt-3 text-center italic">Please do not close the browser tab while it is downloading.</p>
               </div>
             ) : (
               <button
@@ -489,7 +489,7 @@ export default function UploadEpisodePage() {
                 disabled={loading}
                 className="w-full py-4 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl shadow-lg transition disabled:opacity-50 flex justify-center items-center text-lg"
               >
-                {loading ? "Đang chuẩn bị Upload..." : "🚀 Upload New Episode"}
+                {loading ? "Preparing upload..." : "🚀 Upload New Episode"}
               </button>
             )}
           </div>

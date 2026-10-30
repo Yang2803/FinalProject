@@ -34,7 +34,7 @@ function VoiceControls() {
             : "bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700"
         }`}
       >
-        <span>{isMicEnabled ? "🎙️ Mic Đang Bật" : "🔇 Mic Đang Tắt"}</span>
+        <span>{isMicEnabled ? "🎙️ Mic is turning on" : "🔇 Mic is off"}</span>
       </button>
 
       {/* Danh sách avatar những người đang trong kênh Voice */}
@@ -44,7 +44,7 @@ function VoiceControls() {
           return (
             <div
               key={p.identity}
-              title={`${p.name || p.identity} ${isSpeaking ? "(Đang nói...)" : ""}`}
+              title={`${p.name || p.identity} ${isSpeaking ? "(Speaking...)" : ""}`}
               className={`w-6 h-6 rounded-full bg-gray-700 flex items-center justify-center text-[10px] font-bold border-2 transition-all ${
                 isSpeaking
                   ? "border-emerald-400 scale-110 shadow-[0_0_8px_#34d399]"
@@ -81,12 +81,12 @@ export function MangaVoiceChat({
             userId
           )}&userName=${encodeURIComponent(userName)}`
         );
-        if (!res.ok) throw new Error("Không lấy được token đàm thoại.");
+        if (!res.ok) throw new Error("Failed to fetch voice chat token.");
         const data = await res.json();
         setToken(data.token);
       } catch (err: unknown) {
       console.error("Voice chat error:", err);
-      const errorMessage = err instanceof Error ? err.message : "Đã xảy ra lỗi Voice Chat";
+      const errorMessage = err instanceof Error ? err.message : "An error occurred in the voice chat";
       setError(errorMessage);
     }
     };
@@ -97,11 +97,11 @@ export function MangaVoiceChat({
   }, [roomId, userId, userName]);
 
   if (error) {
-    return <span className="text-xs text-red-400">Lỗi Voice Chat</span>;
+    return <span className="text-xs text-red-400">Voice Chat Error</span>;
   }
 
   if (!token) {
-    return <span className="text-xs text-gray-500 animate-pulse">Kết nối Voice...</span>;
+    return <span className="text-xs text-gray-500 animate-pulse">Connecting to Voice...</span>;
   }
 
   return (
