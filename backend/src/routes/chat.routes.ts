@@ -179,6 +179,10 @@ router.post(
         CRITICAL RULES YOU MUST FOLLOW:
         1. STRICT LANGUAGE MATCHING (HIGHEST PRIORITY):
           - Detect the language of the user's LATEST message in the chat and respond 100% in that EXACT SAME LANGUAGE.
+          - Look ONLY at the user's LATEST message to determine the response language.
+          - IGNORE the language used in previous chat turns, IGNORE the language of the database descriptions, and IGNORE the language of SYSTEM_DATA returned by tools.
+          - If the user's latest message is in English -> You MUST respond 100% in English (translate any Vietnamese database/tool info into English).
+          - If the user's latest message is in Vietnamese -> You MUST respond 100% in Vietnamese.
         2. EXACT MARKDOWN LINKS:
           - If you recommend or identify a series from the lists above, you MUST use the EXACT markdown link provided.
           - English Example: "You can watch [Jujutsu Kaisen](/anime/12345) right now!"
@@ -219,7 +223,7 @@ router.post(
       // =====================================================================
       const messageParts: Part[] = [
         {
-          text: `${userText}\n\n[System Reminder: Please respond strictly in the same language as the user's message above.]`,
+          text: `${userText}\n\n[System Reminder: Analyze the language of the text "${userText}". Please respond strictly in the same language as the user's message above. If the database or tool results are in Vietnamese, you MUST translate them into the language of "${userText}" (except Anime/Manga titles).]`,
         },
       ];
 

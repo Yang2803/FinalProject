@@ -165,7 +165,7 @@ function WatchEpisodeContent() {
   const handleSubmitForumPost = async () => {
     // 🌟 Cập nhật điều kiện bắt lỗi: Phải có Content HOẶC File HOẶC Link đính kèm
     if (!postTitle.trim() || (!postContent.trim() && !postMediaFile && !attachedTimestamp)) {
-      return alert("Vui lòng nhập tiêu đề và nội dung bài viết!");
+      return alert("Please enter the title and content of your post!");
     }
     if (!session?.user?.id) return alert("Vui lòng đăng nhập để đăng bài!");
 
@@ -212,7 +212,7 @@ function WatchEpisodeContent() {
       });
 
       if (res.ok) {
-        alert("🎉 Đã đăng bài lên Forum thành công! Bạn có thể tiếp tục xem phim.");
+        alert("🎉 Your post to the forum has been successful! You can continue watching the movie.");
         setIsForumModalOpen(false);
         // Reset toàn bộ
         setPostTitle(""); setPostContent(""); setPostTags([]); setPostIsSpoiler(false);
@@ -881,7 +881,7 @@ function WatchEpisodeContent() {
             
             <div className="flex justify-between items-center p-5 border-b border-gray-800">
               <h2 className="text-xl font-bold text-gray-100 flex items-center gap-2">
-                Đăng bài lên Forum
+                Posting on the Forum
               </h2>
               <button 
                 onClick={() => {
@@ -896,7 +896,7 @@ function WatchEpisodeContent() {
 
             <div className="p-5 overflow-y-auto custom-scrollbar flex-1 space-y-4">
               <input 
-                type="text" placeholder="Tiêu đề bài viết..." value={postTitle} onChange={e => setPostTitle(e.target.value)}
+                type="text" placeholder="Post title..." value={postTitle} onChange={e => setPostTitle(e.target.value)}
                 className="w-full bg-transparent border border-gray-800 rounded-lg px-4 py-3 outline-none font-bold text-lg focus:border-blue-500 transition"
               />
               
@@ -906,12 +906,12 @@ function WatchEpisodeContent() {
                   onClick={handleInsertTimestamp}
                   className="w-full bg-blue-900/30 hover:bg-blue-900/50 text-blue-400 border border-blue-800/50 border-dashed py-2 rounded-lg text-sm font-bold transition flex justify-center items-center gap-2"
                 >
-                  ⏱️ Trích xuất liên kết thời gian cảnh phim này
+                  ⏱️ Extract time link from this scene
                 </button>
               ) : (
                 <div className="bg-blue-900/20 border border-blue-800/50 rounded-lg p-3 flex items-center justify-between">
                   <div className="flex items-center gap-2 text-sm">
-                    <span className="text-blue-400">📺 Đang xem:</span>
+                    <span className="text-blue-400">📺 Currently watching:</span>
                     <span className="font-bold text-gray-200 underline decoration-blue-500/50 underline-offset-2">
                       {attachedTimestamp.title}
                     </span>
@@ -921,7 +921,7 @@ function WatchEpisodeContent() {
               )}
 
               <textarea 
-                placeholder="Nội dung bài viết, giả thuyết, cảm nhận của bạn..." 
+                placeholder="Post content, hypotheses, your thoughts..." 
                 value={postContent} onChange={e => setPostContent(e.target.value)}
                 className="w-full bg-transparent border border-gray-800 rounded-lg px-4 py-3 outline-none resize-none h-32 text-sm text-gray-200 focus:border-blue-500 transition custom-scrollbar leading-relaxed"
               />
@@ -950,7 +950,7 @@ function WatchEpisodeContent() {
                   ))}
                 </div>
                 <input 
-                  type="text" placeholder="Nhập tag tự do và nhấn Enter (VD: #JujutsuKaisen, #Review...)" 
+                  type="text" placeholder="Adding Tag and press Enter (E.g., #JujutsuKaisen, #Review...)" 
                   value={postTagInput} onChange={e => setPostTagInput(e.target.value)} onKeyDown={handleKeyDownTag}
                   className="w-full bg-transparent outline-none text-sm text-gray-300"
                 />
@@ -984,7 +984,7 @@ function WatchEpisodeContent() {
               <div className="flex items-center gap-3">
                 <label className="hidden sm:flex items-center gap-2 text-sm text-gray-400 cursor-pointer hover:text-gray-200 transition">
                   <input type="checkbox" checked={postIsSpoiler} onChange={(e) => setPostIsSpoiler(e.target.checked)} className="rounded bg-gray-800 border-gray-700 text-red-500 focus:ring-red-500 focus:ring-offset-gray-900" />
-                  Chứa Spoiler?
+                  Contains Spoiler?
                 </label>
 
                 <button 
@@ -992,7 +992,7 @@ function WatchEpisodeContent() {
                   disabled={isPostingToForum} 
                   className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2.5 rounded-lg text-sm font-bold transition disabled:opacity-50 shadow-lg shadow-blue-500/20"
                 >
-                  {isPostingToForum ? "Đang gửi..." : "Đăng bài"}
+                  {isPostingToForum ? "Posting..." : "Post"}
                 </button>
               </div>
 

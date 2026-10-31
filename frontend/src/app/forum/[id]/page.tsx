@@ -357,18 +357,18 @@ export default function ForumPostDetailPage({ params }: { params: Promise<{ id: 
         <div className="bg-[#1a1d24] rounded-2xl border border-gray-800 p-6 md:p-8 shadow-xl">
           <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
             <svg className="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" /></svg>
-            Bình luận ({comments.length})
+            Comments ({comments.length})
           </h2>
 
           {/* Ô nhập Comment gốc */}
           <div className="flex gap-3 mb-8">
             <input 
-              type="text" placeholder="Viết bình luận của bạn..." value={newComment} 
+              type="text" placeholder="Expressing your thoughts..." value={newComment} 
               onChange={e => { setNewComment(e.target.value); setReplyingToCommentId(null); }}
               className="flex-1 bg-gray-900 border border-gray-800 rounded-full px-4 py-3 text-sm outline-none focus:border-blue-500 text-white transition"
             />
             <button onClick={() => handlePostComment(null)} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-full text-sm font-bold shadow-lg shadow-blue-900/20 transition">
-              Gửi
+              Send
             </button>
           </div>
           

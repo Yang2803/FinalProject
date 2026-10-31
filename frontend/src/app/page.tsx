@@ -315,7 +315,7 @@ export default function Home() {
 
         setContinueList(finalItems);
       } catch (err) {
-        console.error("Lỗi khi tải lịch sử xem/đọc tiếp:", err);
+        console.error("LError loading viewing/reading history:", err);
       }
     };
 
@@ -361,7 +361,7 @@ export default function Home() {
       title: a.title,
       description:
         a.description ||
-        "Trải nghiệm bộ Anime siêu hấp dẫn với tính năng xem chung Watch Party, phụ đề đa ngôn ngữ và trợ lý AI thông minh ngay trên Smart Anime Platform.",
+        "Experience incredibly captivating anime series with the Watch Party feature, multilingual subtitles, and intelligent AI assistant right on the Smart Anime Platform.",
       coverImage: a.coverImage,
       type: "ANIME" as const,
       countLabel: `${a._count?.episodes || 0} Episodes`,
@@ -373,7 +373,7 @@ export default function Home() {
       title: m.title,
       description:
         m.description ||
-        "Đọc ngay những chương truyện mới nhất với công nghệ AI dịch trực tiếp trên trang tranh (Gemini Vision) và phòng đọc chung Co-reading thời gian thực.",
+        "Read the latest chapters instantly with AI translation technology directly on the manga pages (Gemini Vision) and real-time co-reading rooms.",
       coverImage: m.coverImage,
       type: "MANGA" as const,
       countLabel: `${m._count?.chapters || 0} Chapters`,

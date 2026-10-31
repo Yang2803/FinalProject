@@ -114,39 +114,59 @@ function TranslateableImage({
 
       {showTranslation && blocks.map((block, index) => {
         const blockType = block.type || "bubble";
-        const isVertical = block.heightPercent > block.widthPercent;
+        //const isVertical = block.heightPercent > block.widthPercent;
         const isHorizontal = mode === "horizontal";
+
+        const realHeightRatio = block.heightPercent * 1.45;
+        const isVertical = realHeightRatio >= block.widthPercent;
 
         // 🌟 1. THU GỌN KHUNG (INSET) ĐỂ KHÔNG ĐÈ LÊN VIỀN ĐEN & NHÂN VẬT XUNG QUANH
         // Nếu là bubble, bóp nhẹ chiều ngang (86%) và chiều dọc (90%) để nằm gọn trong lòng bóng thoại gốc
-        const scaleW = blockType === "bubble" ? (isVertical ? 0.76 : 0.84) : 0.92;
-        const scaleH = blockType === "bubble" ? 0.88 : 0.92;
-
-        const adjustedWidth = block.widthPercent * scaleW;
-        const adjustedHeight = block.heightPercent * scaleH;
-        const adjustedLeft = block.leftPercent + (block.widthPercent - adjustedWidth) / 2;
-        const adjustedTop = block.topPercent + (block.heightPercent - adjustedHeight) / 2;
-
-        // 🌟 2. TẠO DÁNG HÌNH ELIP / OVAL CHUẨN MANGA ĐỂ KHÔNG CHE 4 GÓC TRANH
-        let borderRadius = "50%";
-        let background = "rgba(255, 255, 255, 0.92)";
-        let textColor = "#000000";
-        // Ép padding 2 bên sườn (12% - 14%) để chữ tự động xếp thành cột dọc thay vì dàn ngang
-        let boxPadding = isVertical ? "6% 14%" : "6% 10%";
+        // 🌟 2. BÓP NGANG - KÉO DỌC ĐỂ KHỚP FORM BÓNG THOẠI MANGA
+        let scaleW = 1.0;
+        let scaleH = 1.0;
 
         if (blockType === "bubble") {
-          borderRadius = isVertical ? "50% / 42%" : "42% / 50%";
-        } else if (blockType === "box") {
-          borderRadius = "4px";
-          background = "rgba(255, 255, 255, 0.98)";
-          boxPadding = "4px 6px";
-        } else if (blockType === "floating") {
-          borderRadius = "6px";
-          background = "rgba(0, 0, 0, 0.85)";
-          textColor = "#ffffff";
-          boxPadding = "3px 5px";
+          // Bóng thoại Manga luôn có dáng bầu dục đứng:
+          // Giữ chiều ngang gọn gàng (0.94) để không bè ra ngoài, kéo dài chiều dọc (1.32) để che kín chữ ở đỉnh & đáy
+          scaleW = isVertical ? 0.92 : 0.98;
+          scaleH = isVertical ? 1.32 : 1.22;
+        } else {
+          scaleW = 1.05;
+          scaleH = 1.08;
         }
 
+        const adjustedWidth = Math.max(block.widthPercent * scaleW, 5.0);
+        const adjustedHeight = Math.max(block.heightPercent * scaleH, 5.0);
+        const adjustedLeft = block.leftPercent - (adjustedWidth - block.widthPercent) / 2;
+        const adjustedTop = block.topPercent - (adjustedHeight - block.heightPercent) / 2;
+
+        // 🌟 2. TẠO DÁNG HÌNH ELIP / OVAL CHUẨN MANGA ĐỂ KHÔNG CHE 4 GÓC TRANH
+        // 🌟 3. TẠO DÁNG OVAL ĐỨNG MỀM MẠI
+        let borderRadius = "16px";
+        let background = "#ffffff";
+        let textColor = "#0f0f13";
+        let boxPadding = "6% 8%";
+        // Đổ bóng trắng tập trung theo chiều dọc (0px ngang, 6px dọc) để che nốt phần chữ thừa ở trên/dưới
+        let boxShadow = "0 0 8px 5px #ffffff";
+
+        if (blockType === "bubble") {
+          // Tạo hình con nhộng / oval dọc thay vì hình chữ nhật ngang
+          borderRadius = "42% / 28%";
+          // Ép padding 2 bên hông (10%) để dòng chữ tự gom thành cột dọc ở giữa
+          boxPadding = "8% 10%";
+        } else if (blockType === "box") {
+          borderRadius = "4px";
+          background = "#ffffff";
+          boxPadding = "4px 6px";
+          boxShadow = "0 0 4px 2px #ffffff";
+        } else if (blockType === "floating") {
+          borderRadius = "6px";
+          background = "rgba(15, 15, 19, 0.92)";
+          textColor = "#ffffff";
+          boxPadding = "4px 6px";
+          boxShadow = "0 2px 6px rgba(0,0,0,0.4)";
+        }
         // 🌟 3. CỠ CHỮ THEO CHẾ ĐỘ ĐỌC
         const textLen = block.translatedText.length;
         const fontSize = isHorizontal
@@ -178,6 +198,7 @@ function TranslateableImage({
                 backgroundColor: background,
                 color: textColor,
                 borderRadius: borderRadius,
+                boxShadow: boxShadow,
                 padding: boxPadding,
                 fontSize: fontSize,
                 lineHeight: "1.2",
@@ -188,11 +209,12 @@ function TranslateableImage({
               <span 
                 className="w-full text-center select-none"
                 style={{
-                  wordBreak: "break-word",
+                  wordBreak: "normal",
                   whiteSpace: "normal",
                   overflowWrap: "break-word",
                   // 🌟 Giúp các dòng chữ tự cân bằng độ dài thành cột dọc đẹp mắt
                   textWrap: "balance",
+                  maxWidth: "88%",
                   display: "-webkit-box",
                   WebkitLineClamp: isVertical ? 10 : 7,
                   WebkitBoxOrient: "vertical",
@@ -884,7 +906,7 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
 
             <div className="p-5 overflow-y-auto custom-scrollbar flex-1 space-y-4">
               <input 
-                type="text" placeholder="Tiêu đề bài viết..." value={postTitle} onChange={e => setPostTitle(e.target.value)}
+                type="text" placeholder="Post tiltle..." value={postTitle} onChange={e => setPostTitle(e.target.value)}
                 className="w-full bg-transparent border border-gray-800 rounded-lg px-4 py-3 outline-none font-bold text-lg focus:border-blue-500 transition"
               />
               
@@ -898,7 +920,7 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
               ) : (
                 <div className="bg-blue-900/20 border border-blue-800/50 rounded-lg p-3 flex items-center justify-between">
                   <div className="flex items-center gap-2 text-sm">
-                    <span className="text-blue-400">📖 Đang đọc:</span>
+                    <span className="text-blue-400">📖 Reading:</span>
                     <span className="font-bold text-gray-200 underline decoration-blue-500/50 underline-offset-2">
                       {attachedLink.title}
                     </span>

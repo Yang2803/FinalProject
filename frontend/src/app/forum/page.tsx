@@ -806,7 +806,7 @@ function ForumFeedContent() {
                   ))}
                 </div>
                 <input 
-                  type="text" placeholder="Thêm thẻ (Tag) và nhấn Enter (VD: #Review, #Giathuyet...)" 
+                  type="text" placeholder="Adding Tag and press Enter (E.g., #Review, #Giathuyet...)" 
                   value={tagInput} onChange={e => setTagInput(e.target.value)} onKeyDown={handleKeyDownTag}
                   className="w-full bg-transparent outline-none text-sm text-gray-300 placeholder-gray-600"
                 />

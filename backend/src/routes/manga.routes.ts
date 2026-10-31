@@ -262,7 +262,7 @@ router.post('/api/admin/chapter', async (req: Request, res: Response): Promise<a
         const notificationsToInsert = usersInReadingList.map((item: any) => ({
           userId: item.userId,
           title: "New Chapter is out now! 📚",
-          message: `${mangaTitleStr} vừa cập nhật: ${newChapter.title}`,
+          message: `${mangaTitleStr} just updated: ${newChapter.title}`,
           linkUrl: `/manga/${mangaId}/chapter/${newChapter.id}`, 
           isRead: false
         }));
