@@ -448,436 +448,500 @@ export default function MangaCoReadingRoom({
   }
 
   return (
-    <div className="min-h-screen relative flex flex-col select-none bg-[#090a0f] text-gray-100">
-      {/* HEADER PHÒNG */}
-      <header className="h-14 border-b border-gray-800 bg-gray-900/95 backdrop-blur px-3 md:px-4 flex items-center justify-between z-30 shrink-0 gap-2">
-        {/* CỤM TRÁI: THÔNG TIN PHÒNG & QUYỀN HOST */}
-        <div className="flex items-center gap-2 min-w-0 shrink">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-          <div className="flex items-center gap-1.5 min-w-0 text-xs md:text-sm font-semibold text-gray-200">
-            <span className="text-emerald-400 font-mono shrink-0">
-              #{room.inviteCode || room.id.slice(0, 6)}
-            </span>
-            <span className="text-gray-600 hidden sm:inline">|</span>
-            <span className="truncate max-w-[120px] sm:max-w-[200px] lg:max-w-[260px] text-gray-300">
-              {chapter.manga.title}
-            </span>
-            <span className="text-gray-500 font-normal truncate hidden md:inline">
-              ({chapter.title})
-            </span>
-          </div>
-
-          {isHost && (
-            <div className="flex items-center gap-1.5 ml-1 shrink-0">
-              <button
-                type="button"
-                onClick={() => setIsLocked(!isLocked)}
-                className={`px-2 py-1 rounded text-xs font-medium border whitespace-nowrap transition ${
-                  isLocked
-                    ? "bg-amber-500/15 text-amber-300 border-amber-500/40"
-                    : "bg-gray-800 text-gray-400 border-gray-700 hover:text-gray-200"
-                }`}
-                title="Lock/unlock page navigation"
-              >
-                {isLocked ? "🔒 Lock" : "🔓 Unlock"}
-              </button>
-              <button
-                type="button"
-                onClick={openMangaSelector}
-                className="px-2 py-1 bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 rounded text-xs font-medium whitespace-nowrap transition cursor-pointer"
-              >
-                🔄 Change Manga
-              </button>
-            </div>
-          )}
+  <div className="h-full relative flex flex-col select-none bg-[#090a0f] text-gray-100 overflow-hidden">
+    {/* HEADER PHÒNG */}
+    <header className="min-h-14 py-1.5 border-b border-gray-800 bg-gray-900/95 backdrop-blur px-2.5 md:px-4 flex flex-wrap items-center justify-between z-30 shrink-0 gap-2">
+      {/* CỤM TRÁI: THÔNG TIN PHÒNG & QUYỀN HOST */}
+      <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 shrink">
+        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+        <div className="flex items-center gap-1.5 min-w-0 text-xs md:text-sm font-semibold text-gray-200">
+          <span className="text-emerald-400 font-mono shrink-0">
+            #{room.inviteCode || room.id.slice(0, 6)}
+          </span>
+          <span className="text-gray-600 hidden sm:inline">|</span>
+          <span className="truncate max-w-[90px] sm:max-w-[180px] lg:max-w-[260px] text-gray-300">
+            {chapter.manga.title}
+          </span>
+          <span className="text-gray-500 font-normal truncate hidden md:inline">
+            ({chapter.title})
+          </span>
         </div>
 
-        {/* CỤM PHẢI: LASER PEN, XÓA, VOICE CHAT, DỊCH, RỜI/GIẢI TÁN */}
-        <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
-          {/* 1. Laser Pen + Kích thước nét */}
-          <div className="flex items-center bg-gray-800/80 border border-gray-700/80 rounded-lg p-0.5">
+        {isHost && (
+          <div className="flex items-center gap-1 sm:gap-1.5 ml-1 shrink-0">
             <button
               type="button"
-              onClick={() => setIsLaserPenActive(!isLaserPenActive)}
-              className={`px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap transition flex items-center gap-1 cursor-pointer ${
-                isLaserPenActive
-                  ? "bg-red-500 text-white shadow-sm shadow-red-900/50"
-                  : "text-gray-300 hover:text-white"
+              onClick={() => setIsLocked(!isLocked)}
+              className={`px-2 py-1 rounded text-xs font-medium border whitespace-nowrap transition flex items-center gap-1 ${
+                isLocked
+                  ? "bg-amber-500/15 text-amber-300 border-amber-500/40"
+                  : "bg-gray-800 text-gray-400 border-gray-700 hover:text-gray-200"
               }`}
+              title="Lock/unlock page navigation"
             >
-              <span>{isLaserPenActive ? "🔴 Drawing" : "✏️ Laser"}</span>
+              <span>{isLocked ? "🔒" : "🔓"}</span>
+              <span className="hidden sm:inline">
+                {isLocked ? "Lock" : "Unlock"}
+              </span>
             </button>
-
-            {isLaserPenActive && (
-              <div className="flex items-center gap-0.5 pl-1 pr-0.5 border-l border-gray-700 ml-1">
-                {[
-                  { label: "S", value: 0.8, title: "Small" },
-                  { label: "M", value: 1.6, title: "Medium" },
-                  { label: "L", value: 2.4, title: "Large" },
-                ].map((size) => (
-                  <button
-                    key={size.value}
-                    type="button"
-                    title={size.title}
-                    onClick={() => setLaserWidth(size.value)}
-                    className={`w-5 h-5 rounded text-[10px] font-bold transition flex items-center justify-center cursor-pointer ${
-                      laserWidth === size.value
-                        ? "bg-emerald-600 text-white"
-                        : "text-gray-400 hover:text-gray-200"
-                    }`}
-                  >
-                    {size.label}
-                  </button>
-                ))}
-              </div>
-            )}
+            <button
+              type="button"
+              onClick={openMangaSelector}
+              className="px-2 py-1 bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 rounded text-xs font-medium whitespace-nowrap transition cursor-pointer flex items-center gap-1"
+              title="Change Manga"
+            >
+              <span>🔄</span>
+              <span className="hidden sm:inline">Change Manga</span>
+            </button>
           </div>
+        )}
+      </div>
 
-          {/* 2. Nút xóa nét của tôi */}
-          {hasMyStrokes && (
-            <button
-              type="button"
-              onClick={emitClearMyLaser}
-              className="px-2 py-1 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white border border-gray-700 rounded-lg text-xs font-medium whitespace-nowrap transition flex items-center gap-1 cursor-pointer"
-              title="Only delete your own drawings"
-            >
-              <span>🧹 Delete </span>
-            </button>
-          )}
+      {/* CỤM PHẢI: LASER PEN, XÓA, VOICE CHAT, RỜI/GIẢI TÁN */}
+      <div className="flex items-center gap-1 sm:gap-1.5 md:gap-2 shrink-0 ml-auto">
+        {/* 1. Laser Pen + Kích thước nét */}
+        <div className="flex items-center bg-gray-800/80 border border-gray-700/80 rounded-lg p-0.5">
+          <button
+            type="button"
+            onClick={() => setIsLaserPenActive(!isLaserPenActive)}
+            className={`px-2 sm:px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap transition flex items-center gap-1 cursor-pointer ${
+              isLaserPenActive
+                ? "bg-red-500 text-white shadow-sm shadow-red-900/50"
+                : "text-gray-300 hover:text-white"
+            }`}
+          >
+            <span>{isLaserPenActive ? "🔴" : "✏️"}</span>
+            <span className="hidden sm:inline">
+              {isLaserPenActive ? "Drawing" : "Laser"}
+            </span>
+          </button>
 
-          {/* 3. Nút xóa tất cả dành cho Host */}
-          {isHost && laserLines.length > 0 && (
-            <button
-              type="button"
-              onClick={emitClearAllLaser}
-              className="px-2 py-1 bg-red-950/40 hover:bg-red-900/60 text-red-300 border border-red-800/60 rounded-lg text-xs font-medium whitespace-nowrap transition flex items-center gap-1 cursor-pointer"
-              title="Delete all drawings"
-            >
-              <span>🗑️ Delete all</span>
-            </button>
-          )}
-
-          {/* 4. LiveKit Voice Chat */}
-          {session?.user?.id && (
-            <div className="shrink-0">
-              <MangaVoiceChat
-                roomId={room.id}
-                userId={session.user.id}
-                userName={session.user.name || "Bạn đọc"}
-              />
+          {isLaserPenActive && (
+            <div className="flex items-center gap-0.5 pl-1 pr-0.5 border-l border-gray-700 ml-1">
+              {[
+                { label: "S", value: 0.8, title: "Small" },
+                { label: "M", value: 1.6, title: "Medium" },
+                { label: "L", value: 2.4, title: "Large" },
+              ].map((size) => (
+                <button
+                  key={size.value}
+                  type="button"
+                  title={size.title}
+                  onClick={() => setLaserWidth(size.value)}
+                  className={`w-5 h-5 rounded text-[10px] font-bold transition flex items-center justify-center cursor-pointer ${
+                    laserWidth === size.value
+                      ? "bg-emerald-600 text-white"
+                      : "text-gray-400 hover:text-gray-200"
+                  }`}
+                >
+                  {size.label}
+                </button>
+              ))}
             </div>
           )}
-
-          
-
-          {/* 6. Nút Rời phòng / Giải tán */}
-          <div className="border-l border-gray-800 pl-1.5 md:pl-2 shrink-0">
-            {isHost ? (
-              <button
-                type="button"
-                onClick={handleDisbandRoom}
-                className="px-2.5 py-1 bg-red-600/20 hover:bg-red-600 text-red-300 hover:text-white border border-red-500/40 rounded-lg text-xs font-semibold whitespace-nowrap transition flex items-center gap-1 cursor-pointer"
-                title="Disband room for all participants"
-              >
-                <span>🧨 Disband </span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={handleLeaveRoom}
-                className="px-2.5 py-1 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white border border-gray-700 rounded-lg text-xs font-semibold whitespace-nowrap transition flex items-center gap-1 cursor-pointer"
-                title="Leave reading room"
-              >
-                <span>🚪 Leave</span>
-              </button>
-            )}
-          </div>
         </div>
-      </header>
 
-      {/* NỘI DUNG TRANG TRUYỆN + CANVAS LASER + LIVE CURSORS */}
-      <div 
-        ref={containerRef} 
-        onScroll={handleScroll}
-        style={{
-          backgroundColor: theme.type === "color" ? theme.value : undefined,
-          backgroundImage: theme.type === "image" ? `url(${theme.value})` : undefined,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          backgroundRepeat: "no-repeat",
-        }}
-        className={`flex-1 overflow-y-auto relative flex flex-col items-center p-4 custom-scrollbar transition-colors duration-500 ${
-          readMode === "VERTICAL" ? "justify-start" : "justify-center"
-        } ${isLaserPenActive ? "cursor-crosshair" : "cursor-default"}`}
-      >
-        {readMode === "VERTICAL" ? (
-          /* CHẾ ĐỘ CUỘN DỌC: Render danh sách ảnh nối tiếp */
-          <div className="w-full flex flex-col items-center gap-2">
-            {chapter.images.map((imgUrl, idx) => (
-              <MangaPageCanvas
-                key={imgUrl || idx}
-                pageIndex={idx}
-                imageUrl={imgUrl}
-                mode="VERTICAL"
-                isLaserActive={isLaserPenActive}
-                userColor={userColor}
-                laserWidth={laserWidth}
-                laserLines={laserLines}
-                remoteCursors={remoteCursors}
-                onDrawComplete={(pIdx, points) => emitLaserDraw(pIdx, points, laserWidth)}
-                onCursorMove={(pIdx, x, y) => emitCursorMove(pIdx, x, y)}
-              />
-            ))}
+        {/* 2. Nút xóa nét của tôi */}
+        {hasMyStrokes && (
+          <button
+            type="button"
+            onClick={emitClearMyLaser}
+            className="px-2 py-1 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white border border-gray-700 rounded-lg text-xs font-medium whitespace-nowrap transition flex items-center gap-1 cursor-pointer"
+            title="Only delete your own drawings"
+          >
+            <span>🧹</span>
+            <span className="hidden sm:inline">Delete</span>
+          </button>
+        )}
+
+        {/* 3. Nút xóa tất cả dành cho Host */}
+        {isHost && laserLines.length > 0 && (
+          <button
+            type="button"
+            onClick={emitClearAllLaser}
+            className="px-2 py-1 bg-red-950/40 hover:bg-red-900/60 text-red-300 border border-red-800/60 rounded-lg text-xs font-medium whitespace-nowrap transition flex items-center gap-1 cursor-pointer"
+            title="Delete all drawings"
+          >
+            <span>🗑️</span>
+            <span className="hidden sm:inline">Delete all</span>
+          </button>
+        )}
+
+        {/* 4. LiveKit Voice Chat */}
+        {session?.user?.id && (
+          <div className="shrink-0">
+            <MangaVoiceChat
+              roomId={room.id}
+              userId={session.user.id}
+              userName={session.user.name || "Reader"}
+            />
           </div>
-        ) : (
-          /* CHẾ ĐỘ TỪNG TRANG: Render 1 trang hiện tại */
-          <div className="flex items-center justify-center">
+        )}
+
+        {/* 6. Nút Rời phòng / Giải tán */}
+        <div className="border-l border-gray-800 pl-1.5 md:pl-2 shrink-0">
+          {isHost ? (
+            <button
+              type="button"
+              onClick={handleDisbandRoom}
+              className="px-2 sm:px-2.5 py-1 bg-red-600/20 hover:bg-red-600 text-red-300 hover:text-white border border-red-500/40 rounded-lg text-xs font-semibold whitespace-nowrap transition flex items-center gap-1 cursor-pointer"
+              title="Disband room for all participants"
+            >
+              <span>🧨</span>
+              <span className="hidden sm:inline">Disband</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleLeaveRoom}
+              className="px-2 sm:px-2.5 py-1 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white border border-gray-700 rounded-lg text-xs font-semibold whitespace-nowrap transition flex items-center gap-1 cursor-pointer"
+              title="Leave reading room"
+            >
+              <span>🚪</span>
+              <span className="hidden sm:inline">Leave</span>
+            </button>
+          )}
+        </div>
+      </div>
+    </header>
+
+    {/* NỘI DUNG TRANG TRUYỆN + CANVAS LASER + LIVE CURSORS */}
+    <div
+      ref={containerRef}
+      onScroll={handleScroll}
+      style={{
+        backgroundColor: theme.type === "color" ? theme.value : undefined,
+        backgroundImage:
+          theme.type === "image" ? `url(${theme.value})` : undefined,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+      }}
+      className={`flex-1 overflow-y-auto relative flex flex-col items-center p-2 sm:p-4 custom-scrollbar transition-colors duration-500 ${
+        readMode === "VERTICAL" ? "justify-start" : "justify-center"
+      } ${isLaserPenActive ? "cursor-crosshair" : "cursor-default"}`}
+    >
+      {readMode === "VERTICAL" ? (
+        /* CHẾ ĐỘ CUỘN DỌC: Render danh sách ảnh nối tiếp */
+        <div className="w-full flex flex-col items-center gap-2">
+          {chapter.images.map((imgUrl, idx) => (
             <MangaPageCanvas
-              key={chapter.images[currentPage] || currentPage}
-              pageIndex={currentPage}
-              imageUrl={chapter.images[currentPage]}
-              mode="SINGLE"
+              key={imgUrl || idx}
+              pageIndex={idx}
+              imageUrl={imgUrl}
+              mode="VERTICAL"
               isLaserActive={isLaserPenActive}
               userColor={userColor}
               laserWidth={laserWidth}
               laserLines={laserLines}
               remoteCursors={remoteCursors}
-              onDrawComplete={(pIdx, points) => emitLaserDraw(pIdx, points, laserWidth)}
+              onDrawComplete={(pIdx, points) =>
+                emitLaserDraw(pIdx, points, laserWidth)
+              }
               onCursorMove={(pIdx, x, y) => emitCursorMove(pIdx, x, y)}
             />
-          </div>
-        )}
-      </div>
-
-      {/* THANH ĐIỀU KHIỂN TRANG */}
-      <div className="h-14 border-t border-gray-800 bg-gray-900/90 backdrop-blur px-4 flex items-center justify-between text-sm z-50 sticky bottom-0 shrink-0">
-        {/* GÓC TRÁI: NÚT ĐỔI NỀN & ĐỔI CHẾ ĐỘ ĐỌC */}
-        <div className="relative flex items-center gap-2 min-w-[200px]">
-          {isHost && (
-            <button
-              type="button"
-              onClick={() => setIsThemePickerOpen(!isThemePickerOpen)}
-              className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white border border-gray-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
-            >
-              <span>🎨 Theme</span>
-            </button>
-          )}
-
-          <button
-            type="button"
-            onClick={handleToggleReadMode}
-            disabled={!isHost && isLocked}
-            className={`px-3 py-1.5 border rounded-lg text-xs font-semibold flex items-center gap-1.5 transition select-none ${
-              !isHost && isLocked
-                ? "bg-gray-900 border-gray-800 text-gray-500 cursor-not-allowed opacity-50"
-                : "bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white border-gray-700 cursor-pointer"
-            }`}
-            title={!isHost && isLocked ? "Room host is locking the controls" : "Change reading mode"}
-          >
-            <span>{readMode === "SINGLE" ? "📜 Vertical Scroll" : "📖 Single Page"}</span>
-          </button>
-
-          {/* POPUP BẢNG CHỌN NỀN CỦA HOST */}
-          {isHost && isThemePickerOpen && (
-            <div className="absolute bottom-12 left-0 bg-gray-900 border border-gray-700 p-3.5 rounded-xl shadow-2xl w-64 z-50 flex flex-col gap-3">
-              <div className="flex justify-between items-center">
-                <span className="text-xs font-bold text-gray-200">Choose theme color</span>
-                <button 
-                  type="button"
-                  onClick={() => setIsThemePickerOpen(false)} 
-                  className="text-xs text-gray-400 hover:text-white cursor-pointer"
-                >
-                  ✕
-                </button>
-              </div>
-
-              {/* Các mã màu đọc truyện có sẵn */}
-              <div className="grid grid-cols-4 gap-2">
-                {[
-                  { name: "Black", color: "#000000" },
-                  { name: "Dark Gray", color: "#18181b" },
-                  { name: "Navy", color: "#0f172a" },
-                  { name: "Warm Paper", color: "#292524" },
-                ].map((item) => (
-                  <button
-                    key={item.color}
-                    type="button"
-                    title={item.name}
-                    onClick={() => {
-                      emitChangeTheme({ type: "color", value: item.color });
-                      setIsThemePickerOpen(false);
-                    }}
-                    style={{ backgroundColor: item.color }}
-                    className="h-8 rounded-lg border border-gray-600 hover:scale-105 transition shadow-sm cursor-pointer"
-                  />
-                ))}
-              </div>
-
-              {/* Tùy chọn dán URL ảnh nền */}
-              <div className="flex flex-col gap-1.5 border-t border-gray-800 pt-2">
-                <span className="text-[11px] text-gray-400">Or background image URL:</span>
-                <div className="flex gap-1.5">
-                  <input
-                    type="text"
-                    placeholder="https://...jpg/png"
-                    value={customImageUrl}
-                    onChange={(e) => setCustomImageUrl(e.target.value)}
-                    className="flex-1 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-[11px] text-white focus:outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (customImageUrl.trim()) {
-                        emitChangeTheme({ type: "image", value: customImageUrl.trim() });
-                        setIsThemePickerOpen(false);
-                      }
-                    }}
-                    className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[11px] font-bold cursor-pointer"
-                  >
-                    Save
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-
-        {/* Ở GIỮA: CỤM CHUYỂN TRANG (Ẩn khi bật cuộn dọc) */}
-        {readMode === "SINGLE" ? (
-          <div className="flex items-center gap-6">
-            <button
-              type="button"
-              onClick={handlePrevPage}
-              disabled={currentPage === 0 || (!isHost && isLocked)}
-              className="px-4 py-2 bg-gray-800 hover:bg-emerald-600 disabled:opacity-30 disabled:hover:bg-gray-800 text-white font-medium rounded-lg transition cursor-pointer select-none"
-            >
-              &larr; Previous Page
-            </button>
-
-            <span className="font-bold text-emerald-400 text-base select-none">
-              Page {currentPage + 1} / {chapter.images.length}
-            </span>
-
-            <button
-              type="button"
-              onClick={handleNextPage}
-              disabled={currentPage >= chapter.images.length - 1 || (!isHost && isLocked)}
-              className="px-4 py-2 bg-gray-800 hover:bg-emerald-600 disabled:opacity-30 disabled:hover:bg-gray-800 text-white font-medium rounded-lg transition cursor-pointer select-none"
-            >
-              Next Page &rarr;
-            </button>
-          </div>
-        ) : (
-          <div className="text-xs text-gray-400 font-medium">
-            Displaying all {chapter.images.length} pages vertically
-          </div>
-        )}
-
-        {/* 🌟 GÓC PHẢI: CẢM XÚC BAY & NHẠC NỀN YOUTUBE */}
-        <div className="flex items-center justify-end gap-2 min-w-[200px]">
-          <MangaRoomReactions
-            roomId={roomId}
-            socket={socket}
-            userName={session?.user?.name || "Bạn đọc"}
-            userColor={userColor}
-          />
-          <MangaRoomBGM roomId={roomId} isHost={isHost} socket={socket} />
-        </div>
-
-        
-
-        
-      </div>
-
-      
-
-      {/* MODAL ĐỔI TRUYỆN TRONG KHI ĐANG ĐỌC */}
-      {isSelectMangaOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#1a1d24] border border-gray-800 rounded-2xl max-w-lg w-full p-6 text-left">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-bold text-lg text-white">Change Manga & Chapter</h3>
-              <button onClick={() => setIsSelectMangaOpen(false)} className="text-gray-400 hover:text-white cursor-pointer">✕</button>
-            </div>
-
-            {!selectedMangaId ? (
-              <div className="max-h-80 overflow-y-auto space-y-2">
-                <p className="text-xs text-gray-400 mb-2">Choose a manga:</p>
-                {mangaList.map((m) => (
-                  <div
-                    key={m.id}
-                    onClick={() => handleSelectManga(m.id)}
-                    className="p-3 bg-gray-900 hover:bg-emerald-950/40 border border-gray-800 hover:border-emerald-500/50 rounded-xl cursor-pointer transition flex justify-between items-center"
-                  >
-                    <span className="font-medium text-sm text-gray-200">{m.title}</span>
-                    <span className="text-emerald-400 text-xs">Select &rarr;</span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <p className="text-xs text-gray-400">Choose a chapter to switch to:</p>
-                  <button onClick={() => setSelectedMangaId("")} className="text-xs text-blue-400 hover:underline cursor-pointer">← Choose different manga</button>
-                </div>
-                <div className="max-h-80 overflow-y-auto space-y-2">
-                  {chaptersOfManga.map((c) => (
-                    <button
-                      key={c.id}
-                      disabled={isUpdatingChapter}
-                      onClick={() => handleConfirmChapter(c.id)}
-                      className="w-full text-left p-3 bg-gray-900 hover:bg-emerald-600 rounded-xl text-sm transition font-medium flex justify-between items-center cursor-pointer"
-                    >
-                      <span>{c.title}</span>
-                      <span className="text-xs opacity-75">Switch Now</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* 🌟 MODAL PHÊ DUYỆT THAM GIA PHÒNG (CHỈ HOST MỚI NHÌN THẤY) */}
-      {isHost && joinRequests.length > 0 && (
-        <div className="fixed bottom-16 right-6 z-50 flex flex-col gap-2 max-w-sm w-full animate-bounce-short">
-          {joinRequests.map((req) => (
-            <div
-              key={req.applicant.id}
-              className="bg-gray-900/95 border border-amber-500/40 p-4 rounded-xl shadow-2xl backdrop-blur flex flex-col gap-3"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-amber-500/20 text-amber-300 flex items-center justify-center font-bold text-sm">
-                  {req.applicant.name?.charAt(0).toUpperCase() || "U"}
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold text-white">{req.applicant.name || "Người dùng"}</h4>
-                  <p className="text-[11px] text-gray-400">Requesting to join this reading room</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 justify-end">
-                <button
-                  type="button"
-                  onClick={() => respondJoinRequest(req.applicantSocketId, req.applicant.id, false)}
-                  className="px-3 py-1.5 bg-gray-800 hover:bg-red-950/60 text-gray-300 hover:text-red-400 border border-gray-700 rounded-lg text-xs font-semibold transition cursor-pointer"
-                >
-                  Reject
-                </button>
-                <button
-                  type="button"
-                  onClick={() => respondJoinRequest(req.applicantSocketId, req.applicant.id, true)}
-                  className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition shadow-lg shadow-emerald-900/40 cursor-pointer"
-                >
-                  Accept
-                </button>
-              </div>
-            </div>
           ))}
+        </div>
+      ) : (
+        /* CHẾ ĐỘ TỪNG TRANG: Render 1 trang hiện tại */
+        <div className="w-full flex items-center justify-center">
+          <MangaPageCanvas
+            key={chapter.images[currentPage] || currentPage}
+            pageIndex={currentPage}
+            imageUrl={chapter.images[currentPage]}
+            mode="SINGLE"
+            isLaserActive={isLaserPenActive}
+            userColor={userColor}
+            laserWidth={laserWidth}
+            laserLines={laserLines}
+            remoteCursors={remoteCursors}
+            onDrawComplete={(pIdx, points) =>
+              emitLaserDraw(pIdx, points, laserWidth)
+            }
+            onCursorMove={(pIdx, x, y) => emitCursorMove(pIdx, x, y)}
+          />
         </div>
       )}
     </div>
-  );
-}
+
+    {/* THANH ĐIỀU KHIỂN TRANG */}
+    <div className="min-h-14 py-1.5 border-t border-gray-800 bg-gray-900/95 backdrop-blur px-2.5 sm:px-4 flex items-center justify-between gap-2 text-sm z-40 shrink-0">
+      {/* GÓC TRÁI: NÚT ĐỔI NỀN & ĐỔI CHẾ ĐỘ ĐỌC */}
+      <div className="relative flex items-center gap-1.5 sm:gap-2 md:min-w-[200px]">
+        {isHost && (
+          <button
+            type="button"
+            onClick={() => setIsThemePickerOpen(!isThemePickerOpen)}
+            className="px-2.5 sm:px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white border border-gray-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+            title="Theme"
+          >
+            <span>🎨</span>
+            <span className="hidden sm:inline">Theme</span>
+          </button>
+        )}
+
+        <button
+          type="button"
+          onClick={handleToggleReadMode}
+          disabled={!isHost && isLocked}
+          className={`px-2.5 sm:px-3 py-1.5 border rounded-lg text-xs font-semibold flex items-center gap-1.5 transition select-none ${
+            !isHost && isLocked
+              ? "bg-gray-900 border-gray-800 text-gray-500 cursor-not-allowed opacity-50"
+              : "bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white border-gray-700 cursor-pointer"
+          }`}
+          title={
+            !isHost && isLocked
+              ? "Room host is locking the controls"
+              : "Change reading mode"
+          }
+        >
+          <span>{readMode === "SINGLE" ? "📜" : "📖"}</span>
+          <span className="hidden sm:inline">
+            {readMode === "SINGLE" ? "Vertical Scroll" : "Single Page"}
+          </span>
+        </button>
+
+        {/* POPUP BẢNG CHỌN NỀN CỦA HOST */}
+        {isHost && isThemePickerOpen && (
+          <div className="absolute bottom-12 left-0 bg-gray-900 border border-gray-700 p-3.5 rounded-xl shadow-2xl w-64 max-w-[85vw] z-50 flex flex-col gap-3">
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-bold text-gray-200">
+                Choose theme color
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsThemePickerOpen(false)}
+                className="text-xs text-gray-400 hover:text-white cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Các mã màu đọc truyện có sẵn */}
+            <div className="grid grid-cols-4 gap-2">
+              {[
+                { name: "Black", color: "#000000" },
+                { name: "Dark Gray", color: "#18181b" },
+                { name: "Navy", color: "#0f172a" },
+                { name: "Warm Paper", color: "#292524" },
+              ].map((item) => (
+                <button
+                  key={item.color}
+                  type="button"
+                  title={item.name}
+                  onClick={() => {
+                    emitChangeTheme({ type: "color", value: item.color });
+                    setIsThemePickerOpen(false);
+                  }}
+                  style={{ backgroundColor: item.color }}
+                  className="h-8 rounded-lg border border-gray-600 hover:scale-105 transition shadow-sm cursor-pointer"
+                />
+              ))}
+            </div>
+
+            {/* Tùy chọn dán URL ảnh nền */}
+            <div className="flex flex-col gap-1.5 border-t border-gray-800 pt-2">
+              <span className="text-[11px] text-gray-400">
+                Or background image URL:
+              </span>
+              <div className="flex gap-1.5">
+                <input
+                  type="text"
+                  placeholder="https://...jpg/png"
+                  value={customImageUrl}
+                  onChange={(e) => setCustomImageUrl(e.target.value)}
+                  className="flex-1 min-w-0 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-[11px] text-white focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (customImageUrl.trim()) {
+                      emitChangeTheme({
+                        type: "image",
+                        value: customImageUrl.trim(),
+                      });
+                      setIsThemePickerOpen(false);
+                    }
+                  }}
+                  className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[11px] font-bold cursor-pointer shrink-0"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Ở GIỮA: CỤM CHUYỂN TRANG (Ẩn khi bật cuộn dọc) */}
+      {readMode === "SINGLE" ? (
+        <div className="flex items-center gap-2 sm:gap-6">
+          <button
+            type="button"
+            onClick={handlePrevPage}
+            disabled={currentPage === 0 || (!isHost && isLocked)}
+            className="px-2.5 sm:px-4 py-1.5 sm:py-2 bg-gray-800 hover:bg-emerald-600 disabled:opacity-30 disabled:hover:bg-gray-800 text-white text-xs sm:text-sm font-medium rounded-lg transition cursor-pointer select-none"
+          >
+            &larr; <span className="hidden md:inline">Previous Page</span>
+          </button>
+
+          <span className="font-bold text-emerald-400 text-xs sm:text-base whitespace-nowrap select-none">
+            <span className="hidden sm:inline">Page </span>
+            {currentPage + 1} / {chapter.images.length}
+          </span>
+
+          <button
+            type="button"
+            onClick={handleNextPage}
+            disabled={
+              currentPage >= chapter.images.length - 1 || (!isHost && isLocked)
+            }
+            className="px-2.5 sm:px-4 py-1.5 sm:py-2 bg-gray-800 hover:bg-emerald-600 disabled:opacity-30 disabled:hover:bg-gray-800 text-white text-xs sm:text-sm font-medium rounded-lg transition cursor-pointer select-none"
+          >
+            <span className="hidden md:inline">Next Page</span> &rarr;
+          </button>
+        </div>
+      ) : (
+        <div className="text-[11px] sm:text-xs text-gray-400 font-medium truncate text-center">
+          <span className="hidden sm:inline">Displaying all </span>
+          {chapter.images.length} pages
+          <span className="hidden sm:inline"> vertically</span>
+        </div>
+      )}
+
+      {/* 🌟 GÓC PHẢI: CẢM XÚC BAY & NHẠC NỀN YOUTUBE */}
+      <div className="flex items-center justify-end gap-1.5 sm:gap-2 md:min-w-[200px]">
+        <MangaRoomReactions
+          roomId={roomId}
+          socket={socket}
+          userName={session?.user?.name || "Reader"}
+          userColor={userColor}
+        />
+        <MangaRoomBGM roomId={roomId} isHost={isHost} socket={socket} />
+      </div>
+    </div>
+
+    {/* MODAL ĐỔI TRUYỆN TRONG KHI ĐANG ĐỌC */}
+    {isSelectMangaOpen && (
+      <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="bg-[#1a1d24] border border-gray-800 rounded-2xl max-w-lg w-full p-5 sm:p-6 text-left">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="font-bold text-base sm:text-lg text-white">
+              Change Manga & Chapter
+            </h3>
+            <button
+              onClick={() => setIsSelectMangaOpen(false)}
+              className="text-gray-400 hover:text-white cursor-pointer"
+            >
+              ✕
+            </button>
+          </div>
+
+          {!selectedMangaId ? (
+            <div className="max-h-80 overflow-y-auto space-y-2 custom-scrollbar pr-1">
+              <p className="text-xs text-gray-400 mb-2">Choose a manga:</p>
+              {mangaList.map((m) => (
+                <div
+                  key={m.id}
+                  onClick={() => handleSelectManga(m.id)}
+                  className="p-3 bg-gray-900 hover:bg-emerald-950/40 border border-gray-800 hover:border-emerald-500/50 rounded-xl cursor-pointer transition flex justify-between items-center gap-2"
+                >
+                  <span className="font-medium text-sm text-gray-200 truncate">
+                    {m.title}
+                  </span>
+                  <span className="text-emerald-400 text-xs shrink-0">
+                    Select &rarr;
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div>
+              <div className="flex items-center justify-between mb-3 gap-2">
+                <p className="text-xs text-gray-400">
+                  Choose a chapter to switch to:
+                </p>
+                <button
+                  onClick={() => setSelectedMangaId("")}
+                  className="text-xs text-blue-400 hover:underline cursor-pointer shrink-0"
+                >
+                  ← Choose different manga
+                </button>
+              </div>
+              <div className="max-h-80 overflow-y-auto space-y-2 custom-scrollbar pr-1">
+                {chaptersOfManga.map((c) => (
+                  <button
+                    key={c.id}
+                    disabled={isUpdatingChapter}
+                    onClick={() => handleConfirmChapter(c.id)}
+                    className="w-full text-left p-3 bg-gray-900 hover:bg-emerald-600 rounded-xl text-sm transition font-medium flex justify-between items-center gap-2 cursor-pointer"
+                  >
+                    <span className="truncate">{c.title}</span>
+                    <span className="text-xs opacity-75 shrink-0">
+                      Switch Now
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    )}
+
+    {/* 🌟 MODAL PHÊ DUYỆT THAM GIA PHÒNG (CHỈ HOST MỚI NHÌN THẤY) */}
+    {isHost && joinRequests.length > 0 && (
+      <div className="fixed bottom-28 md:bottom-16 right-3 sm:right-6 left-3 sm:left-auto z-50 flex flex-col gap-2 sm:max-w-sm sm:w-full animate-bounce-short">
+        {joinRequests.map((req) => (
+          <div
+            key={req.applicant.id}
+            className="bg-gray-900/95 border border-amber-500/40 p-3.5 sm:p-4 rounded-xl shadow-2xl backdrop-blur flex flex-col gap-3"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-amber-500/20 text-amber-300 flex items-center justify-center font-bold text-sm shrink-0">
+                {req.applicant.name?.charAt(0).toUpperCase() || "U"}
+              </div>
+              <div className="min-w-0">
+                <h4 className="text-sm font-bold text-white truncate">
+                  {req.applicant.name || "User"}
+                </h4>
+                <p className="text-[11px] text-gray-400">
+                  Requesting to join this reading room
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 justify-end">
+              <button
+                type="button"
+                onClick={() =>
+                  respondJoinRequest(
+                    req.applicantSocketId,
+                    req.applicant.id,
+                    false
+                  )
+                }
+                className="px-3 py-1.5 bg-gray-800 hover:bg-red-950/60 text-gray-300 hover:text-red-400 border border-gray-700 rounded-lg text-xs font-semibold transition cursor-pointer"
+              >
+                Reject
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  respondJoinRequest(
+                    req.applicantSocketId,
+                    req.applicant.id,
+                    true
+                  )
+                }
+                className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition shadow-lg shadow-emerald-900/40 cursor-pointer"
+              >
+                Accept
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+);}

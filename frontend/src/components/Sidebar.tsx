@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -21,13 +22,13 @@ interface MenuGroup {
 export default function Sidebar() {
   const { data: session, status } = useSession();
   const pathname = usePathname();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Ẩn thanh Sidebar hoàn toàn nếu người dùng đang ở trang login hoặc register
   if (pathname === "/login" || pathname === "/register") {
     return null;
   }
 
-  // Phân nhóm các chức năng để Sidebar có chiều sâu và chuyên nghiệp hơn
   const menuGroups: MenuGroup[] = [
     {
       title: "Explore & Discover",
@@ -76,22 +77,40 @@ export default function Sidebar() {
     },
   ];
 
-  const isProfileActive = pathname === "/profile" || pathname.startsWith("/profile/");
+  const mobileBottomItems = [
+    { name: "Home", href: "/", icon: "🏠" },
+    { name: "Anime", href: "/anime", icon: "🎬" },
+    { name: "Manga", href: "/manga", icon: "📚" },
+    { name: "AI Search", href: "/ai-search", icon: "🤖" },
+  ];
 
-  return (
-    <aside className="w-64 h-screen bg-[#0b0c10] text-white flex flex-col justify-between border-r border-white/[0.07] sticky top-0 left-0 select-none relative overflow-hidden shrink-0">
+  const isProfileActive =
+    pathname === "/profile" || pathname.startsWith("/profile/");
+
+  const checkActive = (href: string) =>
+    href === "/"
+      ? pathname === "/"
+      : pathname === href || pathname.startsWith(`${href}/`);
+
+  const handleCloseMobile = () => {
+    setIsMobileMenuOpen(false);
+  };
+
+  // Nội dung dùng chung cho cả Desktop Sidebar và Mobile Drawer
+  const renderSidebarContent = (isMobile = false) => (
+    <>
       {/* Hiệu ứng ánh sáng Ambient mờ phía sau Sidebar */}
       <div className="absolute -top-24 -left-24 w-56 h-56 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-10 -right-24 w-56 h-56 bg-purple-600/10 rounded-full blur-3xl pointer-events-none" />
 
-      {/* ===================================================================== */}
       {/* PHẦN TRÊN: LOGO & DANH SÁCH ĐIỀU HƯỚNG */}
-      {/* ===================================================================== */}
       <div className="relative z-10 flex-1 overflow-y-auto no-scrollbar">
-        {/* Header Logo */}
-        <div className="p-5 border-b border-white/[0.06]">
-          <Link href="/" className="flex items-center gap-3.5 group">
-            
+        <div className="p-5 border-b border-white/[0.06] flex items-center justify-between">
+          <Link
+            href="/"
+            onClick={isMobile ? handleCloseMobile : undefined}
+            className="flex items-center gap-3.5 group"
+          >
             <div className="min-w-0">
               <h1 className="text-base font-black tracking-tight bg-gradient-to-r from-white via-blue-100 to-purple-300 bg-clip-text text-transparent truncate">
                 Smart Anime
@@ -101,9 +120,19 @@ export default function Sidebar() {
               </p>
             </div>
           </Link>
+
+          {/* Nút đóng Drawer trên điện thoại */}
+          {isMobile && (
+            <button
+              onClick={handleCloseMobile}
+              className="w-8 h-8 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] flex items-center justify-center text-gray-400 hover:text-white transition-colors"
+              aria-label="Close Menu"
+            >
+              ✕
+            </button>
+          )}
         </div>
 
-        {/* Các nhóm Menu */}
         <nav className="px-3 py-4 space-y-6">
           {menuGroups.map((group) => (
             <div key={group.title} className="space-y-1">
@@ -112,22 +141,19 @@ export default function Sidebar() {
               </p>
 
               {group.items.map((item) => {
-                const isActive =
-                  item.href === "/"
-                    ? pathname === "/"
-                    : pathname === item.href || pathname.startsWith(`${item.href}/`);
+                const isActive = checkActive(item.href);
 
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
+                    onClick={isMobile ? handleCloseMobile : undefined}
                     className={`group relative flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm transition-all duration-200 ${
                       isActive
                         ? "bg-gradient-to-r from-blue-600/25 via-indigo-600/15 to-transparent text-white font-bold border border-blue-500/30 shadow-lg shadow-blue-500/5"
                         : "text-gray-400 hover:bg-white/[0.04] hover:text-gray-100 font-medium border border-transparent"
                     }`}
                   >
-                    {/* Thanh sáng Neon chỉ thị mục đang chọn */}
                     {isActive && (
                       <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full bg-gradient-to-b from-blue-400 to-purple-500 shadow-[0_0_10px_#3b82f6]" />
                     )}
@@ -145,7 +171,6 @@ export default function Sidebar() {
                       <span className="truncate">{item.name}</span>
                     </div>
 
-                    {/* Huy hiệu (Badge) hoặc Chấm Live */}
                     {item.badge && (
                       <span
                         className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border shrink-0 ${item.badgeColor}`}
@@ -155,7 +180,10 @@ export default function Sidebar() {
                     )}
 
                     {item.liveDot && (
-                      <span className="relative flex h-2 w-2 shrink-0 mr-1" title="Trực tuyến">
+                      <span
+                        className="relative flex h-2 w-2 shrink-0 mr-1"
+                        title="Online"
+                      >
                         <span
                           className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${item.liveDot}`}
                         />
@@ -172,19 +200,17 @@ export default function Sidebar() {
         </nav>
       </div>
 
-      {/* ===================================================================== */}
-      {/* PHẦN DƯỚI: THẺ TÀI KHOẢN NGƯỜI DÙNG (USER PROFILE CARD) */}
-      {/* ===================================================================== */}
+      {/* PHẦN DƯỚI: THẺ TÀI KHOẢN NGƯỜI DÙNG */}
       <div className="relative z-10 p-3.5 border-t border-white/[0.07] bg-[#08090c]/80 backdrop-blur-md">
         {status === "loading" ? (
           <div className="flex justify-center py-4">
             <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
           </div>
         ) : session ? (
-          /* TRẠNG THÁI: ĐÃ ĐĂNG NHẬP */
           <div className="space-y-2.5">
             <Link
               href="/profile"
+              onClick={isMobile ? handleCloseMobile : undefined}
               className={`flex items-center gap-3 p-2.5 rounded-xl border transition-all duration-200 group cursor-pointer ${
                 isProfileActive
                   ? "bg-blue-600/15 border-blue-500/40"
@@ -200,13 +226,12 @@ export default function Sidebar() {
                   alt={session.user?.name || "User Avatar"}
                   className="w-10 h-10 rounded-full object-cover border-2 border-gray-700 bg-gray-800 group-hover:border-blue-400 transition-colors"
                 />
-                {/* Chấm xanh Online */}
                 <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-[#0b0c10]" />
               </div>
 
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-bold truncate text-gray-100 group-hover:text-blue-400 transition-colors">
-                  {session.user?.name || "Người dùng"}
+                  {session.user?.name || "User"}
                 </p>
                 <p className="text-[11px] text-gray-500 truncate">
                   {session.user?.email}
@@ -227,13 +252,13 @@ export default function Sidebar() {
             </button>
           </div>
         ) : (
-          /* TRẠNG THÁI: CHƯA ĐĂNG NHẬP */
           <div className="p-2 rounded-2xl bg-gradient-to-b from-gray-900/90 to-gray-950 border border-white/[0.06] space-y-2.5">
             <p className="text-[11px] text-gray-400 text-center px-1 leading-relaxed">
-              Đăng nhập để lưu lịch sử xem, bình luận & tạo phòng chung
+              Sign in to save watch history, comment & create live rooms
             </p>
             <Link
               href="/login"
+              onClick={isMobile ? handleCloseMobile : undefined}
               className="block w-full py-2.5 text-center text-xs font-bold text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 rounded-xl shadow-lg shadow-blue-600/20 transition-all duration-200"
             >
               ✨ Sign In / Sign Up
@@ -241,6 +266,62 @@ export default function Sidebar() {
           </div>
         )}
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* 1. DESKTOP SIDEBAR: Chỉ hiện từ màn hình md (768px) trở lên */}
+      <aside className="hidden md:flex w-64 h-screen bg-[#0b0c10] text-white flex-col justify-between border-r border-white/[0.07] sticky top-0 left-0 select-none relative overflow-hidden shrink-0">
+        {renderSidebarContent(false)}
+      </aside>
+
+      {/* 2. MOBILE BOTTOM NAVIGATION BAR: Chỉ hiện trên màn hình điện thoại (< 768px) */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#0b0c10]/95 backdrop-blur-lg border-t border-white/[0.08] px-2 py-1.5 flex items-center justify-around select-none">
+        {mobileBottomItems.map((item) => {
+          const isActive = checkActive(item.href);
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={handleCloseMobile}
+              className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all ${
+                isActive ? "text-blue-400 font-bold" : "text-gray-400"
+              }`}
+            >
+              <span className="text-lg leading-none mb-1">{item.icon}</span>
+              <span className="text-[10px] tracking-tight">{item.name}</span>
+            </Link>
+          );
+        })}
+
+        {/* Nút Menu mở rộng (Chứa Watch Party, Co-reading, Forum & Profile) */}
+        <button
+          onClick={() => setIsMobileMenuOpen(true)}
+          className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all ${
+            isMobileMenuOpen ? "text-blue-400 font-bold" : "text-gray-400"
+          }`}
+        >
+          <span className="text-lg leading-none mb-1">☰</span>
+          <span className="text-[10px] tracking-tight">Menu</span>
+        </button>
+      </nav>
+
+      {/* 3. MOBILE SLIDE-OUT DRAWER: Hiện ra khi bấm nút "Menu" trên điện thoại */}
+      {isMobileMenuOpen && (
+        <div className="md:hidden fixed inset-0 z-50 flex">
+          {/* Lớp nền mờ (Backdrop) */}
+          <div
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm transition-opacity"
+            onClick={handleCloseMobile}
+          />
+
+          {/* Ngăn kéo chứa toàn bộ danh mục & Profile */}
+          <aside className="relative w-72 max-w-[80vw] h-full bg-[#0b0c10] text-white flex flex-col justify-between border-r border-white/[0.08] z-10 overflow-hidden shadow-2xl">
+            {renderSidebarContent(true)}
+          </aside>
+        </div>
+      )}
+    </>
   );
 }

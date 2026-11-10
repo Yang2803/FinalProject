@@ -602,496 +602,660 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
   const joinedMembers = room.members.filter(m => m.status === "JOINED");
 
   return (
-  <div 
-    style={{
-      '--room-accent': theme.accent,
-      '--room-glow': theme.glow,
-      backgroundImage: theme.bgUrl ? `url("${theme.bgUrl}")` : undefined,
-    } as React.CSSProperties}
-    className="h-[calc(100vh-80px)] bg-[#0f0f11] bg-cover bg-center bg-no-repeat text-white flex flex-col md:flex-row p-4 gap-6 overflow-hidden relative transition-colors duration-500"
+  <div
+    style={
+      {
+        "--room-accent": theme.accent,
+        "--room-glow": theme.glow,
+        backgroundImage: theme.bgUrl ? `url("${theme.bgUrl}")` : undefined,
+      } as React.CSSProperties
+    }
+    className="min-h-full md:h-[calc(100dvh-80px)] bg-[#0f0f11] bg-cover bg-center bg-no-repeat text-white flex flex-col md:flex-row p-3 sm:p-4 gap-4 md:gap-6 overflow-y-auto md:overflow-hidden relative transition-colors duration-500"
   >
     {/* 🌟 NHÚNG CSS ẨN THANH CUỘN CỘT TRÁI & LÀM MẢNH THANH CUỘN CHAT */}
-      <style>{`
-        .no-scrollbar::-webkit-scrollbar {
-          display: none;
-        }
-        .no-scrollbar {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 5px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: rgba(255, 255, 255, 0.15);
-          border-radius: 9999px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: rgba(255, 255, 255, 0.3);
-        }
-      `}</style>
-      
+    <style>{`
+      .no-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+      .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+      .custom-scrollbar::-webkit-scrollbar {
+        width: 5px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: 9999px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.3);
+      }
+    `}</style>
+
     {/* Lớp phủ làm tối nhẹ: hạ độ tối từ black/75 xuống black/40 để nhìn rõ wallpaper */}
     {theme.bgUrl && (
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px] pointer-events-none z-0" />
+      <div className="fixed md:absolute inset-0 bg-black/40 backdrop-blur-[1px] pointer-events-none z-0" />
     )}
-      
-      {isModalOpen && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-          <div className="bg-[#1a1d24] w-[400px] p-6 rounded-2xl border border-gray-800 shadow-2xl">
-            <h2 className="text-xl font-bold mb-4 flex items-center justify-between">
-              📺 Choose another anime
-              <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-white">✕</button>
-            </h2>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">Choose Anime</label>
-                <select 
-                  value={selectedAnimeId} 
-                  onChange={(e) => {
-                    const newAnimeId = e.target.value;
-                    setSelectedAnimeId(newAnimeId);
-                    if (!newAnimeId) {
-                      setEpisodeList([]);
-                      setSelectedEpisodeId("");
-                    }
-                  }}
-                  className="w-full bg-gray-900 border border-gray-800 rounded-lg p-3 text-sm outline-none focus:border-blue-500"
-                >
-                  <option value="">-- Choose an anime --</option>
-                  {animeList.map(anime => (
-                    <option key={anime.id} value={anime.id}>{anime.title}</option>
-                  ))}
-                </select>
-              </div>
 
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">Choose Episode</label>
-                <select 
-                  value={selectedEpisodeId} 
-                  onChange={(e) => setSelectedEpisodeId(e.target.value)}
-                  disabled={!selectedAnimeId || episodeList.length === 0}
-                  className="w-full bg-gray-900 border border-gray-800 rounded-lg p-3 text-sm outline-none focus:border-blue-500 disabled:opacity-50"
-                >
-                  <option value="">{episodeList.length === 0 ? '-- Choose an anime first --' : '-- Choose an episode --'}</option>
-                  {episodeList.map(ep => (
-                    <option key={ep.id} value={ep.id}>Episode {ep.episodeNumber} - {ep.title}</option>
-                  ))}
-                </select>
-              </div>
+    {isModalOpen && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+        <div className="bg-[#1a1d24] w-full max-w-[400px] p-5 sm:p-6 rounded-2xl border border-gray-800 shadow-2xl">
+          <h2 className="text-lg sm:text-xl font-bold mb-4 flex items-center justify-between">
+            <span>📺 Choose another anime</span>
+            <button
+              onClick={() => setIsModalOpen(false)}
+              className="text-gray-400 hover:text-white"
+            >
+              ✕
+            </button>
+          </h2>
 
-              <button 
-                onClick={handleSubmitChangeVideo}
-                disabled={!selectedEpisodeId || isChangingVideo}
-                className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg mt-2 transition disabled:opacity-50"
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm text-gray-400 mb-1">
+                Choose Anime
+              </label>
+              <select
+                value={selectedAnimeId}
+                onChange={(e) => {
+                  const newAnimeId = e.target.value;
+                  setSelectedAnimeId(newAnimeId);
+                  if (!newAnimeId) {
+                    setEpisodeList([]);
+                    setSelectedEpisodeId("");
+                  }
+                }}
+                className="w-full bg-gray-900 border border-gray-800 rounded-lg p-3 text-sm outline-none focus:border-blue-500"
               >
-                {isChangingVideo ? "Processing..." : "Start Watching!"}
-              </button>
+                <option value="">-- Choose an anime --</option>
+                {animeList.map((anime) => (
+                  <option key={anime.id} value={anime.id}>
+                    {anime.title}
+                  </option>
+                ))}
+              </select>
             </div>
+
+            <div>
+              <label className="block text-sm text-gray-400 mb-1">
+                Choose Episode
+              </label>
+              <select
+                value={selectedEpisodeId}
+                onChange={(e) => setSelectedEpisodeId(e.target.value)}
+                disabled={!selectedAnimeId || episodeList.length === 0}
+                className="w-full bg-gray-900 border border-gray-800 rounded-lg p-3 text-sm outline-none focus:border-blue-500 disabled:opacity-50"
+              >
+                <option value="">
+                  {episodeList.length === 0
+                    ? "-- Choose an anime first --"
+                    : "-- Choose an episode --"}
+                </option>
+                {episodeList.map((ep) => (
+                  <option key={ep.id} value={ep.id}>
+                    Episode {ep.episodeNumber}: {ep.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <button
+              onClick={handleSubmitChangeVideo}
+              disabled={!selectedEpisodeId || isChangingVideo}
+              className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg mt-2 transition disabled:opacity-50"
+            >
+              {isChangingVideo ? "Processing..." : "Start Watching!"}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* 🔴 CỘT TRÁI: VIDEO PLAYER */}
+    <div className="w-full md:flex-1 flex flex-col md:overflow-y-auto custom-scrollbar md:pr-2 relative z-10 shrink-0 md:shrink">
+      <div className="flex items-center justify-between gap-2 mb-3 sm:mb-4 shrink-0">
+        <div className="min-w-0">
+          <h1 className="text-lg sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500 truncate">
+            {room.name}
+          </h1>
+          <p className="text-xs sm:text-sm text-gray-400">
+            Code:{" "}
+            <span className="font-bold text-white bg-gray-800 px-2 py-0.5 rounded">
+              {room.inviteCode}
+            </span>
+          </p>
+        </div>
+        <button
+          onClick={handleLeaveRoom}
+          className="bg-red-600/20 text-red-500 hover:bg-red-600 hover:text-white px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition shrink-0"
+        >
+          Leave Room
+        </button>
+      </div>
+
+      {room.episode && (
+        <div className="bg-[#1a1d24] border border-gray-800 rounded-xl p-3 sm:p-4 mb-3 sm:mb-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-2 sm:gap-4 shrink-0 shadow-lg">
+          <div className="min-w-0">
+            <h2 className="text-base sm:text-xl font-bold truncate">
+              {room.episode.title}
+            </h2>
+            <p className="text-xs sm:text-sm text-gray-500 mt-1 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+              Live Watch Party
+            </p>
           </div>
         </div>
       )}
 
-      {/* 🔴 CỘT TRÁI: VIDEO PLAYER */}
-      <div className="flex-1 flex flex-col overflow-y-auto custom-scrollbar pr-2 relative z-10">
-        <div className="flex items-center justify-between mb-4 shrink-0">
-          <div>
-            <h1 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">{room.name}</h1>
-            <p className="text-sm text-gray-400">Code: <span className="font-bold text-white bg-gray-800 px-2 py-0.5 rounded">{room.inviteCode}</span></p>
-          </div>
-          <button onClick={handleLeaveRoom} className="bg-red-600/20 text-red-500 hover:bg-red-600 hover:text-white px-4 py-2 rounded-lg font-bold transition">
-            Leave Room
-          </button>
-        </div>
-
-        {room.episode && (
-          <div className="bg-[#1a1d24] border border-gray-800 rounded-xl p-4 mb-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shrink-0 shadow-lg">
-            <div>
-              <h2 className="text-xl font-bold">{room.episode.title}</h2>
-              <p className="text-sm text-gray-500 mt-1 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                Live Watch Party
-              </p>
-            </div>
-          </div>
-        )}
-
-        <div 
-          className="w-full aspect-video bg-black rounded-2xl border overflow-hidden relative shadow-2xl mb-4 shrink-0 flex items-center justify-center transition-all duration-500"
-          style={{ borderColor: 'var(--room-accent)', boxShadow: '0 0 20px var(--room-glow)' }}
-        >
-          {room.episode ? (
-            <video 
-              ref={videoRef}
-              src={activeVideoUrl || room.episode.videoUrl} 
-              className="w-full h-full object-contain"
-              controls={isHost} 
-              crossOrigin="anonymous" 
-              onPlay={() => forceSyncVideo("PLAY")}
-              onPause={() => forceSyncVideo("PAUSE")}
-              onSeeked={() => forceSyncVideo("SEEK")}
+      <div
+        className="w-full aspect-video bg-black rounded-xl sm:rounded-2xl border overflow-hidden relative shadow-2xl mb-3 sm:mb-4 shrink-0 flex items-center justify-center transition-all duration-500"
+        style={{
+          borderColor: "var(--room-accent)",
+          boxShadow: "0 0 20px var(--room-glow)",
+        }}
+      >
+        {room.episode ? (
+          <video
+            ref={videoRef}
+            src={activeVideoUrl || room.episode.videoUrl}
+            className="w-full h-full object-contain"
+            controls={isHost}
+            playsInline
+            crossOrigin="anonymous"
+            onPlay={() => forceSyncVideo("PLAY")}
+            onPause={() => forceSyncVideo("PAUSE")}
+            onSeeked={() => forceSyncVideo("SEEK")}
+          >
+            {room.episode?.subtitles?.map((sub) => (
+              <track
+                key={sub.id}
+                kind="captions"
+                src={sub.url}
+                srcLang={sub.label}
+                label={sub.label}
+              />
+            ))}
+          </video>
+        ) : (
+          <div className="text-gray-500 flex flex-col items-center p-4 text-center text-sm">
+            <svg
+              className="w-12 h-12 sm:w-16 sm:h-16 mb-3 sm:mb-4 opacity-50"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
             >
-              {room.episode?.subtitles?.map((sub) => (
-                <track 
-                    key={sub.id} 
-                    kind="captions" 
-                    src={sub.url} 
-                    srcLang={sub.label} 
-                    label={sub.label} 
-                />
-                ))}
-            </video>
-          ) : (
-            <div className="text-gray-500 flex flex-col items-center">
-              <svg className="w-16 h-16 mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" /></svg>
-              Host has not selected an episode yet
-            </div>
-          )}
-
-          {!isHost && <div className="absolute inset-0 z-10" title="Syncing with Host"></div>}
-        </div>
-
-        {!isHost && !hasInteracted && room.episode && (
-          <div className="text-center mb-2 animate-pulse">
-            <span className="text-xs bg-yellow-500/20 text-yellow-400 px-3 py-1 rounded-full border border-yellow-500/50">
-              Click anywhere on the page to allow audio playback
-            </span>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.5}
+                d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"
+              />
+            </svg>
+            Host has not selected an episode yet
           </div>
         )}
 
-        {!isHost && room.episode && (
-          <div className="bg-[#1a1d24] border border-gray-800 rounded-xl p-4 mb-6 flex flex-wrap items-center justify-between gap-4 shrink-0 shadow-lg">
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-3">
-                <button onClick={toggleMute} className="text-gray-400 hover:text-white transition w-6 text-center">
-                  {isMuted || volume === 0 ? "🔇" : "🔊"}
-                </button>
-                <input 
-                  type="range" 
-                  min="0" max="1" step="0.05" 
-                  value={isMuted ? 0 : volume} 
-                  onChange={handleVolumeChange}
-                  className="w-24 accent-blue-500 cursor-pointer"
-                />
-              </div>
-
-              {room.episode.subtitles && room.episode.subtitles.length > 0 && (
-                <div className="flex items-center gap-2">
-                  <span className="text-gray-400 font-bold text-sm">CC:</span>
-                  <select 
-                    onChange={handleSubtitleChange} 
-                    defaultValue="off"
-                    className="bg-gray-900 border border-gray-800 text-white text-sm rounded px-3 py-1.5 outline-none focus:border-blue-500 cursor-pointer"
-                  >
-                    <option value="off">Tắt phụ đề</option>
-                    {room.episode.subtitles.map(sub => (
-                      <option key={sub.id} value={sub.label}>{sub.label}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-            </div>
-            
-            <span className="text-xs text-gray-500 italic bg-gray-900 px-3 py-1 rounded-full border border-gray-800">
-              Host is holding the remote
-            </span>
-          </div>
-        )}
-
-        {isHost && (
-        <div 
-          className="bg-[#1a1d24] rounded-xl border p-5 shadow-lg relative overflow-hidden shrink-0 mb-6 transition-all duration-300"
-          style={{ borderColor: 'var(--room-accent)', boxShadow: '0 0 15px var(--room-glow)' }}
-        >
-          <div 
-            className="absolute top-0 left-0 w-1.5 h-full"
-            style={{ backgroundColor: 'var(--room-accent)' }}
-          ></div>
-            <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
-              <span className="text-xl">👑</span> Host Control Panel
-            </h3>
-            
-            <div className="flex flex-wrap gap-4">
-              <button 
-                onClick={() => setIsModalOpen(true)}
-                className="bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 px-5 py-2.5 rounded-lg text-sm font-bold transition"
-              >
-                📺 Select Anime/Change Episode
-              </button>
-
-              {/* 🌟 NÚT MỞ MODAL ĐỔI THEME */}
-              <button 
-                onClick={() => setIsThemeModalOpen(true)}
-                className="bg-gray-800 hover:bg-gray-700 text-white px-5 py-2.5 rounded-lg text-sm font-bold transition border shadow-sm active:scale-95 flex items-center gap-2"
-                style={{ borderColor: 'var(--room-accent)', color: 'var(--room-accent)' }}
-              >
-                🎨 Customize Theme
-              </button>
-
-              {/* 🌟 NÚT GIẢI TÁN PHÒNG */}
-              <button 
-                onClick={handleDisbandRoom}
-                className="bg-red-600 hover:bg-red-500 text-white px-5 py-2.5 rounded-lg text-sm font-bold transition shadow-lg shadow-red-900/20"
-              >
-                🧨 Break the room.
-              </button>
-            </div>
-
-            {pendingMembers.length > 0 && (
-              <div className="mt-6">
-                <h4 className="text-sm font-bold text-gray-400 mb-3 uppercase tracking-wider">Hàng đợi duyệt vào phòng ({pendingMembers.length})</h4>
-                <div className="space-y-2">
-                  {pendingMembers.map(member => (
-                    <div key={member.id} className="flex items-center justify-between bg-gray-900/50 p-3 rounded-lg border border-gray-800">
-                      <div className="flex items-center gap-3">
-                        {member.user.image ? (
-                          <img src={member.user.image} alt="Avatar" className="w-8 h-8 rounded-full bg-gray-700 object-cover" />
-                        ) : (
-                          <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center font-bold text-xs text-gray-400">
-                            {member.user.name.charAt(0).toUpperCase()}
-                          </div>
-                        )}
-                        <span className="font-bold text-sm">{member.user.name}</span>
-                      </div>
-                      <div className="flex gap-2">
-                        <button onClick={() => handleApproveMember(member.user.id, "APPROVE")} className="bg-green-600/20 text-green-500 hover:bg-green-600 hover:text-white px-3 py-1.5 rounded font-bold text-xs transition">Duyệt</button>
-                        <button onClick={() => handleApproveMember(member.user.id, "REJECT")} className="bg-red-600/20 text-red-500 hover:bg-red-600 hover:text-white px-3 py-1.5 rounded font-bold text-xs transition">Từ chối</button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
+        {!isHost && (
+          <div className="absolute inset-0 z-10" title="Syncing with Host"></div>
         )}
       </div>
 
-      {/* 🟢 CỘT PHẢI: KHUNG CHAT & DANH SÁCH THÀNH VIÊN */}
-      <div className="w-full md:w-80 flex flex-col gap-4 h-full shrink-0 relative z-10">
+      {!isHost && !hasInteracted && room.episode && (
+        <div className="text-center mb-2 animate-pulse">
+          <span className="text-xs bg-yellow-500/20 text-yellow-400 px-3 py-1 rounded-full border border-yellow-500/50 inline-block">
+            Tap or click anywhere on the page to allow audio playback
+          </span>
+        </div>
+      )}
 
-        {/* 🌟 THÊM TẠI ĐÂY (LIVEKIT): GIAO DIỆN VOICE CHAT (Chỉ hiện khi đã có Token) */}
-        {voiceToken && (
-          <LiveKitRoom
-            video={false}
-            audio={true}
-            token={voiceToken}
-            serverUrl={process.env.NEXT_PUBLIC_LIVEKIT_URL}
-            connect={true}
-            options={{
-              audioCaptureDefaults: {
-                autoGainControl: true,    // Tự động bù âm lượng khi nói nhỏ/ở xa mic
-              },
-              publishDefaults: {
-                audioPreset: {
-                  maxBitrate: 64_000,     // Nâng bitrate âm thanh để giọng rõ nét hơn
-                },
-              },
-            }}
-            style={{ 
-              flex: 'none', 
-              height: 'auto', 
-              minHeight: 'fit-content',
-              borderColor: 'var(--room-accent)', 
-              boxShadow: '0 0 15px var(--room-glow)' 
-            }}
-            className="bg-[#1a1d24] rounded-xl border p-4 shrink-0 shadow-lg flex flex-col items-center justify-center relative overflow-hidden transition-all duration-300"
-        >
-          <div 
-            className="absolute top-0 left-0 w-1.5 h-full animate-pulse"
-            style={{ backgroundColor: 'var(--room-accent)' }}
-          ></div>
-            <h3 className="font-bold text-gray-300 mb-3 text-sm flex items-center gap-2 w-full">
-              <span>🎙️ Voice Chat </span>
-              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse ml-auto"></span>
-            </h3>
-            
-            <div className="flex items-center justify-between w-full bg-gray-900/50 p-3 rounded-lg border border-gray-800">
-              <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">Micro của bạn</span>
-              <TrackToggle 
-                 source={Track.Source.Microphone} 
-                 className="bg-blue-600 hover:bg-blue-500 text-white rounded-full px-4 py-1.5 text-sm font-bold transition"
+      {!isHost && room.episode && (
+        <div className="bg-[#1a1d24] border border-gray-800 rounded-xl p-3 sm:p-4 mb-4 sm:mb-6 flex flex-wrap items-center justify-between gap-3 sm:gap-4 shrink-0 shadow-lg">
+          <div className="flex flex-wrap items-center gap-4 sm:gap-6">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <button
+                onClick={toggleMute}
+                className="text-gray-400 hover:text-white transition w-6 text-center"
+              >
+                {isMuted || volume === 0 ? "🔇" : "🔊"}
+              </button>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={isMuted ? 0 : volume}
+                onChange={handleVolumeChange}
+                className="w-20 sm:w-24 accent-blue-500 cursor-pointer"
               />
             </div>
-            
-            <RoomAudioRenderer volume={1.0} />
-          </LiveKitRoom>
-        )}
 
-        <div 
-          className="bg-[#1a1d24] rounded-xl border p-4 shrink-0 transition-all duration-300"
-          style={{ borderColor: 'rgba(255, 255, 255, 0.08)', boxShadow: '0 0 10px var(--room-glow)' }}
-        >
-          <h3 className="font-bold text-gray-300 mb-4 flex items-center justify-between">
-            <span>Members ({joinedMembers.length})</span>
-            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-          </h3>
-          <div className="space-y-3 max-h-[20vh] overflow-y-auto custom-scrollbar pr-2">
-            {joinedMembers.map(member => (
-              <div key={member.id} className="flex items-center gap-3">
-                <div className="relative">
-                  {member.user.image ? (
-                    <img src={member.user.image} alt="Avatar" className="w-8 h-8 rounded-full bg-gray-700 object-cover border border-gray-600" />
-                  ) : (
-                    <div className="w-8 h-8 rounded-full bg-gray-700 border border-gray-600 flex items-center justify-center font-bold text-xs text-gray-400">
-                      {member.user.name.charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                  {member.user.id === room.hostId && <span className="absolute -top-1 -right-1 text-xs" title="Trưởng phòng">👑</span>}
-                </div>
-                <span className="font-bold text-sm text-gray-200 truncate">{member.user.name}</span>
+            {room.episode.subtitles && room.episode.subtitles.length > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-gray-400 font-bold text-xs sm:text-sm">
+                  CC:
+                </span>
+                <select
+                  onChange={handleSubtitleChange}
+                  defaultValue="off"
+                  className="bg-gray-900 border border-gray-800 text-white text-xs sm:text-sm rounded px-2.5 py-1.5 outline-none focus:border-blue-500 cursor-pointer"
+                >
+                  <option value="off">Subtitles Off</option>
+                  {room.episode.subtitles.map((sub) => (
+                    <option key={sub.id} value={sub.label}>
+                      {sub.label}
+                    </option>
+                  ))}
+                </select>
               </div>
-            ))}
+            )}
           </div>
-        </div>
 
-        <div className="bg-[#1a1d24] rounded-xl border border-gray-800 p-4 flex-1 flex flex-col overflow-hidden">
-          <h3 
-            className="font-bold mb-4 border-b pb-2 shrink-0 flex items-center justify-between"
-            style={{ color: 'var(--room-accent)', borderColor: 'rgba(255,255,255,0.08)' }}
-          >
-            <span>Live Chat</span>
-            <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: 'var(--room-accent)' }}></span>
+          <span className="text-xs text-gray-500 italic bg-gray-900 px-3 py-1 rounded-full border border-gray-800">
+            Host is holding the remote
+          </span>
+        </div>
+      )}
+
+      {isHost && (
+        <div
+          className="bg-[#1a1d24] rounded-xl border p-4 sm:p-5 shadow-lg relative overflow-hidden shrink-0 mb-2 md:mb-6 transition-all duration-300"
+          style={{
+            borderColor: "var(--room-accent)",
+            boxShadow: "0 0 15px var(--room-glow)",
+          }}
+        >
+          <div
+            className="absolute top-0 left-0 w-1.5 h-full"
+            style={{ backgroundColor: "var(--room-accent)" }}
+          ></div>
+          <h3 className="font-bold text-base sm:text-lg mb-3 sm:mb-4 flex items-center gap-2">
+            <span className="text-xl">👑</span> Host Control Panel
           </h3>
-          <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 flex flex-col gap-3">
-            {messages.length === 0 ? (
-              <div className="h-full flex items-center justify-center text-sm text-gray-500 italic text-center">
-                No messages received yet. <br/> Send a greeting to everyone!
+
+          <div className="flex flex-wrap gap-2.5 sm:gap-4">
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="flex-1 sm:flex-none bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 px-4 sm:px-5 py-2.5 rounded-lg text-xs sm:text-sm font-bold transition text-center"
+            >
+              📺 Select Anime/Change Episode
+            </button>
+
+            {/* 🌟 NÚT MỞ MODAL ĐỔI THEME */}
+            <button
+              onClick={() => setIsThemeModalOpen(true)}
+              className="flex-1 sm:flex-none bg-gray-800 hover:bg-gray-700 text-white px-4 sm:px-5 py-2.5 rounded-lg text-xs sm:text-sm font-bold transition border shadow-sm active:scale-95 flex items-center justify-center gap-2"
+              style={{
+                borderColor: "var(--room-accent)",
+                color: "var(--room-accent)",
+              }}
+            >
+              🎨 Customize Theme
+            </button>
+
+            {/* 🌟 NÚT GIẢI TÁN PHÒNG */}
+            <button
+              onClick={handleDisbandRoom}
+              className="w-full sm:w-auto bg-red-600 hover:bg-red-500 text-white px-4 sm:px-5 py-2.5 rounded-lg text-xs sm:text-sm font-bold transition shadow-lg shadow-red-900/20 text-center"
+            >
+              🧨 Break the room.
+            </button>
+          </div>
+
+          {pendingMembers.length > 0 && (
+            <div className="mt-5 sm:mt-6">
+              <h4 className="text-xs sm:text-sm font-bold text-gray-400 mb-3 uppercase tracking-wider">
+                Pending Room Requests ({pendingMembers.length})
+              </h4>
+              <div className="space-y-2">
+                {pendingMembers.map((member) => (
+                  <div
+                    key={member.id}
+                    className="flex items-center justify-between bg-gray-900/50 p-2.5 sm:p-3 rounded-lg border border-gray-800 gap-2"
+                  >
+                    <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                      {member.user.image ? (
+                        <img
+                          src={member.user.image}
+                          alt="Avatar"
+                          className="w-8 h-8 rounded-full bg-gray-700 object-cover shrink-0"
+                        />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center font-bold text-xs text-gray-400 shrink-0">
+                          {member.user.name.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <span className="font-bold text-xs sm:text-sm truncate">
+                        {member.user.name}
+                      </span>
+                    </div>
+                    <div className="flex gap-1.5 sm:gap-2 shrink-0">
+                      <button
+                        onClick={() =>
+                          handleApproveMember(member.user.id, "APPROVE")
+                        }
+                        className="bg-green-600/20 text-green-500 hover:bg-green-600 hover:text-white px-2.5 sm:px-3 py-1.5 rounded font-bold text-xs transition"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        onClick={() =>
+                          handleApproveMember(member.user.id, "REJECT")
+                        }
+                        className="bg-red-600/20 text-red-500 hover:bg-red-600 hover:text-white px-2.5 sm:px-3 py-1.5 rounded font-bold text-xs transition"
+                      >
+                        Reject
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ) : (
-              messages.map((msg, index) => (
-                <div key={index} className={`flex flex-col ${msg.isSystemMsg ? 'items-center my-2' : msg.sender === 'Bạn' ? 'items-end' : 'items-start'}`}>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+
+    {/* 🟢 CỘT PHẢI: KHUNG CHAT & DANH SÁCH THÀNH VIÊN */}
+    <div className="w-full md:w-80 flex flex-col gap-4 md:h-full shrink-0 relative z-10 pb-4 md:pb-0">
+      {/* 🌟 THÊM TẠI ĐÂY (LIVEKIT): GIAO DIỆN VOICE CHAT (Chỉ hiện khi đã có Token) */}
+      {voiceToken && (
+        <LiveKitRoom
+          video={false}
+          audio={true}
+          token={voiceToken}
+          serverUrl={process.env.NEXT_PUBLIC_LIVEKIT_URL}
+          connect={true}
+          options={{
+            audioCaptureDefaults: {
+              autoGainControl: true,
+            },
+            publishDefaults: {
+              audioPreset: {
+                maxBitrate: 64_000,
+              },
+            },
+          }}
+          style={{
+            flex: "none",
+            height: "auto",
+            minHeight: "fit-content",
+            borderColor: "var(--room-accent)",
+            boxShadow: "0 0 15px var(--room-glow)",
+          }}
+          className="bg-[#1a1d24] rounded-xl border p-4 shrink-0 shadow-lg flex flex-col items-center justify-center relative overflow-hidden transition-all duration-300"
+        >
+          <div
+            className="absolute top-0 left-0 w-1.5 h-full animate-pulse"
+            style={{ backgroundColor: "var(--room-accent)" }}
+          ></div>
+          <h3 className="font-bold text-gray-300 mb-3 text-sm flex items-center gap-2 w-full">
+            <span>🎙️ Voice Chat </span>
+            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse ml-auto"></span>
+          </h3>
+
+          <div className="flex items-center justify-between w-full bg-gray-900/50 p-3 rounded-lg border border-gray-800">
+            <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">
+              Your Microphone
+            </span>
+            <TrackToggle
+              source={Track.Source.Microphone}
+              className="bg-blue-600 hover:bg-blue-500 text-white rounded-full px-4 py-1.5 text-sm font-bold transition"
+            />
+          </div>
+
+          <RoomAudioRenderer volume={1.0} />
+        </LiveKitRoom>
+      )}
+
+      <div
+        className="bg-[#1a1d24] rounded-xl border p-4 shrink-0 transition-all duration-300"
+        style={{
+          borderColor: "rgba(255, 255, 255, 0.08)",
+          boxShadow: "0 0 10px var(--room-glow)",
+        }}
+      >
+        <h3 className="font-bold text-gray-300 mb-3 sm:mb-4 flex items-center justify-between text-sm sm:text-base">
+          <span>Members ({joinedMembers.length})</span>
+          <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+        </h3>
+        <div className="space-y-3 max-h-36 md:max-h-[20vh] overflow-y-auto custom-scrollbar pr-2">
+          {joinedMembers.map((member) => (
+            <div key={member.id} className="flex items-center gap-3">
+              <div className="relative shrink-0">
+                {member.user.image ? (
+                  <img
+                    src={member.user.image}
+                    alt="Avatar"
+                    className="w-8 h-8 rounded-full bg-gray-700 object-cover border border-gray-600"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-gray-700 border border-gray-600 flex items-center justify-center font-bold text-xs text-gray-400">
+                    {member.user.name.charAt(0).toUpperCase()}
+                  </div>
+                )}
+                {member.user.id === room.hostId && (
+                  <span
+                    className="absolute -top-1 -right-1 text-xs"
+                    title="Room Host"
+                  >
+                    👑
+                  </span>
+                )}
+              </div>
+              <span className="font-bold text-sm text-gray-200 truncate">
+                {member.user.name}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="bg-[#1a1d24] rounded-xl border border-gray-800 p-4 h-[420px] md:h-auto md:flex-1 flex flex-col overflow-hidden">
+        <h3
+          className="font-bold mb-4 border-b pb-2 shrink-0 flex items-center justify-between text-sm sm:text-base"
+          style={{
+            color: "var(--room-accent)",
+            borderColor: "rgba(255,255,255,0.08)",
+          }}
+        >
+          <span>Live Chat</span>
+          <span
+            className="w-1.5 h-1.5 rounded-full"
+            style={{ backgroundColor: "var(--room-accent)" }}
+          ></span>
+        </h3>
+        <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 flex flex-col gap-3">
+          {messages.length === 0 ? (
+            <div className="h-full flex items-center justify-center text-sm text-gray-500 italic text-center">
+              No messages received yet. <br /> Send a greeting to everyone!
+            </div>
+          ) : (
+            messages.map((msg, index) => {
+              const isOwnMessage = msg.sender === "Bạn" || msg.sender === "You";
+              return (
+                <div
+                  key={index}
+                  className={`flex flex-col ${
+                    msg.isSystemMsg
+                      ? "items-center my-2"
+                      : isOwnMessage
+                      ? "items-end"
+                      : "items-start"
+                  }`}
+                >
                   {msg.isSystemMsg ? (
-                    <span className="text-xs bg-gray-800/50 text-gray-400 px-3 py-1 rounded-full">{msg.text}</span>
+                    <span className="text-xs bg-gray-800/50 text-gray-400 px-3 py-1 rounded-full text-center">
+                      {msg.text}
+                    </span>
                   ) : (
-                    <div className={`max-w-[85%] flex flex-col ${msg.sender === 'Bạn' ? 'items-end' : 'items-start'}`}>
-                      <span className="text-[10px] text-gray-500 mb-0.5 ml-1">{msg.sender}</span>
-                      <div 
-                        className={`px-3 py-2 rounded-2xl text-sm ${
-                          msg.sender === 'Bạn' 
-                            ? 'text-white rounded-br-none' 
-                            : 'bg-gray-800 text-gray-200 rounded-bl-none'
+                    <div
+                      className={`max-w-[85%] flex flex-col ${
+                        isOwnMessage ? "items-end" : "items-start"
+                      }`}
+                    >
+                      <span className="text-[10px] text-gray-500 mb-0.5 ml-1">
+                        {msg.sender === "Bạn" ? "You" : msg.sender}
+                      </span>
+                      <div
+                        className={`px-3 py-2 rounded-2xl text-sm break-words ${
+                          isOwnMessage
+                            ? "text-white rounded-br-none"
+                            : "bg-gray-800 text-gray-200 rounded-bl-none"
                         }`}
-                        style={msg.sender === 'Bạn' ? { 
-                          backgroundColor: 'var(--room-accent)',
-                          boxShadow: '0 0 8px var(--room-glow)' 
-                        } : undefined}
+                        style={
+                          isOwnMessage
+                            ? {
+                                backgroundColor: "var(--room-accent)",
+                                boxShadow: "0 0 8px var(--room-glow)",
+                              }
+                            : undefined
+                        }
                       >
                         {msg.text}
                       </div>
                     </div>
                   )}
                 </div>
-              ))
-            )}
-            <div ref={messagesEndRef} />
+              );
+            })
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+
+        <form
+          onSubmit={handleSendMessage}
+          className="mt-4 pt-4 border-t border-gray-800 flex items-center gap-2 shrink-0"
+        >
+          {/* 🌟 NÚT THẢ CẢM XÚC BAY TRONG PHÒNG WATCH PARTY */}
+          <MangaRoomReactions
+            roomId={room.id}
+            socket={socket}
+            userName={session?.user?.name || "Anonymous"}
+            userColor={myUserColor}
+            popupAlign="left"
+          />
+
+          <input
+            type="text"
+            value={chatInput}
+            onChange={(e) => setChatInput(e.target.value)}
+            placeholder="Enter message..."
+            className="flex-1 min-w-0 bg-gray-900 border border-gray-800 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 text-white transition"
+          />
+          <button
+            type="submit"
+            disabled={!chatInput.trim()}
+            className="disabled:opacity-50 text-white px-4 py-2 rounded-lg font-bold text-sm transition shadow-md active:scale-95 shrink-0"
+            style={{
+              backgroundColor: "var(--room-accent)",
+              boxShadow: "0 0 10px var(--room-glow)",
+            }}
+          >
+            Send
+          </button>
+        </form>
+      </div>
+    </div>
+
+    {/* 🌟 MODAL TÙY BIẾN THEME PHÒNG CHO TRƯỞNG PHÒNG */}
+    {isThemeModalOpen && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+        <div className="bg-[#14161d] w-full max-w-md rounded-2xl border border-gray-800 p-5 sm:p-6 shadow-2xl relative">
+          <div className="flex items-center justify-between mb-4 border-b border-gray-800 pb-3">
+            <h3 className="text-base sm:text-lg font-black text-gray-100 flex items-center gap-2">
+              🎨 Customize Room Space
+            </h3>
+            <button
+              onClick={() => setIsThemeModalOpen(false)}
+              className="text-gray-400 hover:text-white"
+            >
+              ✕
+            </button>
           </div>
 
-          <form onSubmit={handleSendMessage} className="mt-4 pt-4 border-t border-gray-800 flex items-center gap-2 shrink-0">
-            {/* 🌟 NÚT THẢ CẢM XÚC BAY TRONG PHÒNG WATCH PARTY */}
-            <MangaRoomReactions
-              roomId={room.id}
-              socket={socket}
-              userName={session?.user?.name || "Ẩn danh"}
-              userColor={myUserColor}
-              popupAlign="left"
-            />
+          {/* Danh sách bảng màu sẵn có */}
+          <div className="mb-4">
+            <label className="block text-xs font-bold text-gray-400 mb-2 uppercase">
+              Select Neon Color
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              {THEME_PRESETS.map((preset) => (
+                <button
+                  key={preset.accent}
+                  type="button"
+                  onClick={() =>
+                    setTheme((prev) => ({
+                      ...prev,
+                      accent: preset.accent,
+                      glow: preset.glow,
+                    }))
+                  }
+                  className={`flex items-center gap-2 p-2 rounded-xl border text-xs font-bold transition-all ${
+                    theme.accent === preset.accent
+                      ? "border-white bg-gray-800 scale-105"
+                      : "border-gray-800 bg-gray-900/60 text-gray-400 hover:border-gray-700"
+                  }`}
+                >
+                  <span
+                    className="w-3.5 h-3.5 rounded-full shrink-0 shadow-sm"
+                    style={{ backgroundColor: preset.accent }}
+                  />
+                  <span className="truncate">{preset.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
 
-            <input 
-              type="text" 
-              value={chatInput}
-              onChange={(e) => setChatInput(e.target.value)}
-              placeholder="Enter message..." 
-              className="flex-1 min-w-0 bg-gray-900 border border-gray-800 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 text-white transition" 
+          {/* URL Hình nền */}
+          <div className="mb-6">
+            <label className="block text-xs font-bold text-gray-400 mb-2 uppercase">
+              Background Image URL (Optional)
+            </label>
+            <input
+              type="text"
+              placeholder="https://example.com/wallpaper.jpg"
+              value={theme.bgUrl || ""}
+              onChange={(e) =>
+                setTheme((prev) => ({ ...prev, bgUrl: e.target.value }))
+              }
+              className="w-full bg-gray-900 border border-gray-800 rounded-xl px-3 py-2 text-xs text-gray-200 outline-none focus:border-blue-500"
             />
-            <button 
-              type="submit" 
-              disabled={!chatInput.trim()} 
-              className="disabled:opacity-50 text-white px-4 py-2 rounded-lg font-bold text-sm transition shadow-md active:scale-95 shrink-0"
-              style={{ backgroundColor: 'var(--room-accent)', boxShadow: '0 0 10px var(--room-glow)' }}
+          </div>
+
+          {/* Nút thao tác */}
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={() => setIsThemeModalOpen(false)}
+              className="px-4 py-2 text-xs font-bold text-gray-400 hover:text-white"
             >
-              Send
+              Cancel
             </button>
-          </form>
+            <button
+              onClick={() => {
+                if (globalSocket && room && session?.user?.id) {
+                  globalSocket.emit("update_room_theme", {
+                    roomId: room.id,
+                    hostId: session.user.id,
+                    newTheme: theme,
+                  });
+                }
+                setIsThemeModalOpen(false);
+              }}
+              className="px-5 py-2 rounded-xl text-xs font-black text-white shadow-md active:scale-95 transition-all"
+              style={{
+                backgroundColor: "var(--room-accent)",
+                boxShadow: "0 0 12px var(--room-glow)",
+              }}
+            >
+              Save & Apply Now
+            </button>
+          </div>
         </div>
       </div>
-      {/* 🌟 MODAL TÙY BIẾN THEME PHÒNG CHO TRƯỞNG PHÒNG */}
-      {isThemeModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-          <div className="bg-[#14161d] w-full max-w-md rounded-2xl border border-gray-800 p-6 shadow-2xl relative">
-            <div className="flex items-center justify-between mb-4 border-b border-gray-800 pb-3">
-              <h3 className="text-lg font-black text-gray-100 flex items-center gap-2">
-                🎨 Customize Room Space
-              </h3>
-              <button onClick={() => setIsThemeModalOpen(false)} className="text-gray-400 hover:text-white">✕</button>
-            </div>
-
-            {/* Danh sách bảng màu sẵn có */}
-            <div className="mb-4">
-              <label className="block text-xs font-bold text-gray-400 mb-2 uppercase">Select Neon Color</label>
-              <div className="grid grid-cols-2 gap-2">
-                {THEME_PRESETS.map((preset) => (
-                  <button
-                    key={preset.accent}
-                    type="button"
-                    onClick={() => setTheme(prev => ({ ...prev, accent: preset.accent, glow: preset.glow }))}
-                    className={`flex items-center gap-2 p-2 rounded-xl border text-xs font-bold transition-all ${
-                      theme.accent === preset.accent 
-                        ? 'border-white bg-gray-800 scale-105' 
-                        : 'border-gray-800 bg-gray-900/60 text-gray-400 hover:border-gray-700'
-                    }`}
-                  >
-                    <span className="w-3.5 h-3.5 rounded-full shrink-0 shadow-sm" style={{ backgroundColor: preset.accent }} />
-                    <span className="truncate">{preset.name}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* URL Hình nền */}
-            <div className="mb-6">
-              <label className="block text-xs font-bold text-gray-400 mb-2 uppercase">Background Image URL (Optional)</label>
-              <input
-                type="text"
-                placeholder="https://example.com/wallpaper.jpg"
-                value={theme.bgUrl || ''}
-                onChange={(e) => setTheme(prev => ({ ...prev, bgUrl: e.target.value }))}
-                className="w-full bg-gray-900 border border-gray-800 rounded-xl px-3 py-2 text-xs text-gray-200 outline-none focus:border-blue-500"
-              />
-            </div>
-
-            {/* Nút thao tác */}
-            <div className="flex justify-end gap-2">
-              <button 
-                onClick={() => setIsThemeModalOpen(false)} 
-                className="px-4 py-2 text-xs font-bold text-gray-400 hover:text-white"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  if (globalSocket && room && session?.user?.id) {
-                    globalSocket.emit("update_room_theme", {
-                      roomId: room.id,
-                      hostId: session.user.id,
-                      newTheme: theme
-                    });
-                  }
-                  setIsThemeModalOpen(false);
-                }}
-                className="px-5 py-2 rounded-xl text-xs font-black text-white shadow-md active:scale-95 transition-all"
-                style={{ backgroundColor: 'var(--room-accent)', boxShadow: '0 0 12px var(--room-glow)' }}
-              >
-                Save & Apply Now
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-    </div> // Thẻ đóng ngoài cùng của trang
-  );
-}
+    )}
+  </div>
+);}

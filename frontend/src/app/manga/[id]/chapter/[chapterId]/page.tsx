@@ -108,8 +108,8 @@ function TranslateableImage({
         `}
       >
         {isTranslating ? "✨ Scanning..." : 
-         blocks.length > 0 ? (showTranslation ? "👁️ Hide translation" : "👁️ Show translation") : 
-         "✨ Translate with AI"}
+         blocks.length > 0 ? (showTranslation ? "👁️ Hide" : "👁️ Show") : 
+         "✨ Trans"}
       </button>
 
       {showTranslation && blocks.map((block, index) => {
