@@ -113,7 +113,7 @@ export default function Sidebar() {
           >
             <div className="min-w-0">
               <h1 className="text-base font-black tracking-tight bg-gradient-to-r from-white via-blue-100 to-purple-300 bg-clip-text text-transparent truncate">
-                Smart Anime
+                Smart Anime - Manga
               </h1>
               <p className="text-[10px] font-bold uppercase tracking-widest text-blue-400/80">
                 Platform
