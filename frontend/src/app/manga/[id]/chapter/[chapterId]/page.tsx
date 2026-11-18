@@ -88,12 +88,12 @@ function TranslateableImage({
     }
   };
 
-  const wrapperClass = mode === "vertical" 
-    ? "relative inline-block w-fit max-w-full mb-6 mx-auto" 
-    : "relative inline-flex items-center justify-center max-h-[85vh] w-fit mx-auto";
+  const wrapperClass = mode === "vertical"
+  ? "relative block w-full max-w-full mb-6 mx-auto"
+  : "relative inline-flex items-center justify-center max-h-[85vh] w-fit mx-auto";
 
   const imgClass = mode === "vertical"
-    ? "w-full max-w-3xl h-auto block select-none"
+    ? "w-full h-auto block select-none"
     : "max-h-[85vh] w-auto block object-contain select-none";
 
   return (
@@ -323,7 +323,7 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
 
   // --- LOGIC FORUM: AI CHECK ---
   const handleForumAIAnalyze = async () => {
-    if (!postTitle || !postContent) return alert("Nhập nội dung để AI phân tích!");
+    if (!postTitle || !postContent) return alert("Please enter content for AI analysis!");
     setIsAnalyzingForum(true);
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/analyze`, {
@@ -350,9 +350,9 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
   // --- LOGIC FORUM: SUBMIT BÀI ĐĂNG ---
   const handleSubmitForumPost = async () => {
     if (!postTitle.trim() || (!postContent.trim() && !postMediaFile && !attachedLink)) {
-      return alert("Vui lòng nhập tiêu đề và nội dung bài viết!");
+      return alert("Please enter the title and content for your post!");
     }
-    if (!session?.user?.id) return alert("Vui lòng đăng nhập để đăng bài!");
+    if (!session?.user?.id) return alert("Please log in to post!");
 
     setIsPostingToForum(true);
     try {

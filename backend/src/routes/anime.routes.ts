@@ -116,7 +116,7 @@ router.post('/api/admin/episode', async (req: Request, res: Response): Promise<a
     } = req.body;
 
     if (!animeId || !title || !videoUrl || episodeNumber === undefined) {
-      return res.status(400).json({ message: "Vui lòng điền đủ thông tin bắt buộc!" });
+      return res.status(400).json({ message: "Please fill in all required information!" });
     }
 
     // CHUYỂN ĐỔI CHUỖI CHARACTERS THÀNH MẢNG (ARRAY)
@@ -532,7 +532,7 @@ router.post('/api/anime/translate-sub', async (req: Request, res: Response): Pro
 
     // 4. GỌI GEMINI 1.5 FLASH DỊCH THUẬT
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash-lite" });
 
     // Prompt (Câu lệnh) thiết kế đặc biệt để ép AI không làm hỏng cấu trúc VTT
     const prompt = `
@@ -662,7 +662,7 @@ router.post('/api/admin/auto-map-chapters', async (req: Request, res: Response):
       mappingSource = "Trí tuệ nhân tạo (Gemini AI)";
       const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
       const model = genAI.getGenerativeModel({ 
-        model: "gemini-2.5-flash",
+        model: "gemini-2-flash",
         generationConfig: { responseMimeType: "application/json" } 
       });
 
@@ -725,11 +725,11 @@ router.post('/api/admin/generate-anime-desc', async (req: Request, res: Response
     const { title } = req.body;
 
     if (!title) {
-      return res.status(400).json({ message: "Vui lòng cung cấp tên phim." });
+      return res.status(400).json({ message: "Please provide the anime title." });
     }
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash-lite" });
 
     // Cấu hình Prompt (Câu lệnh) cho AI
     const prompt = `

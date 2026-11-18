@@ -167,7 +167,7 @@ function WatchEpisodeContent() {
     if (!postTitle.trim() || (!postContent.trim() && !postMediaFile && !attachedTimestamp)) {
       return alert("Please enter the title and content of your post!");
     }
-    if (!session?.user?.id) return alert("Vui lòng đăng nhập để đăng bài!");
+    if (!session?.user?.id) return alert("Please log in to post!");
 
     setIsPostingToForum(true);
     try {
@@ -556,10 +556,10 @@ function WatchEpisodeContent() {
             if (exists) return prev;
             return { ...prev, subtitles: [...(prev.subtitles || []), data.subtitle] };
           });
-          alert(`✨ Đã hoàn tất dịch sang ${targetLang}! Vui lòng bật phụ đề trong Player (CC).`);
+          alert(`✨ Translation completed to ${targetLang}! Please enable subtitles in the player (CC).`);
         }, 400);
       } else {
-        alert("❌ Có lỗi xảy ra trong quá trình dịch thuật.");
+        alert("❌ An error occurred during translation.");
       }
     } catch (error) {
       console.error("Translate error:", error);

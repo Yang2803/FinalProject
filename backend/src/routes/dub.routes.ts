@@ -63,7 +63,7 @@ router.post('/api/anime/generate-dub', async (req, res) => {
       "Korean": "ko-KR-SunHiNeural",
       "Chinese (Simplified)": "zh-CN-XiaoxiaoNeural",
       "Chinese (Traditional)": "zh-TW-HsiaoChenNeural",
-      "Thai": "th-TH-PremwadeeNeural",
+      "Thai": "th-TH-AcharaNeural",
       "Indonesian": "id-ID-GadisNeural",
       "Hindi": "hi-IN-SwaraNeural",
       "Arabic": "ar-SA-ZariyahNeural",
@@ -77,7 +77,18 @@ router.post('/api/anime/generate-dub', async (req, res) => {
       "Dutch": "nl-NL-ColetteNeural",
       "Polish": "pl-PL-AgnieszkaNeural",
       "Turkish": "tr-TR-EmelNeural",
-      "Swedish": "sv-SE-SofieNeural"
+      "Swedish": "sv-SE-SofieNeural",
+
+      "Malay": "ms-MY-YasminNeural",
+      "Lao": "lo-LA-KeomanyNeural",
+      "Ukrainian": "uk-UA-PolinaNeural",
+      "Czech": "cs-CZ-VlastaNeural",
+      "Greek": "el-GR-AthinaNeural",
+      "Hungarian": "hu-HU-NoemiNeural",
+      "Romanian": "ro-RO-AlinaNeural",
+      "Danish": "da-DK-ChristelNeural",
+      "Finnish": "fi-FI-NooraNeural",
+      "Norwegian": "nb-NO-PernilleNeural"
     };
 
     // Mặc định an toàn: Nếu có lỗi rớt mạng hoặc truyền sai, dùng Tiếng Anh

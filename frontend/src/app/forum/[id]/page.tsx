@@ -90,7 +90,7 @@ export default function ForumPostDetailPage({ params }: { params: Promise<{ id: 
 
   const handleVote = async (type: 'UP' | 'DOWN') => {
   if (!session?.user?.id) {
-    alert("Vui lòng đăng nhập để bình chọn!");
+    alert("Please log in to vote!");
     return;
   }
   if (!post) return;
@@ -122,7 +122,7 @@ export default function ForumPostDetailPage({ params }: { params: Promise<{ id: 
   // GỬI BÌNH LUẬN (HOẶC REPLY)
   const handlePostComment = async (parentId: string | null = null) => {
     if (!newComment.trim()) return;
-    if (!session?.user?.id) return alert("Vui lòng đăng nhập để bình luận!");
+    if (!session?.user?.id) return alert("Please log in to comment!");
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/posts/${postId}/comments`, {
         method: "POST", 

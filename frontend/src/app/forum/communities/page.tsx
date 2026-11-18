@@ -81,8 +81,8 @@ export default function CommunitiesPage() {
 
   // 3. XỬ LÝ TẠO CỘNG ĐỒNG (UPLOAD ẢNH & POST DATA)
   const handleCreateCommunity = async () => {
-    if (!name.trim() || !description.trim()) return alert("Vui lòng nhập đủ Tên và Mô tả!");
-    if (!session?.user?.id) return alert("Vui lòng đăng nhập!");
+    if (!name.trim() || !description.trim()) return alert("Please enter the full Title and Description!");
+    if (!session?.user?.id) return alert("Please log in!");
 
     setIsCreating(true);
 

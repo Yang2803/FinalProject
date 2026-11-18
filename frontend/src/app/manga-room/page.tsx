@@ -79,8 +79,8 @@ export default function MangaCoReadingLobby() {
   // TẠO PHÒNG MỚI (CHƯA CẦN CHỌN TRUYỆN TRƯỚC)
   // ==========================================
   const handleCreateRoom = async () => {
-    if (!session?.user?.id) return alert("Vui lòng đăng nhập để tạo phòng!");
-    if (!roomName.trim()) return alert("Vui lòng đặt tên cho phòng đọc của bạn!");
+    if (!session?.user?.id) return alert("Please log in to create a room!");
+    if (!roomName.trim()) return alert("Please enter a name for your reading room!");
 
     setIsCreating(true);
     try {

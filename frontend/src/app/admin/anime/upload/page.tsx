@@ -28,7 +28,7 @@ export default function UploadAnimePage() {
   // Gọi AI viết tóm tắt
   const handleGenerateDescription = async () => {
     if (!title) {
-      alert("Vui lòng nhập Tên Anime trước khi dùng AI!");
+      alert("Please enter the Anime Title before using AI!");
       return;
     }
     

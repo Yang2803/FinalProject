@@ -103,8 +103,8 @@ export default function UploadEpisodePage() {
   };
 
   const handleAutoMap = async () => {
-    if (!mangaId) return alert("Bộ Anime này chưa được liên kết với bộ Manga nào trong hệ thống!");
-    if (!episodeNumber) return alert("Vui lòng nhập số tập (Episode Number) trước khi dùng AI!");
+    if (!mangaId) return alert("This anime series is not affiliated with any manga series in the system!");
+    if (!episodeNumber) return alert("Please enter the episode number before using AI!");
 
     setIsMapping(true);
     try {
@@ -118,16 +118,16 @@ export default function UploadEpisodePage() {
       if (res.ok) {
         setMappedIds(data.mappedChapterIds);
         if (data.foundNumbers && data.foundNumbers.length > 0) {
-           alert(`✨ AI tìm thấy các chapter số: ${data.foundNumbers.join(', ')}`);
+           alert(`✨ AI found the following chapters: ${data.foundNumbers.join(', ')}`);
         } else {
-           alert(`✨ AI báo đây là tập Filler, there is no corresponding manga.!`);
+           alert(`✨ AI reports this is a filler episode, with no corresponding manga.`);
         }
       } else {
-        alert(data.message || "Lỗi AI mapping");
+        alert(data.message || "AI mapping error");
       }
     } catch (error) {
       console.error(error);
-      alert("Lỗi kết nối đến server AI.");
+      alert("Error connecting to the AI server.");
     } finally {
       setIsMapping(false);
     }

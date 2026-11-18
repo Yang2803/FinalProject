@@ -189,8 +189,8 @@ function ForumFeedContent() {
   };
 
   const handleSubmit = async () => {
-    if (!title || !content) return alert("Vui lòng nhập tiêu đề và nội dung!");
-    if (!session?.user?.id) return alert("Vui lòng đăng nhập để đăng bài!");
+    if (!title || !content) return alert("Please enter the title and content!");
+    if (!session?.user?.id) return alert("Please log in to post!");
 
     setIsPosting(true);
 
@@ -305,7 +305,7 @@ function ForumFeedContent() {
 
   const handleVote = async (postId: string, type: 'UP' | 'DOWN') => {
   if (!session?.user?.id) {
-    alert("Vui lòng đăng nhập để bình chọn!");
+    alert("Please log in to vote!");
     return;
   }
 
@@ -584,6 +584,33 @@ function ForumFeedContent() {
               key={post.id}
               className="group relative bg-[#13151a]/80 backdrop-blur-sm rounded-2xl sm:rounded-3xl p-4 sm:p-7 transition-all duration-500 hover:-translate-y-1.5 hover:shadow-[0_15px_40px_-10px_rgba(59,130,246,0.15)] border border-gray-800/60 hover:border-blue-500/30 overflow-hidden z-0"
             >
+
+            {/* Prominent Spoiler Warning Banner */}
+            {post.isSpoiler && (
+              <div className="relative mb-5 sm:mb-6 overflow-hidden rounded-xl sm:rounded-2xl border-2 border-red-500/70 bg-gradient-to-r from-red-950 via-red-900/80 to-red-950 shadow-[0_0_25px_rgba(239,68,68,0.2)]">
+                {/* Background Glow */}
+                <div className="absolute inset-0 bg-red-500/10 animate-pulse pointer-events-none" />
+
+                <div className="relative flex items-center gap-3 sm:gap-4 px-4 sm:px-6 py-4 sm:py-5">
+                  <div className="shrink-0 w-11 h-11 sm:w-14 sm:h-14 rounded-full bg-red-500/20 border border-red-400/50 flex items-center justify-center">
+                    <span className="text-2xl sm:text-3xl animate-pulse">
+                      ⚠️
+                    </span>
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-red-300 text-base sm:text-xl font-black uppercase tracking-wider">
+                      Spoiler Warning!
+                    </h3>
+
+                    <p className="text-red-200/80 text-xs sm:text-sm font-medium mt-1">
+                      This post contains spoilers. Proceed at your own risk!
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
               {/* 🌟 Vệt sáng chìm (Glow Orb) ở góc trên phải, sẽ sáng lên khi di chuột */}
               <div className="absolute -top-20 -right-20 w-48 h-48 bg-blue-500/5 blur-[60px] rounded-full pointer-events-none group-hover:bg-blue-500/15 transition-all duration-700 z-[-1]"></div>
 
@@ -1224,9 +1251,28 @@ function ForumFeedContent() {
                     />
                   </svg>
                 </button>
+                
               </div>
 
+              
+
               <div className="flex gap-2.5 sm:gap-3 w-full sm:w-auto">
+                <label className="flex items-center gap-2 cursor-pointer select-none whitespace-nowrap">
+                  <input
+                    type="checkbox"
+                    checked={isSpoiler}
+                    onChange={(e) => setIsSpoiler(e.target.checked)}
+                    className="w-4 h-4 accent-red-500 cursor-pointer"
+                  />
+
+                  <span
+                    className={`text-sm sm:text-base ${
+                      isSpoiler ? "text-red-400" : "text-gray-400"
+                    }`}
+                  >
+                    Contains Spoiler?
+                  </span>
+                </label>
                 <button
                   onClick={handleAIAnalyze}
                   disabled={isAnalyzing}

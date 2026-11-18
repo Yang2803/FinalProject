@@ -128,8 +128,8 @@ export default function EditEpisodePage() {
   };
 
   const handleAutoMap = async () => {
-    if (!mangaId) return alert("Vui lòng chọn bộ Manga liên kết trước!");
-    if (!episodeNumber) return alert("Vui lòng nhập số tập (Ep Number) trước!");
+    if (!mangaId) return alert("Please select the linked manga series first!");
+    if (!episodeNumber) return alert("Please enter the episode number before mapping chapters!");
 
     setIsMapping(true);
     try {

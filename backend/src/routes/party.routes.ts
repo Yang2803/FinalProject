@@ -17,7 +17,7 @@ router.post('/rooms', async (req: Request, res: Response): Promise<any> => {
     const { name, isPrivate, hostId, animeId, episodeId } = req.body;
 
     if (!name || !hostId) {
-      return res.status(400).json({ message: "Thiếu tên phòng hoặc ID chủ phòng!" });
+      return res.status(400).json({ message: "Missing room name or occupant ID!" });
     }
 
     // Tạo mã mời độc nhất
@@ -52,10 +52,10 @@ router.post('/rooms', async (req: Request, res: Response): Promise<any> => {
       }
     });
 
-    res.status(201).json({ message: "Tạo phòng thành công!", room: newRoom });
+    res.status(201).json({ message: "Room created successfully!", room: newRoom });
   } catch (error) {
-    console.error("Lỗi tạo phòng:", error);
-    res.status(500).json({ message: "Lỗi server khi tạo phòng." });
+    console.error("Error creating room:", error);
+    res.status(500).json({ message: "Server error while creating room." });
   }
 });
 
@@ -95,12 +95,13 @@ router.get('/rooms/:inviteCode', async (req: Request, res: Response): Promise<an
       }
     });
 
-    if (!room) return res.status(404).json({ message: "Mã phòng không tồn tại hoặc phòng đã đóng!" });
-    if (room.status === "CLOSED") return res.status(403).json({ message: "Phòng chiếu này đã kết thúc." });
+    if (!room) return res.status(404).json({ message: "Invite code is invalid or room is closed!" });
+    if (room.status === "CLOSED") return res.status(403).json({ message: "This viewing room has ended." });
 
     res.status(200).json(room);
   } catch (error) {
-    res.status(500).json({ message: "Lỗi server khi tải thông tin phòng." });
+    console.error("Error fetching room information:", error);
+    res.status(500).json({ message: "Server error while fetching room information." });
   }
 });
 
@@ -114,12 +115,12 @@ router.post('/rooms/:inviteCode/join', async (req: Request, res: Response): Prom
 
     const room = await prisma.partyRoom.findUnique({ where: { inviteCode } });
     if (!room || room.status === "CLOSED") {
-      return res.status(404).json({ message: "Phòng không tồn tại hoặc đã đóng." });
+      return res.status(404).json({ message: "Room does not exist or is closed." });
     }
 
     // 🌟 TRƯỞNG PHÒNG THÌ KHÔNG CẦN XIN PHÉP CHÍNH MÌNH
     if (room.hostId === userId) {
-      return res.status(200).json({ message: "Trưởng phòng được vào thẳng.", status: "JOINED", room });
+      return res.status(200).json({ message: "Department Head can enter the room directly.", status: "JOINED", room });
     }
 
     // Kiểm tra xem user này đã có trong phòng chưa
@@ -131,7 +132,7 @@ router.post('/rooms/:inviteCode/join', async (req: Request, res: Response): Prom
 
     if (existingMember) {
       if (existingMember.status === "BANNED") {
-        return res.status(403).json({ message: "Bạn đã bị cấm khỏi phòng này." });
+        return res.status(403).json({ message: "You have been banned from this room." });
       }
 
       // 🌟 NẾU TỪNG BỊ TỪ CHỐI -> RESET LẠI THÀNH PENDING ĐỂ HỌ XIN LẠI
@@ -142,13 +143,13 @@ router.post('/rooms/:inviteCode/join', async (req: Request, res: Response): Prom
           data: { status: newStatus }
         });
         return res.status(newStatus === "PENDING" ? 202 : 200).json({ 
-          message: newStatus === "PENDING" ? "Đã gửi lại yêu cầu tham gia." : "Vào phòng thành công!", 
+          message: newStatus === "PENDING" ? "Request to participate has been submitted" : "Successfully entered the room!", 
           status: newStatus, 
           room 
         });
       }
 
-      return res.status(200).json({ message: "Bạn đã ở trong phòng.", status: existingMember.status, room });
+      return res.status(200).json({ message: "You are already in the room.", status: existingMember.status, room });
     }
 
     // QUYẾT ĐỊNH TRẠNG THÁI DỰA TRÊN LOẠI PHÒNG
@@ -163,14 +164,14 @@ router.post('/rooms/:inviteCode/join', async (req: Request, res: Response): Prom
     });
 
     if (memberStatus === "PENDING") {
-      return res.status(202).json({ message: "Đã gửi yêu cầu tham gia. Vui lòng đợi Trưởng phòng duyệt!", status: "PENDING" });
+      return res.status(202).json({ message: "Request to participate has been submitted. Please wait for the Department Head to approve it!", status: "PENDING" });
     } else {
-      return res.status(200).json({ message: "Vào phòng thành công!", status: "JOINED", room });
+      return res.status(200).json({ message: "Successfully entered the room!", status: "JOINED", room });
     }
 
   } catch (error) {
-    console.error("Lỗi join phòng:", error);
-    return res.status(500).json({ message: "Lỗi server khi xin vào phòng." });
+    console.error("Error joining room:", error);
+    return res.status(500).json({ message: "Server error while requesting to join room." });
   }
 });
 
@@ -185,7 +186,7 @@ router.put('/rooms/:roomId/approve', async (req: Request, res: Response): Promis
     // Kiểm tra quyền Trưởng phòng
     const room = await prisma.partyRoom.findUnique({ where: { id: roomId } });
     if (!room || room.hostId !== hostId) {
-      return res.status(403).json({ message: "Bạn không có quyền duyệt thành viên cho phòng này!" });
+      return res.status(403).json({ message: "You do not have permission to approve members for this room!" });
     }
 
     if (action === "APPROVE") {
@@ -193,7 +194,7 @@ router.put('/rooms/:roomId/approve', async (req: Request, res: Response): Promis
         where: { roomId_userId: { roomId, userId: targetUserId } },
         data: { status: "JOINED" }
       });
-      res.status(200).json({ message: "Đã duyệt thành viên thành công!" });
+      res.status(200).json({ message: "Member approved successfully!" });
     } else {
       // 🌟 ĐÃ SỬA TẠI ĐÂY: KHÔNG DÙNG DELETE NỮA. 
       // Update trạng thái thành REJECTED để lưu lịch sử từ chối, chặn Frontend tự auto-join lại.
@@ -201,11 +202,11 @@ router.put('/rooms/:roomId/approve', async (req: Request, res: Response): Promis
         where: { roomId_userId: { roomId, userId: targetUserId } },
         data: { status: "REJECTED" }
       });
-      res.status(200).json({ message: "Đã từ chối thành viên." });
+      res.status(200).json({ message: "Member rejected successfully!" });
     }
 
   } catch (error) {
-    res.status(500).json({ message: "Lỗi server khi duyệt thành viên." });
+    res.status(500).json({ message: "Server error while approving member." });
   }
 });
 
@@ -220,7 +221,7 @@ router.put('/rooms/:roomId/change-video', async (req: Request, res: Response): P
     const room = await prisma.partyRoom.findUnique({ where: { id: roomId } });
     
     if (!room || room.hostId !== hostId) {
-      return res.status(403).json({ message: "Chỉ Trưởng phòng mới có quyền đổi phim!" });
+      return res.status(403).json({ message: "Only the Department Head can change the video!" });
     }
 
     const updatedRoom = await prisma.partyRoom.update({
@@ -228,10 +229,10 @@ router.put('/rooms/:roomId/change-video', async (req: Request, res: Response): P
       data: { animeId, episodeId }
     });
 
-    res.status(200).json({ message: "Đã chuyển phim thành công!", room: updatedRoom });
+    res.status(200).json({ message: "Video changed successfully!", room: updatedRoom });
   } catch (error) {
-    console.error("Lỗi đổi phim:", error);
-    res.status(500).json({ message: "Lỗi server khi đổi phim." });
+    console.error("Error changing video:", error);
+    res.status(500).json({ message: "Server error while changing video." });
   }
 });
 
@@ -253,10 +254,10 @@ router.delete('/rooms/:roomId', async (req: Request, res: Response): Promise<any
       where: { id: roomId } 
     });
 
-    return res.status(200).json({ message: "Phòng chiếu đã được giải tán thành công!" });
+    return res.status(200).json({ message: "Room has been disbanded successfully!" });
   } catch (error) {
-    console.error("Lỗi CHI TIẾT khi giải tán phòng:", error);
-    return res.status(500).json({ message: "Lỗi server khi giải tán phòng." });
+    console.error("Detail error when disbanning room:", error);
+    return res.status(500).json({ message: "Server error when disbanning room." });
   }
 });
 
@@ -280,8 +281,8 @@ router.get('/rooms', async (req: Request, res: Response): Promise<any> => {
     
     return res.status(200).json(rooms);
   } catch (error) {
-    console.error("Lỗi CHI TIẾT khi lấy danh sách phòng:", error);
-    return res.status(500).json({ message: "Lỗi server khi lấy danh sách phòng.", error: String(error) });
+    console.error("Detail error when fetching room list:", error);
+    return res.status(500).json({ message: "Server error when fetching room list.", error: String(error) });
   }
 });
 
@@ -291,11 +292,11 @@ router.get('/rooms', async (req: Request, res: Response): Promise<any> => {
 router.get('/rooms/:roomId/voice-token', async (req: Request, res: Response): Promise<any> => {
   try {
     const roomId = req.params.roomId as string;
-    const userName = (req.query.userName as string) || "Ẩn danh";
+    const userName = (req.query.userName as string) || "No Name";
 
     // 🌟 THÊM: Kiểm tra cấu hình .env để tránh sập Server
     if (!process.env.LIVEKIT_API_KEY || !process.env.LIVEKIT_API_SECRET) {
-      return res.status(500).json({ message: "Máy chủ chưa được cấu hình LiveKit!" });
+      return res.status(500).json({ message: "Server has not been configured with LiveKit!" });
     }
 
     // 🌟 SỬA: Tạo định danh duy nhất chống trùng lặp
@@ -315,8 +316,8 @@ router.get('/rooms/:roomId/voice-token', async (req: Request, res: Response): Pr
     const token = await at.toJwt();
     res.status(200).json({ token });
   } catch (error) {
-    console.error("Lỗi tạo LiveKit token:", error);
-    res.status(500).json({ message: "Không thể khởi tạo Voice Chat." });
+    console.error("Error creating LiveKit token:", error);
+    res.status(500).json({ message: "Unable to initialize Voice Chat." });
   }
 });
 

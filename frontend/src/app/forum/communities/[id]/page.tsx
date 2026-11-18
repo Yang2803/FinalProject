@@ -154,9 +154,9 @@ export default function CommunityDetailPage() {
   const handleAIAnalyze = async () => { if (!title || !content) return alert("Nhập nội dung!"); setIsAnalyzing(true); try { const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/analyze`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title, content }) }); const data = await res.json(); setTags(Array.from(new Set([...tags, ...data.tags]))); setIsSpoiler(data.isSpoiler); } catch (error) { alert("Lỗi AI"); } finally { setIsAnalyzing(false); } };
   
   const handleSubmitPost = async () => {
-    if (!title || !content) return alert("Vui lòng nhập đủ nội dung!");
-    if (!session?.user?.id) return alert("Đăng nhập để post!");
-    if (!isMember && !isAdmin) return alert("Phải tham gia nhóm mới được đăng bài!");
+    if (!title || !content) return alert("Please enter all the required information!");
+    if (!session?.user?.id) return alert("Please log in to post!");
+    if (!isMember && !isAdmin) return alert("You must join the community to post!");
     setIsPosting(true);
     try {
       let finalMediaUrl = editingPost ? editingPost.mediaUrl : null;
@@ -277,6 +277,33 @@ export default function CommunityDetailPage() {
           ) : (
             community.posts.map((post) => (
               <div key={post.id} className="bg-[#1a1d24] rounded-xl border border-gray-800 p-5 shadow-sm hover:border-gray-700 transition">
+
+            {/* Prominent Spoiler Warning Banner */}
+            {post.isSpoiler && (
+              <div className="relative mb-5 sm:mb-6 overflow-hidden rounded-xl sm:rounded-2xl border-2 border-red-500/70 bg-gradient-to-r from-red-950 via-red-900/80 to-red-950 shadow-[0_0_25px_rgba(239,68,68,0.2)]">
+                {/* Background Glow */}
+                <div className="absolute inset-0 bg-red-500/10 animate-pulse pointer-events-none" />
+
+                <div className="relative flex items-center gap-3 sm:gap-4 px-4 sm:px-6 py-4 sm:py-5">
+                  <div className="shrink-0 w-11 h-11 sm:w-14 sm:h-14 rounded-full bg-red-500/20 border border-red-400/50 flex items-center justify-center">
+                    <span className="text-2xl sm:text-3xl animate-pulse">
+                      ⚠️
+                    </span>
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-red-300 text-base sm:text-xl font-black uppercase tracking-wider">
+                      Spoiler Warning!
+                    </h3>
+
+                    <p className="text-red-200/80 text-xs sm:text-sm font-medium mt-1">
+                      This post contains spoilers. Proceed at your own risk!
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-10 h-10 rounded-full bg-gray-700 overflow-hidden flex-shrink-0">
                     {post.author?.image ? <img src={post.author.image} alt="Avatar" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center font-bold text-gray-400">{post.author?.name?.charAt(0) || "U"}</div>}
@@ -302,6 +329,7 @@ export default function CommunityDetailPage() {
                   {post.isSpoiler && <span className="bg-red-900/50 text-red-400 text-xs px-2.5 py-1 rounded border border-red-500 font-bold">⚠️ Spoiler</span>}
                   {post.tags?.map((tag: string, index: number) => <span key={index} className="text-blue-400 hover:text-blue-300 cursor-pointer text-sm font-medium">#{tag}</span>)}
                 </div>
+
 
                 {/* THANH TƯƠNG TÁC */}
                 <div className="flex items-center justify-between mt-5 pt-4 border-t border-gray-800/50 text-gray-400">
@@ -452,6 +480,22 @@ export default function CommunityDetailPage() {
                 <input type="file" accept="image/*,video/*" hidden ref={fileInputRef} onChange={handleFileChange} />
                 <button onClick={() => fileInputRef.current?.click()} className="text-gray-400 hover:text-green-400 transition p-2 bg-gray-800 rounded-lg border border-gray-700"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg></button>
               </div>
+              <label className="flex items-center gap-2 cursor-pointer select-none whitespace-nowrap">
+                <input
+                  type="checkbox"
+                  checked={isSpoiler}
+                  onChange={(e) => setIsSpoiler(e.target.checked)}
+                  className="w-4 h-4 accent-red-500 cursor-pointer"
+                />
+
+                <span
+                  className={`text-sm sm:text-base ${
+                    isSpoiler ? "text-red-400" : "text-gray-400"
+                  }`}
+                >
+                  Contains Spoiler?
+                </span>
+              </label>
               <div className="flex gap-3">
                 <button onClick={handleAIAnalyze} disabled={isAnalyzing} className="bg-purple-600/20 text-purple-400 border border-purple-600 hover:bg-purple-600 hover:text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center">{isAnalyzing ? "..." : "🪄 AI Check"}</button>
                 <button onClick={handleSubmitPost} disabled={isPosting} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-lg text-sm font-bold">{isPosting ? "Processing..." : "Post"}</button>

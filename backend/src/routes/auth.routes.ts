@@ -143,14 +143,14 @@ router.post("/forgot-password", async (req: Request, res: Response): Promise<any
       const mailOptions = {
         from: '"Smart Anime Platform" <giangnnqgcs230038@fpt.edu.vn>',
         to: user.email,
-        subject: "Yêu cầu đặt lại mật khẩu hệ thống",
+        subject: "System password reset request",
         html: `
           <div style="font-family: sans-serif; padding: 20px; color: #333;">
-            <h2>Xin chào ${user.name || "bạn"},</h2>
-            <p>Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản của bạn.</p>
-            <p>Vui lòng click vào nút bên dưới để tiến hành đổi mật khẩu mới (Đường link có hiệu lực trong 15 phút):</p>
-            <a href="${resetUrl}" style="display: inline-block; padding: 10px 20px; background-color: #2563eb; color: white; text-decoration: none; border-radius: 5px; margin: 15px 0;">Đặt lại mật khẩu</a>
-            <p>Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email này.</p>
+            <h2>Hi ${user.name || "you"},</h2>
+            <p>We have received a request to reset the password for your account.</p>
+            <p>Please click the button below to proceed with resetting your password (The link will expire in 15 minutes):</p>
+            <a href="${resetUrl}" style="display: inline-block; padding: 10px 20px; background-color: #2563eb; color: white; text-decoration: none; border-radius: 5px; margin: 15px 0;">Reset Password</a>
+            <p>If you did not initiate this request, please ignore this email.</p>
           </div>
         `,
       };

@@ -42,7 +42,7 @@ export default function AdminEpisodeDetailsPage() {
   // 🔥 LOGIC MA THUẬT: GỌI BACKEND AUTO-FILL DATA BẰNG AI
   const handleAutoFill = async () => {
     if (!episodeNumber) {
-      alert("Vui lòng điền số tập phim trước khi tự động quét dữ liệu!");
+      alert("Please enter the episode number before the data is automatically scanned!");
       return;
     }
 

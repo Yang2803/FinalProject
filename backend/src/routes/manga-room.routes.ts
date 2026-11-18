@@ -157,7 +157,7 @@ router.post('/rooms/:inviteCode/join', async (req: Request, res: Response): Prom
     });
 
     if (memberStatus === "PENDING") {
-      return res.status(202).json({ message: "Đã gửi yêu cầu tham gia. Vui lòng đợi Trưởng phòng duyệt!", status: "PENDING" });
+      return res.status(202).json({ message: "Request to participate has been submitted. Please wait for the Department Head to approve it!", status: "PENDING" });
     } else {
       return res.status(200).json({ message: "Vào phòng thành công!", status: "JOINED", room });
     }

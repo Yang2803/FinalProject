@@ -26,7 +26,7 @@ router.get('/api/manga/top', async (req: Request, res: Response): Promise<any> =
     if (period === 'day') startDate.setDate(startDate.getDate() - 1);
     else if (period === 'week') startDate.setDate(startDate.getDate() - 7);
     else if (period === 'month') startDate.setMonth(startDate.getMonth() - 1);
-    else return res.status(400).json({ message: "Period không hợp lệ. Vui lòng truyền day, week, hoặc month." });
+    else return res.status(400).json({ message: "Invalid period. Please provide day, week, or month." });
 
     // 2. Gom nhóm (groupBy) và đếm số log lượt xem trong khoảng thời gian
     const topViews = await prisma.mangaViewLog.groupBy({
@@ -583,7 +583,7 @@ router.post('/api/manga/translate-page', async (req: Request, res: Response): Pr
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
     const model = genAI.getGenerativeModel({ 
-      model: "gemini-2.5-flash",
+      model: "gemini-3.6-flash",
       generationConfig: { responseMimeType: "application/json", temperature: 0.1 } 
     });
 
@@ -709,20 +709,21 @@ router.post('/api/admin/generate-manga-desc', async (req: Request, res: Response
     const { title } = req.body;
 
     if (!title) {
-      return res.status(400).json({ message: "Vui lòng cung cấp tên truyện." });
+      return res.status(400).json({ message: "Please provide the title of the story." });
     }
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash-lite" });
 
     const prompt = `
-      Bạn là một chuyên gia đánh giá Manga/Truyện tranh (Otaku chính hiệu).
-      Hãy viết một đoạn tóm tắt nội dung hấp dẫn, tò mò và chính xác cho bộ manga có tên là "${title}".
-      YÊU CẦU BẮT BUỘC:
-      1. Viết bằng Tiếng Anh.
-      2. Độ dài khoảng 3-4 câu (ngắn gọn, súc tích).
-      3. Tuyệt đối KHÔNG tiết lộ nội dung quan trọng (No spoilers).
-      4. Chỉ trả về văn bản tóm tắt, không giải thích gì thêm, không bọc trong markdown code block.
+      You are an expert Manga/Comic reviewer and a true Otaku enthusiast.
+      Write an engaging, intriguing, and accurate synopsis for the manga titled "${title}".
+
+      MANDATORY REQUIREMENTS:
+      1. Write entirely in English.
+      2. Keep it approximately 3-4 sentences long, concise and to the point.
+      3. Absolutely NO major plot spoilers. Do not reveal any important plot twists or key story developments.
+      4. Return ONLY the synopsis text. Do not include any additional explanations or wrap the response in a Markdown code block.
     `;
 
     const aiResult = await model.generateContent(prompt);

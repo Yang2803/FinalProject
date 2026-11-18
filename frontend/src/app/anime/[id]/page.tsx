@@ -86,7 +86,7 @@ export default function UserAnimeDetailPage({ params }: { params: Promise<{ id: 
 
   // Hàm xử lý Đánh giá Sao
   const handleRate = async (score: number) => {
-    if (!session) return alert("Vui lòng đăng nhập để đánh giá!");
+    if (!session) return alert("Please log in to leave a review!");
     setUserRating(score);
     
     const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/rating/anime`, {
@@ -107,7 +107,7 @@ export default function UserAnimeDetailPage({ params }: { params: Promise<{ id: 
 
   // Hàm xử lý Thêm/Xóa danh sách xem
   const handleToggleWatchList = async () => {
-    if (!session) return alert("Vui lòng đăng nhập để sử dụng tính năng này!");
+    if (!session) return alert("Please log in to use this feature!");
     setIsToggling(true);
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/watchlist/toggle`, {

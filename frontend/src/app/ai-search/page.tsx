@@ -190,12 +190,12 @@ function AiSearchChatContent() {
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      alert("Vui lòng chỉ chọn file hình ảnh (JPG, PNG, WEBP...)!");
+      alert("Please select only image files (JPG, PNG, WEBP...)!");
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      alert("Dung lượng ảnh quá lớn! Vui lòng chọn ảnh nhỏ hơn 5MB.");
+      alert("Image size is too large! Please select an image smaller than 5MB.");
       return;
     }
 

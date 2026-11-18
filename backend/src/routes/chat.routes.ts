@@ -205,7 +205,7 @@ router.post(
 
       // 🌟 Truyền systemInstruction vào đúng thuộc tính chuẩn của Gemini SDK
       const aiModel = genAI.getGenerativeModel({
-        model: "gemini-2.5-flash",
+        model: "gemini-3.5-flash-lite",
         systemInstruction,
         tools,
       });
@@ -217,6 +217,33 @@ router.post(
           parts: [{ text: msg.content }],
         })),
       });
+
+      // =====================================================================
+      // HELPER: GỬI FUNCTION RESPONSE VỀ GEMINI
+      // =====================================================================
+      const sendFunctionResult = async (
+        functionName: string,
+        result: string
+      ) => {
+        const chatHistory = await chat.getHistory();
+
+        return await aiModel.generateContent({
+          contents: [
+            ...chatHistory,
+            {
+              role: "user",
+              parts: [
+                {
+                  functionResponse: {
+                    name: functionName,
+                    response: { result },
+                  },
+                },
+              ],
+            },
+          ],
+        });
+      };
 
       // =====================================================================
       // 🌟 3. ĐÓNG GÓI PAYLOAD (TEXT + IMAGE NẾU CÓ) GỬI CHO GEMINI
@@ -303,15 +330,10 @@ router.post(
             ? combinedResults.join("\n")
             : "NO_MATCHING_RECORDS_IN_DATABASE";
 
-        aiResult = await chat.sendMessage([
-          {
-            functionResponse: {
-              name: "findCharacterAppearances",
-              response: { result: dbResultStr },
-            },
-          },
-        ]);
-      }
+        aiResult = await sendFunctionResult(
+          "findCharacterAppearances",
+          dbResultStr
+        );}
 
       // 🟢 XỬ LÝ: TÌM KIẾM CỐT TRUYỆN BẰNG VECTOR RAG
       else if (call && call.name === "searchStoryByPlot") {
@@ -370,24 +392,16 @@ router.post(
                   .join("\n\n")
               : "NO_DATA_FOUND";
 
-          aiResult = await chat.sendMessage([
-            {
-              functionResponse: {
-                name: "searchStoryByPlot",
-                response: { result: dbResultStr },
-              },
-            },
-          ]);
+          aiResult = await sendFunctionResult(
+            "searchStoryByPlot",
+            dbResultStr
+          );
         } catch (vectorError) {
           console.error("Lỗi Vector Search:", vectorError);
-          aiResult = await chat.sendMessage([
-            {
-              functionResponse: {
-                name: "searchStoryByPlot",
-                response: { result: "NO_DATA_FOUND" },
-              },
-            },
-          ]);
+          aiResult = await sendFunctionResult(
+            "searchStoryByPlot",
+            "NO_DATA_FOUND"
+          );
         }
       }
 

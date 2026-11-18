@@ -99,7 +99,7 @@ export default function PublicMangaDetails({ params }: { params: Promise<{ id: s
 
   // Hàm xử lý khi user click vào Ngôi sao
   const handleRate = async (score: number) => {
-    if (!session) return alert("Vui lòng đăng nhập để đánh giá!");
+    if (!session) return alert("Please log in to leave a review!");
     setUserRating(score); // Đổi màu sao ngay lập tức cho mượt
     
     const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/rating`, {
@@ -122,7 +122,7 @@ export default function PublicMangaDetails({ params }: { params: Promise<{ id: s
   // Hàm xử lý khi user click vào nút Thêm/Xóa khỏi danh sách đọc
   const handleToggleReadingList = async () => {
     if (!session) {
-      return alert("Vui lòng đăng nhập để sử dụng tính năng này!");
+      return alert("Please log in to use this feature!");
     }
 
     setIsToggling(true);
