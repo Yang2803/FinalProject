@@ -540,55 +540,62 @@ router.get('/api/chapter/:chapterId', async (req: Request, res: Response): Promi
 });
 
 // API: Quét ảnh và Dịch trang truyện Manga
+
+// API: Quét ảnh và Dịch trang truyện Manga
 router.post('/api/manga/translate-page', async (req: Request, res: Response): Promise<any> => {
   try {
     const { imageUrl, targetLang = "Vietnamese" } = req.body;
 
     if (!imageUrl) {
-      return res.status(400).json({ message: "Thiếu link ảnh để dịch!" });
+      return res.status(400).json({
+        message: "Thiếu link ảnh để dịch!"
+      });
     }
 
     // ==========================================
-    // 1. CƠ CHẾ CACHE: KIỂM TRA TRONG DATABASE TRƯỚC
+    // 1. KIỂM TRA CACHE
     // ==========================================
     const cachedData = await prisma.translationCache.findUnique({
       where: {
         imageUrl_targetLang: {
-          imageUrl: imageUrl,
-          targetLang: targetLang
+          imageUrl,
+          targetLang
         }
       }
     });
 
-    // Nếu đã có người dịch trang này ra ngôn ngữ này rồi -> Trả về lập tức!
-    if (cachedData) {
-      console.log("⚡ [CACHE HIT] Lấy bản dịch từ Database siêu tốc!");
-      return res.status(200).json({ blocks: cachedData.blocks });
+    // Chỉ trả cache nếu đã có ít nhất một block hợp lệ.
+    // Cache [] cũ sẽ được phân tích lại bằng cơ chế fallback.
+    if (
+      cachedData &&
+      Array.isArray(cachedData.blocks) &&
+      cachedData.blocks.length > 0
+    ) {
+      console.log("⚡ [CACHE HIT] Lấy bản dịch từ Database!");
+      return res.status(200).json({
+        blocks: cachedData.blocks
+      });
     }
 
+    console.log("🐢 [CACHE MISS] Bắt đầu phân tích ảnh...");
+
     // ==========================================
-    // 2. NẾU CHƯA CÓ CACHE (CACHE MISS): GỌI GEMINI AI
+    // 2. TẢI ẢNH VÀ CHUYỂN SANG BASE64
     // ==========================================
-    console.log("🐢 [CACHE MISS] Chưa có dữ liệu, đang nhờ Gemini phân tích...");
     const imageResponse = await fetch(imageUrl);
+
     if (!imageResponse.ok) {
-      return res.status(400).json({ message: "Không thể tải ảnh." });
+      return res.status(400).json({
+        message: "Không thể tải ảnh."
+      });
     }
 
-    // Biến ảnh thành Base64 để gửi cho Gemini
     const arrayBuffer = await imageResponse.arrayBuffer();
     const base64Image = Buffer.from(arrayBuffer).toString("base64");
 
-    console.log("Đã tải ảnh, đang nhờ Gemini phân tích và dịch...");
-
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
-    const model = genAI.getGenerativeModel({ 
-      model: "gemini-3.6-flash",
-      generationConfig: { responseMimeType: "application/json", temperature: 0.1 } 
-    });
-
-    // PROMPT ĐẶC BIỆT DÀNH CHO BÀI TOÁN MANGA
-    // Yêu cầu AI tìm bong bóng thoại, dịch, và trả về tọa độ [ymin, xmin, ymax, xmax] theo tỷ lệ 1000
+    // ==========================================
+    // 3. PROMPT DÀNH CHO MANGA OCR
+    // ==========================================
     const prompt = `
       You are an expert manga translator, typesetter and OCR vision AI.
       Analyze this manga page image. Detect and translate ALL text elements without missing any, including:
@@ -600,23 +607,20 @@ router.post('/api/manga/translate-page', async (req: Request, res: Response): Pr
       For each text element, provide:
       - "translatedText": Translate the text into ${targetLang}. Keep the translation concise, punchy, and formatted to fit manga spaces.
       - "type": Classify into one of:
-          * "bubble" (for curved/oval/round speech or thought bubbles)
-          * "box" (for rectangular narration boxes, character introduction cards, signs, tables)
-          * "floating" (for text directly drawn over background/drawings without an enclosing container)
-      - "box": The bounding box coordinates [ymin, xmin, ymax, xmax] normalized on a 0 to 1000 scale:
-          * For "bubble": You MUST tightly bound the OUTER BORDER of the white speech bubble contour (NOT just the inner text).
-          * For "box": Tightly bound the rectangular narration box borders.
-          * For "floating": Tightly bound the text block itself.
+          * "bubble"
+          * "box"
+          * "floating"
+      - "box": The bounding box coordinates [ymin, xmin, ymax, xmax] normalized on a 0 to 1000 scale.
 
       COORDINATE SYSTEM RULES:
-      - Coordinate format is strictly [ymin, xmin, ymax, xmax] where (0,0) is TOP-LEFT and (1000,1000) is BOTTOM-RIGHT of the full image.
-      - ymin: uppermost edge of the bubble outline
-      - xmin: leftmost edge of the bubble outline
-      - ymax: lowermost edge of the bubble outline
-      - xmax: rightmost edge of the bubble outline
+      - Coordinate format is strictly [ymin, xmin, ymax, xmax].
+      - (0,0) is TOP-LEFT and (1000,1000) is BOTTOM-RIGHT.
+      - For bubble: tightly bound the OUTER BORDER of the speech bubble.
+      - For box: tightly bound the rectangular narration box.
+      - For floating: tightly bound the text block itself.
       - Do NOT shift or add artificial margins.
 
-      Return ONLY a JSON array in this structure:
+      Return ONLY a JSON array:
       [
         {
           "translatedText": "string",
@@ -624,65 +628,183 @@ router.post('/api/manga/translate-page', async (req: Request, res: Response): Pr
           "box": [ymin, xmin, ymax, xmax]
         }
       ]
-      If no text is found, return [].
+
+      If no readable text is found, return [].
     `;
 
-    // Gửi CẢ câu lệnh VÀ bức ảnh cho Gemini
-    const aiResult = await model.generateContent([
-      prompt,
-      {
-        inlineData: {
-          data: base64Image,
-          mimeType: "image/png" // Hoặc jpeg tùy ảnh của bạn
+    // ==========================================
+    // 4. HÀM GỌI MODEL VÀ VALIDATE KẾT QUẢ
+    // ==========================================
+    const genAI = new GoogleGenerativeAI(
+      process.env.GEMINI_API_KEY as string
+    );
+
+    const analyzeWithModel = async (modelName: string) => {
+      console.log(`🤖 Đang sử dụng model: ${modelName}`);
+
+      const model = genAI.getGenerativeModel({
+        model: modelName,
+        generationConfig: {
+          responseMimeType: "application/json",
+          temperature: 0.1
         }
-      }
-    ]);
-
-    const resultText = aiResult.response.text();
-    const blocks = JSON.parse(resultText);
-
-    console.log("=== KẾT QUẢ GEMINI TRẢ VỀ ===");
-    console.log("Tìm thấy số bong bóng thoại:", blocks.length);
-
-    if (blocks.length === 0) {
-      return res.status(200).json({ blocks: [] });
-    }
-
-    const finalBlocks = blocks
-      .filter((b: any) => Array.isArray(b.box) && b.box.length === 4)
-      .map((b: any) => {
-        const [ymin, xmin, ymax, xmax] = b.box;
-        return {
-          translatedText: b.translatedText,
-          type: b.type || "bubble", // "bubble" | "box" | "floating"
-          topPercent: ymin / 10,
-          leftPercent: xmin / 10,
-          widthPercent: Math.max(0, (xmax - xmin) / 10),
-          heightPercent: Math.max(0, (ymax - ymin) / 10)
-        };
       });
 
+      const aiResult = await model.generateContent([
+        prompt,
+        {
+          inlineData: {
+            data: base64Image,
+            mimeType: "image/png"
+          }
+        }
+      ]);
+
+      let resultText = aiResult.response.text().trim();
+
+      // Loại bỏ Markdown code fence nếu model vô tình trả về
+      resultText = resultText
+        .replace(/^```json\s*/i, "")
+        .replace(/^```\s*/i, "")
+        .replace(/\s*```$/, "")
+        .trim();
+
+      let blocks: any[];
+
+      try {
+        const parsed = JSON.parse(resultText);
+        blocks = Array.isArray(parsed) ? parsed : [];
+      } catch {
+        console.warn(`⚠️ ${modelName} trả về JSON không hợp lệ.`);
+        return [];
+      }
+
+      // Chỉ giữ lại các block có dữ liệu hợp lệ
+      const validBlocks = blocks
+        .filter((block: any) => {
+          if (!block || typeof block !== "object") return false;
+
+          const text = block.translatedText;
+          const type = block.type;
+          const box = block.box;
+
+          if (typeof text !== "string" || !text.trim()) {
+            return false;
+          }
+
+          if (!["bubble", "box", "floating"].includes(type)) {
+            return false;
+          }
+
+          if (
+            !Array.isArray(box) ||
+            box.length !== 4 ||
+            !box.every(
+              (value: any) =>
+                typeof value === "number" &&
+                Number.isFinite(value) &&
+                value >= 0 &&
+                value <= 1000
+            )
+          ) {
+            return false;
+          }
+
+          const [ymin, xmin, ymax, xmax] = box;
+
+          return ymax > ymin && xmax > xmin;
+        })
+        .map((block: any) => {
+          const [ymin, xmin, ymax, xmax] = block.box;
+
+          return {
+            translatedText: block.translatedText.trim(),
+            type: block.type,
+            topPercent: ymin / 10,
+            leftPercent: xmin / 10,
+            widthPercent: (xmax - xmin) / 10,
+            heightPercent: (ymax - ymin) / 10
+          };
+        });
+
+      console.log(
+        `📊 ${modelName}: Tìm thấy ${validBlocks.length} block hợp lệ.`
+      );
+
+      return validBlocks;
+    };
+
     // ==========================================
-    // 3. LƯU KẾT QUẢ VÀO CACHE ĐỂ LẦN SAU DÙNG
+    // 5. PRIMARY MODEL: GEMINI 3.5 FLASH-LITE
     // ==========================================
-    await prisma.translationCache.create({
-      data: {
-        imageUrl: imageUrl,
-        targetLang: targetLang,
-        // Prisma hỗ trợ lưu mảng JSON trực tiếp
-        blocks: finalBlocks 
+    let finalBlocks: any[] = [];
+
+    try {
+      finalBlocks = await analyzeWithModel("gemini-3.5-flash-lite");
+    } catch (error) {
+      console.error("❌ Lỗi khi gọi Gemini Flash-Lite:", error);
+      throw error;
+    }
+
+    // ==========================================
+    // 6. FALLBACK: GEMINI 3.6 FLASH
+    // ==========================================
+    if (finalBlocks.length === 0) {
+      console.warn(
+        "⚠️ Flash-Lite không tìm thấy chữ hợp lệ. Chuyển sang Gemini 3.6 Flash..."
+      );
+
+      try {
+        finalBlocks = await analyzeWithModel("gemini-3.6-flash");
+      } catch (fallbackError) {
+        console.error("❌ Cả quá trình fallback gặp lỗi:", fallbackError);
+
+        return res.status(503).json({
+          message: "AI không thể phân tích trang truyện lúc này.",
+          blocks: []
+        });
+      }
+    }
+
+    // ==========================================
+    // 7. LƯU KẾT QUẢ CUỐI CÙNG VÀO CACHE
+    // ==========================================
+    console.log(
+      `✅ Kết quả cuối cùng: ${finalBlocks.length} block hợp lệ.`
+    );
+
+    await prisma.translationCache.upsert({
+      where: {
+        imageUrl_targetLang: {
+          imageUrl,
+          targetLang
+        }
+      },
+      update: {
+        blocks: finalBlocks
+      },
+      create: {
+        imageUrl,
+        targetLang,
+        blocks: finalBlocks
       }
     });
 
-    console.log("💾 Đã lưu bản dịch mới vào Database!");
+    console.log("💾 Đã lưu kết quả vào Database!");
 
-    res.status(200).json({ blocks: finalBlocks });
+    return res.status(200).json({
+      blocks: finalBlocks
+    });
 
   } catch (error) {
     console.error("Lỗi AI Dịch:", error);
-    res.status(500).json({ message: "Lỗi server khi quét và dịch ảnh." });
+
+    return res.status(500).json({
+      message: "Lỗi server khi quét và dịch ảnh."
+    });
   }
 });
+
 
 // Lấy danh sách các Chapter của 1 bộ Manga để làm UI chọn liên kết
 router.get('/api/admin/manga/:id/chapters', async (req: Request, res: Response): Promise<any> => {
