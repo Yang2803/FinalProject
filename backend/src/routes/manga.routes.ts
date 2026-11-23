@@ -539,10 +539,8 @@ router.get('/api/chapter/:chapterId', async (req: Request, res: Response): Promi
   }
 });
 
-// Đặt Map này ở ngoài router (toàn cục trong file manga.routes.ts)
 const pendingMangaTranslations = new Map<string, Promise<any[]>>();
 
-// API: Quét ảnh và Dịch trang truyện Manga (Có tích hợp Request Coalescing)
 router.post('/api/manga/translate-page', async (req: Request, res: Response): Promise<any> => {
   try {
     const { imageUrl, targetLang = "Vietnamese" } = req.body;
@@ -567,8 +565,6 @@ router.post('/api/manga/translate-page', async (req: Request, res: Response): Pr
       }
     });
 
-    // Chỉ trả cache nếu đã có ít nhất một block hợp lệ.
-    // Cache [] cũ sẽ được phân tích lại bằng cơ chế fallback.
     if (
       cachedData &&
       Array.isArray(cachedData.blocks) &&
@@ -589,231 +585,210 @@ router.post('/api/manga/translate-page', async (req: Request, res: Response): Pr
       console.log("🐢 [CACHE MISS] Bắt đầu phân tích ảnh...");
 
       translationPromise = (async () => {
-        // ==========================================
-        // 2.1. TẢI ẢNH VÀ CHUYỂN SANG BASE64
-        // ==========================================
-        const imageResponse = await fetch(imageUrl);
+        try {
+          // 2.1. TẢI ẢNH VÀ CHUYỂN SANG BASE64
+          const imageResponse = await fetch(imageUrl);
 
-        if (!imageResponse.ok) {
-          throw {
-            status: 400,
-            message: "Không thể tải ảnh."
-          };
-        }
+          if (!imageResponse.ok) {
+            throw {
+              status: 400,
+              message: "Không thể tải ảnh."
+            };
+          }
 
-        const arrayBuffer = await imageResponse.arrayBuffer();
-        const base64Image = Buffer.from(arrayBuffer).toString("base64");
+          const arrayBuffer = await imageResponse.arrayBuffer();
+          const base64Image = Buffer.from(arrayBuffer).toString("base64");
 
-        // ==========================================
-        // 2.2. PROMPT DÀNH CHO MANGA OCR
-        // ==========================================
-        const prompt = `
-          You are an expert manga translator, typesetter and OCR vision AI.
-          Analyze this manga page image. Detect and translate ALL text elements without missing any, including:
-          1. Oval/round dialogue and thought bubbles.
-          2. Rectangular narration boxes, captions, info cards, and character introduction panels.
-          3. Explanation tables, bullet points, and charts.
-          4. Floating side text, outer thoughts, and notes outside bubbles.
+          // 2.2. PROMPT DÀNH CHO MANGA OCR
+          const prompt = `
+            You are an expert manga translator, typesetter and OCR vision AI.
+            Analyze this manga page image. Detect and translate ALL text elements without missing any, including:
+            1. Oval/round dialogue and thought bubbles.
+            2. Rectangular narration boxes, captions, info cards, and character introduction panels.
+            3. Explanation tables, bullet points, and charts.
+            4. Floating side text, outer thoughts, and notes outside bubbles.
 
-          For each text element, provide:
-          - "translatedText": Translate the text into ${targetLang}. Keep the translation concise, punchy, and formatted to fit manga spaces.
-          - "type": Classify into one of:
-            - "bubble"
-            - "box"
-            - "floating"
-          - "box": The bounding box coordinates [ymin, xmin, ymax, xmax] normalized on a 0 to 1000 scale.
+            For each text element, provide:
+            - "translatedText": Translate the text into ${targetLang}. Keep the translation concise, punchy, and formatted to fit manga spaces.
+            - "type": Classify into one of:
+              - "bubble"
+              - "box"
+              - "floating"
+            - "box": The bounding box coordinates [ymin, xmin, ymax, xmax] normalized on a 0 to 1000 scale.
 
-          COORDINATE SYSTEM RULES:
-          - Coordinate format is strictly [ymin, xmin, ymax, xmax].
-          - (0,0) is TOP-LEFT and (1000,1000) is BOTTOM-RIGHT.
-          - For bubble: tightly bound the OUTER BORDER of the speech bubble.
-          - For box: tightly bound the rectangular narration box.
-          - For floating: tightly bound the text block itself.
-          - Do NOT shift or add artificial margins.
+            COORDINATE SYSTEM RULES:
+            - Coordinate format is strictly [ymin, xmin, ymax, xmax].
+            - (0,0) is TOP-LEFT and (1000,1000) is BOTTOM-RIGHT.
+            - For bubble: tightly bound the OUTER BORDER of the speech bubble.
+            - For box: tightly bound the rectangular narration box.
+            - For floating: tightly bound the text block itself.
+            - Do NOT shift or add artificial margins.
 
-          Return ONLY a JSON array:
-          [
-            {
-              "translatedText": "string",
-              "type": "bubble" | "box" | "floating",
-              "box": [ymin, xmin, ymax, xmax]
+            Return ONLY a JSON array:
+            [
+              {
+                "translatedText": "string",
+                "type": "bubble" | "box" | "floating",
+                "box": [ymin, xmin, ymax, xmax]
+              }
+            ]
+
+            If no readable text is found, return [].
+          `;
+
+          // 2.3. HÀM GỌI MODEL VÀ VALIDATE KẾT QUẢ
+          const genAI = new GoogleGenerativeAI(
+            process.env.GEMINI_API_KEY as string
+          );
+
+          const analyzeWithModel = async (modelName: string) => {
+            console.log(`🤖 Đang sử dụng model: ${modelName}`);
+
+            const model = genAI.getGenerativeModel({
+              model: modelName,
+              generationConfig: {
+                responseMimeType: "application/json",
+                temperature: 0.1
+              }
+            });
+
+            const aiResult = await model.generateContent([
+              prompt,
+              {
+                inlineData: {
+                  data: base64Image,
+                  mimeType: "image/png"
+                }
+              }
+            ]);
+
+            let resultText = aiResult.response.text().trim();
+
+            resultText = resultText
+              .replace(/^```json\s*/i, "")
+              .replace(/^```\s*/i, "")
+              .replace(/\s*```$/, "")
+              .trim();
+
+            let blocks: any[];
+
+            try {
+              const parsed = JSON.parse(resultText);
+              blocks = Array.isArray(parsed) ? parsed : [];
+            } catch {
+              console.warn(`⚠️ ${modelName} trả về JSON không hợp lệ.`);
+              return [];
             }
-          ]
 
-          If no readable text is found, return [].
-        `;
+            const validBlocks = blocks
+              .filter((block: any) => {
+                if (!block || typeof block !== "object") return false;
 
-        // ==========================================
-        // 2.3. HÀM GỌI MODEL VÀ VALIDATE KẾT QUẢ
-        // ==========================================
-        const genAI = new GoogleGenerativeAI(
-          process.env.GEMINI_API_KEY as string
-        );
+                const text = block.translatedText;
+                const type = block.type;
+                const box = block.box;
 
-        const analyzeWithModel = async (modelName: string) => {
-          console.log(`🤖 Đang sử dụng model: ${modelName}`);
+                if (typeof text !== "string" || !text.trim()) return false;
+                if (!["bubble", "box", "floating"].includes(type)) return false;
 
-          const model = genAI.getGenerativeModel({
-            model: modelName,
-            generationConfig: {
-              responseMimeType: "application/json",
-              temperature: 0.1
+                if (
+                  !Array.isArray(box) ||
+                  box.length !== 4 ||
+                  !box.every(
+                    (value: any) =>
+                      typeof value === "number" &&
+                      Number.isFinite(value) &&
+                      value >= 0 &&
+                      value <= 1000
+                  )
+                ) {
+                  return false;
+                }
+
+                const [ymin, xmin, ymax, xmax] = box;
+                return ymax > ymin && xmax > xmin;
+              })
+              .map((block: any) => {
+                const [ymin, xmin, ymax, xmax] = block.box;
+
+                return {
+                  translatedText: block.translatedText.trim(),
+                  type: block.type,
+                  topPercent: ymin / 10,
+                  leftPercent: xmin / 10,
+                  widthPercent: (xmax - xmin) / 10,
+                  heightPercent: (ymax - ymin) / 10
+                };
+              });
+
+            console.log(
+              `📊 ${modelName}: Tìm thấy ${validBlocks.length} block hợp lệ.`
+            );
+
+            return validBlocks;
+          };
+
+          // 2.4. PRIMARY MODEL: GEMINI 3.5 FLASH-LITE
+          let finalBlocks: any[] = [];
+
+          try {
+            finalBlocks = await analyzeWithModel("gemini-3.5-flash-lite");
+          } catch (error) {
+            // Không throw ở đây để code tự động rơi xuống bước 2.5 (fallback)
+            console.warn("⚠️ Gemini 3.5 Flash-Lite lỗi/quá tải, đang chuyển sang fallback...");
+          }
+
+          // 2.5. FALLBACK: GEMINI 3.6 FLASH
+          if (finalBlocks.length === 0) {
+            console.warn(
+              "⚠️ Chuyển sang Gemini 3.6 Flash..."
+            );
+
+            try {
+              finalBlocks = await analyzeWithModel("gemini-3.6-flash");
+            } catch (fallbackError) {
+              console.error("❌ Cả quá trình fallback gặp lỗi:", fallbackError);
+
+              throw {
+                status: 503,
+                message: "AI không thể phân tích trang truyện lúc này.",
+                blocks: []
+              };
+            }
+          }
+
+          // 2.6. LƯU KẾT QUẢ CUỐI CÙNG VÀO CACHE
+          console.log(
+            `✅ Kết quả cuối cùng: ${finalBlocks.length} block hợp lệ.`
+          );
+
+          await prisma.translationCache.upsert({
+            where: {
+              imageUrl_targetLang: {
+                imageUrl,
+                targetLang
+              }
+            },
+            update: {
+              blocks: finalBlocks
+            },
+            create: {
+              imageUrl,
+              targetLang,
+              blocks: finalBlocks
             }
           });
 
-          const aiResult = await model.generateContent([
-            prompt,
-            {
-              inlineData: {
-                data: base64Image,
-                mimeType: "image/png"
-              }
-            }
-          ]);
+          console.log("💾 Đã lưu kết quả vào Database!");
 
-          let resultText = aiResult.response.text().trim();
-
-          // Loại bỏ Markdown code fence nếu model vô tình trả về
-          resultText = resultText
-            .replace(/^```json\s*/i, "")
-            .replace(/^```\s*/i, "")
-            .replace(/\s*```$/, "")
-            .trim();
-
-          let blocks: any[];
-
-          try {
-            const parsed = JSON.parse(resultText);
-            blocks = Array.isArray(parsed) ? parsed : [];
-          } catch {
-            console.warn(`⚠️ ${modelName} trả về JSON không hợp lệ.`);
-            return [];
-          }
-
-          // Chỉ giữ lại các block có dữ liệu hợp lệ
-          const validBlocks = blocks
-            .filter((block: any) => {
-              if (!block || typeof block !== "object") return false;
-
-              const text = block.translatedText;
-              const type = block.type;
-              const box = block.box;
-
-              if (typeof text !== "string" || !text.trim()) {
-                return false;
-              }
-
-              if (!["bubble", "box", "floating"].includes(type)) {
-                return false;
-              }
-
-              if (
-                !Array.isArray(box) ||
-                box.length !== 4 ||
-                !box.every(
-                  (value: any) =>
-                    typeof value === "number" &&
-                    Number.isFinite(value) &&
-                    value >= 0 &&
-                    value <= 1000
-                )
-              ) {
-                return false;
-              }
-
-              const [ymin, xmin, ymax, xmax] = box;
-
-              return ymax > ymin && xmax > xmin;
-            })
-            .map((block: any) => {
-              const [ymin, xmin, ymax, xmax] = block.box;
-
-              return {
-                translatedText: block.translatedText.trim(),
-                type: block.type,
-                topPercent: ymin / 10,
-                leftPercent: xmin / 10,
-                widthPercent: (xmax - xmin) / 10,
-                heightPercent: (ymax - ymin) / 10
-              };
-            });
-
-          console.log(
-            `📊 ${modelName}: Tìm thấy ${validBlocks.length} block hợp lệ.`
-          );
-
-          return validBlocks;
-        };
-
-        // ==========================================
-        // 2.4. PRIMARY MODEL: GEMINI 3.5 FLASH-LITE
-        // ==========================================
-        let finalBlocks: any[] = [];
-
-        try {
-          finalBlocks = await analyzeWithModel("gemini-3.5-flash-lite");
-        } catch (error) {
-          console.error("❌ Lỗi khi gọi Gemini Flash-Lite:", error);
-          throw error;
+          return finalBlocks;
+        } finally {
+          // Giải phóng RAM an toàn, không sinh Promise thừa gây crash Node.js
+          pendingMangaTranslations.delete(taskKey);
         }
-
-        // ==========================================
-        // 2.5. FALLBACK: GEMINI 3.6 FLASH
-        // ==========================================
-        if (finalBlocks.length === 0) {
-          console.warn(
-            "⚠️ Flash-Lite không tìm thấy chữ hợp lệ. Chuyển sang Gemini 3.6 Flash..."
-          );
-
-          try {
-            finalBlocks = await analyzeWithModel("gemini-3.6-flash");
-          } catch (fallbackError) {
-            console.error("❌ Cả quá trình fallback gặp lỗi:", fallbackError);
-
-            throw {
-              status: 503,
-              message: "AI không thể phân tích trang truyện lúc này.",
-              blocks: []
-            };
-          }
-        }
-
-        // ==========================================
-        // 2.6. LƯU KẾT QUẢ CUỐI CÙNG VÀO CACHE
-        // ==========================================
-        console.log(
-          `✅ Kết quả cuối cùng: ${finalBlocks.length} block hợp lệ.`
-        );
-
-        await prisma.translationCache.upsert({
-          where: {
-            imageUrl_targetLang: {
-              imageUrl,
-              targetLang
-            }
-          },
-          update: {
-            blocks: finalBlocks
-          },
-          create: {
-            imageUrl,
-            targetLang,
-            blocks: finalBlocks
-          }
-        });
-
-        console.log("💾 Đã lưu kết quả vào Database!");
-
-        return finalBlocks;
       })();
 
-      // Lưu Promise đang chạy vào Map
       pendingMangaTranslations.set(taskKey, translationPromise);
-
-      // Giải phóng RAM ngay khi chạy xong (dù thành công hay thất bại)
-      translationPromise.finally(() => {
-        pendingMangaTranslations.delete(taskKey);
-      });
     } else {
       console.log(`⏳ [Manga OCR] Đang gộp yêu cầu vào tiến trình dịch sẵn có: ${taskKey}`);
     }
@@ -842,25 +817,6 @@ router.post('/api/manga/translate-page', async (req: Request, res: Response): Pr
     });
   }
 });
-
-
-// Lấy danh sách các Chapter của 1 bộ Manga để làm UI chọn liên kết
-router.get('/api/admin/manga/:id/chapters', async (req: Request, res: Response): Promise<any> => {
-  try {
-    const mangaId = req.params.id as string;
-    const chapters = await prisma.chapter.findMany({
-      where: { mangaId: mangaId },
-      select: { id: true, title: true }, // Chỉ lấy ID và Tên cho nhẹ server
-      orderBy: { createdAt: 'asc' } // Hoặc sắp xếp theo title tùy bạn
-    });
-    
-    res.status(200).json(chapters);
-  } catch (error) {
-    console.error("Lỗi lấy danh sách chapter:", error);
-    res.status(500).json({ message: "Lỗi server khi tải chapters." });
-  }
-});
-
 
 
 // API: Dùng AI viết tóm tắt Manga
