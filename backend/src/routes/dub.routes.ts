@@ -1,10 +1,6 @@
-import express from 'express';
-
-// 1. Thêm dòng "bùa chú" này để TS bỏ qua lỗi thiếu type của node-webvtt
+import express, { Request, Response } from 'express';
 // @ts-ignore
 import { parse } from 'node-webvtt';
-
-// 2. Import thư viện chuẩn xịn của Microsoft Edge TTS
 import { MsEdgeTTS, OUTPUT_FORMAT } from 'msedge-tts';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import axios from 'axios';
@@ -22,140 +18,171 @@ const s3Client = new S3Client({
   },
 });
 
+// 🌟 MAP LƯU CÁC TIẾN TRÌNH LỒNG TIẾNG ĐANG CHẠY (REQUEST COALESCING)
+const pendingDubs = new Map<string, Promise<void>>();
+
 // =================================================================
-// 🌟 THÊM HÀM NÀY: Dọn dẹp phụ đề, tự động sửa lỗi thời gian
+// 🌟 HÀM DỌN DẸP PHỤ ĐỀ, TỰ ĐỘNG SỬA LỖI THỜI GIAN
 // =================================================================
 function sanitizeVtt(vttString: string): string {
   if (!vttString) return "";
-  
+
   return vttString
     // 1. Sửa lỗi dùng dấu phẩy (,) thay vì dấu chấm (.) ở phần mili-giây
     .replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2')
-    
+
     // 2. Sửa lỗi thiếu múi Giờ (chỉ có Phút:Giây.MiliGiây) -> Thêm 00:
     .replace(/(^|\n|\s)(\d{2}:\d{2}\.\d{3})/g, '$100:$2')
-    
+
     // 3. Sửa lỗi giờ chỉ có 1 chữ số (vd: 1:05:10 -> 01:05:10)
     .replace(/(^|\n|\s)(\d):(\d{2}:\d{2}\.\d{3})/g, '$10$2:$3');
 }
 
-router.post('/api/anime/generate-dub', async (req, res) => {
-  const { episodeId, subtitleUrl, targetLang } = req.body; 
-  
+router.post('/api/anime/generate-dub', async (req: Request, res: Response): Promise<any> => {
+  const { episodeId, subtitleUrl, targetLang } = req.body;
+
+  if (!episodeId || !subtitleUrl || !targetLang) {
+    return res.status(400).json({ error: "Thiếu thông tin tập phim, phụ đề hoặc ngôn ngữ." });
+  }
+
+  const taskKey = `${episodeId}_${targetLang.toLowerCase()}`;
+
   try {
-    // 1. Tải file VTT
-    const vttResponse = await axios.get(subtitleUrl);
-    let vttContent = vttResponse.data;
-    
-    // 🌟 ÁP DỤNG HÀM DỌN DẸP Ở ĐÂY TRƯỚC KHI PARSE
-    vttContent = sanitizeVtt(vttContent);
-
-    // 🌟 THÊM { strict: false }: Báo cho thư viện biết hãy bỏ qua các lỗi định dạng lặt vặt
-    const parsedVtt = parse(vttContent, { strict: false }); 
-    
-    // 2. Chọn giọng đọc (Voice)
-    // =================================================================
-    // BỘ TỪ ĐIỂN ÁNH XẠ ĐỒNG BỘ 100% VỚI SUPPORTED_LANGUAGES Ở FRONTEND
-    // =================================================================
-    const voiceMappings: Record<string, string> = {
-      "Vietnamese": "vi-VN-HoaiMyNeural",
-      "Japanese": "ja-JP-NanamiNeural",
-      "Korean": "ko-KR-SunHiNeural",
-      "Chinese (Simplified)": "zh-CN-XiaoxiaoNeural",
-      "Chinese (Traditional)": "zh-TW-HsiaoChenNeural",
-      "Thai": "th-TH-AcharaNeural",
-      "Indonesian": "id-ID-GadisNeural",
-      "Hindi": "hi-IN-SwaraNeural",
-      "Arabic": "ar-SA-ZariyahNeural",
-      "English": "en-US-AriaNeural",
-      "French": "fr-FR-DeniseNeural",
-      "Spanish": "es-ES-ElviraNeural",
-      "German": "de-DE-KatjaNeural",
-      "Russian": "ru-RU-SvetlanaNeural",
-      "Portuguese": "pt-BR-FranciscaNeural", 
-      "Italian": "it-IT-ElsaNeural",
-      "Dutch": "nl-NL-ColetteNeural",
-      "Polish": "pl-PL-AgnieszkaNeural",
-      "Turkish": "tr-TR-EmelNeural",
-      "Swedish": "sv-SE-SofieNeural",
-
-      "Malay": "ms-MY-YasminNeural",
-      "Lao": "lo-LA-KeomanyNeural",
-      "Ukrainian": "uk-UA-PolinaNeural",
-      "Czech": "cs-CZ-VlastaNeural",
-      "Greek": "el-GR-AthinaNeural",
-      "Hungarian": "hu-HU-NoemiNeural",
-      "Romanian": "ro-RO-AlinaNeural",
-      "Danish": "da-DK-ChristelNeural",
-      "Finnish": "fi-FI-NooraNeural",
-      "Norwegian": "nb-NO-PernilleNeural"
-    };
-
-    // Mặc định an toàn: Nếu có lỗi rớt mạng hoặc truyền sai, dùng Tiếng Anh
-    let voiceName = 'en-US-AriaNeural'; 
-
-    // Thuật toán quét: Kiểm tra xem targetLang có chứa tên gốc không
-    for (const [langCode, voiceId] of Object.entries(voiceMappings)) {
-      if (targetLang.includes(langCode)) {
-        voiceName = voiceId;
-        break; 
-      }
-    }
-    // =================================================================
-
-    // 3. Khởi tạo đối tượng TTS với định dạng MP3 chất lượng cao
-    const tts = new MsEdgeTTS();
-    await tts.setMetadata(voiceName, OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);
-
-    // 4. Vòng lặp: Đọc từng câu và up thẳng lên Cloudflare R2
-    for (let index = 0; index < parsedVtt.cues.length; index++) {
-      const cue = parsedVtt.cues[index];
-      const cleanText = cue.text.replace(/<[^>]+>/g, ''); 
-      
-      if (!cleanText.trim()) continue;
-
-      try {
-       // Sinh âm thanh dưới dạng Stream
-        const { audioStream } = tts.toStream(cleanText);
-        
-        // Đóng gói Stream thành Buffer để up lên R2
-        const chunks: any[] = [];
-        for await (const chunk of audioStream) {
-          chunks.push(chunk);
-        }
-        const audioBuffer = Buffer.concat(chunks);
-
-        // Upload lên R2
-        const uploadParams = {
-          Bucket: process.env.R2_BUCKET_NAME,
-          Key: `dubs/${episodeId}/${targetLang}/${index}.mp3`, 
-          Body: audioBuffer,
-          ContentType: 'audio/mpeg',
-        };
-        await s3Client.send(new PutObjectCommand(uploadParams));
-
-        // Nghỉ ngơi 300ms tránh bị Rate Limit
-        await new Promise(resolve => setTimeout(resolve, 300));
-        
-      } catch (err) {
-        console.error(`Lỗi đọc câu index ${index}:`, err);
-      }
-    }
-
-    // 5. Cập nhật Database
-    await prisma.episode.update({
+    // 1. KIỂM TRA CACHE TRONG DATABASE TRƯỚC
+    const episode = await prisma.episode.findUnique({
       where: { id: episodeId },
-      data: {
-        dubbedLanguages: {
-          push: targetLang,
-        }
-      }
+      select: { dubbedLanguages: true },
     });
 
-    res.status(200).json({ message: "Tạo lồng tiếng thành công!" });
+    if (!episode) {
+      return res.status(404).json({ error: "Không tìm thấy tập phim." });
+    }
+
+    if (episode.dubbedLanguages.includes(targetLang)) {
+      return res.status(200).json({ message: "Bản lồng tiếng đã có sẵn (Loaded from cache)!" });
+    }
+
+    // 2. KIỂM TRA TIẾN TRÌNH ĐANG CHẠY (REQUEST COALESCING)
+    let dubPromise = pendingDubs.get(taskKey);
+
+    if (!dubPromise) {
+      dubPromise = (async () => {
+        // 2.1. Tải file VTT
+        const vttResponse = await axios.get(subtitleUrl);
+        let vttContent = vttResponse.data;
+
+        // Áp dụng hàm dọn dẹp trước khi parse
+        vttContent = sanitizeVtt(vttContent);
+
+        // Bỏ qua các lỗi định dạng lặt vặt
+        const parsedVtt = parse(vttContent, { strict: false });
+
+        // 2.2. Chọn giọng đọc (Voice)
+        const voiceMappings: Record<string, string> = {
+          "Vietnamese": "vi-VN-HoaiMyNeural",
+          "Japanese": "ja-JP-NanamiNeural",
+          "Korean": "ko-KR-SunHiNeural",
+          "Chinese (Simplified)": "zh-CN-XiaoxiaoNeural",
+          "Chinese (Traditional)": "zh-TW-HsiaoChenNeural",
+          "Thai": "th-TH-AcharaNeural",
+          "Indonesian": "id-ID-GadisNeural",
+          "Hindi": "hi-IN-SwaraNeural",
+          "Arabic": "ar-SA-ZariyahNeural",
+          "English": "en-US-AriaNeural",
+          "French": "fr-FR-DeniseNeural",
+          "Spanish": "es-ES-ElviraNeural",
+          "German": "de-DE-KatjaNeural",
+          "Russian": "ru-RU-SvetlanaNeural",
+          "Portuguese": "pt-BR-FranciscaNeural",
+          "Italian": "it-IT-ElsaNeural",
+          "Dutch": "nl-NL-ColetteNeural",
+          "Polish": "pl-PL-AgnieszkaNeural",
+          "Turkish": "tr-TR-EmelNeural",
+          "Swedish": "sv-SE-SofieNeural",
+          "Malay": "ms-MY-YasminNeural",
+          "Lao": "lo-LA-KeomanyNeural",
+          "Ukrainian": "uk-UA-PolinaNeural",
+          "Czech": "cs-CZ-VlastaNeural",
+          "Greek": "el-GR-AthinaNeural",
+          "Hungarian": "hu-HU-NoemiNeural",
+          "Romanian": "ro-RO-AlinaNeural",
+          "Danish": "da-DK-ChristelNeural",
+          "Finnish": "fi-FI-NooraNeural",
+          "Norwegian": "nb-NO-PernilleNeural"
+        };
+
+        let voiceName = 'en-US-AriaNeural';
+        for (const [langCode, voiceId] of Object.entries(voiceMappings)) {
+          if (targetLang.includes(langCode)) {
+            voiceName = voiceId;
+            break;
+          }
+        }
+
+        // 2.3. Khởi tạo đối tượng TTS với định dạng MP3 chất lượng cao
+        const tts = new MsEdgeTTS();
+        await tts.setMetadata(voiceName, OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);
+
+        // 2.4. Vòng lặp: Đọc từng câu và up thẳng lên Cloudflare R2
+        for (let index = 0; index < parsedVtt.cues.length; index++) {
+          const cue = parsedVtt.cues[index];
+          const cleanText = cue.text.replace(/<[^>]+>/g, '');
+
+          if (!cleanText.trim()) continue;
+
+          try {
+            const { audioStream } = tts.toStream(cleanText);
+
+            const chunks: any[] = [];
+            for await (const chunk of audioStream) {
+              chunks.push(chunk);
+            }
+            const audioBuffer = Buffer.concat(chunks);
+
+            const uploadParams = {
+              Bucket: process.env.R2_BUCKET_NAME,
+              Key: `dubs/${episodeId}/${targetLang}/${index}.mp3`,
+              Body: audioBuffer,
+              ContentType: 'audio/mpeg',
+            };
+            await s3Client.send(new PutObjectCommand(uploadParams));
+
+            // Nghỉ ngơi 300ms tránh bị Rate Limit
+            await new Promise(resolve => setTimeout(resolve, 300));
+          } catch (err) {
+            console.error(`Lỗi đọc câu index ${index}:`, err);
+          }
+        }
+
+        // 2.5. Cập nhật Database
+        await prisma.episode.update({
+          where: { id: episodeId },
+          data: {
+            dubbedLanguages: {
+              push: targetLang,
+            },
+          },
+        });
+      })();
+
+      // Lưu Promise vào Map
+      pendingDubs.set(taskKey, dubPromise);
+
+      // Xóa khỏi Map khi chạy xong (thành công hoặc lỗi)
+      dubPromise.finally(() => {
+        pendingDubs.delete(taskKey);
+      });
+    } else {
+      console.log(`⏳ [Generate Dub] Đang gộp yêu cầu vào tiến trình lồng tiếng sẵn có: ${taskKey}`);
+    }
+
+    // 3. Các user bấm cùng lúc đều chờ chung 1 Promise này
+    await dubPromise;
+
+    return res.status(200).json({ message: "Tạo lồng tiếng thành công!" });
   } catch (error) {
     console.error("Lỗi khi parse file hoặc tạo lồng tiếng:", error);
-    res.status(500).json({ error: "Lỗi hệ thống khi tạo lồng tiếng" });
+    return res.status(500).json({ error: "Lỗi hệ thống khi tạo lồng tiếng" });
   }
 });
 
