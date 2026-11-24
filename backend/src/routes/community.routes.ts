@@ -3,26 +3,26 @@ import prisma from '../config/db';
 
 const router = express.Router();
 
-// 1. TẠO COMMUNITY MỚI
+// 1. create a new community
 router.post('/api/communities', async (req: Request, res: Response): Promise<any> => {
   try {
     const { name, description, coverImage, creatorId } = req.body;
     
-    // Kiểm tra tên trùng
+    // check if the community name already exists
     const existing = await prisma.community.findUnique({ where: { name } });
-    if (existing) return res.status(400).json({ error: "Tên cộng đồng đã tồn tại!" });
+    if (existing) return res.status(400).json({ error: "Community name already exists!" });
 
     const community = await prisma.community.create({
       data: {
         name, description, coverImage, creatorId,
-        members: { connect: { id: creatorId } } // Tự động cho người tạo làm thành viên luôn
+        members: { connect: { id: creatorId } } // Automatically make the creator a member.
       }
     });
     res.status(201).json(community);
-  } catch (error) { res.status(500).json({ error: "Lỗi tạo cộng đồng" }); }
+  } catch (error) { res.status(500).json({ error: "Error creating community" }); }
 });
 
-// 2. LẤY DANH SÁCH TẤT CẢ CỘNG ĐỒNG (Kèm số lượng thành viên)
+// 2. GET LIST OF ALL COMMUNITIES (Including member counts)
 router.get('/api/communities', async (req: Request, res: Response): Promise<any> => {
   try {
     const communities = await prisma.community.findMany({
@@ -33,10 +33,10 @@ router.get('/api/communities', async (req: Request, res: Response): Promise<any>
       orderBy: { createdAt: 'desc' }
     });
     res.status(200).json(communities);
-  } catch (error) { res.status(500).json({ error: "Lỗi tải danh sách cộng đồng" }); }
+  } catch (error) { res.status(500).json({ error: "Error fetching list of communities" }); }
 });
 
-// 3. XEM CHI TIẾT 1 CỘNG ĐỒNG (Kèm danh sách bài viết)
+// 3. GET DETAIL OF A COMMUNITY (Including post list)
 router.get('/api/communities/:id', async (req: Request, res: Response): Promise<any> => {
   try {
     const community = await prisma.community.findUnique({
@@ -50,12 +50,12 @@ router.get('/api/communities/:id', async (req: Request, res: Response): Promise<
         _count: { select: { members: true } }
       }
     });
-    if (!community) return res.status(404).json({ error: "Không tìm thấy cộng đồng" });
+    if (!community) return res.status(404).json({ error: "Community not found" });
     res.status(200).json(community);
-  } catch (error) { res.status(500).json({ error: "Lỗi tải dữ liệu cộng đồng" }); }
+  } catch (error) { res.status(500).json({ error: "Error fetching community data" }); }
 });
 
-// 4. THAM GIA / RỜI KHỎI CỘNG ĐỒNG (Nút Join/Leave)
+// 4. JOIN / LEAVE COMMUNITY (Join/Leave Button)
 router.post('/api/communities/:id/join', async (req: Request, res: Response): Promise<any> => {
   try {
     const communityId = req.params.id as string;
@@ -66,44 +66,44 @@ router.post('/api/communities/:id/join', async (req: Request, res: Response): Pr
       include: { members: { where: { id: userId } } }
     });
 
-    if (!community) return res.status(404).json({ error: "Không tìm thấy cộng đồng" });
+    if (!community) return res.status(404).json({ error: "Community not found" });
 
     const isMember = community.members.length > 0;
 
     if (isMember) {
-      // Đã tham gia -> Bấm để Rời
+      // Joined -> Click to Leave
       await prisma.community.update({
         where: { id: communityId },
         data: { members: { disconnect: { id: userId } } }
       });
-      res.status(200).json({ message: "Đã rời nhóm", joined: false });
+      res.status(200).json({ message: "Left community", joined: false });
     } else {
-      // Chưa tham gia -> Bấm để Tham gia
+      // Not a member -> Click to Join
       await prisma.community.update({
         where: { id: communityId },
         data: { members: { connect: { id: userId } } }
       });
-      res.status(200).json({ message: "Đã tham gia nhóm", joined: true });
+      res.status(200).json({ message: "Joined community", joined: true });
     }
-  } catch (error) { res.status(500).json({ error: "Lỗi xử lý tham gia" }); }
+  } catch (error) { res.status(500).json({ error: "Error processing join request" }); }
 });
 
-// 5. CẬP NHẬT THÔNG TIN CỘNG ĐỒNG (Chỉ Admin)
+// 5. UPDATE COMMUNITY INFORMATION (Admin Only)
 router.put('/api/communities/:id', async (req: Request, res: Response): Promise<any> => {
   try {
     const communityId = req.params.id as string;
     const { name, description, coverImage, userId } = req.body;
 
     const community = await prisma.community.findUnique({ where: { id: communityId } });
-    if (!community) return res.status(404).json({ error: "Không tìm thấy cộng đồng" });
+    if (!community) return res.status(404).json({ error: "Community not found" });
     
-    // Kiểm tra quyền Admin (Chỉ người tạo mới được sửa)
-    if (community.creatorId !== userId) return res.status(403).json({ error: "Không có quyền chỉnh sửa!" });
+    // Check admin privileges (only the creator can edit)
+    if (community.creatorId !== userId) return res.status(403).json({ error: "You do not have permission to edit this community" });
 
-    // Kiểm tra trùng tên (nếu Admin đổi tên mới)
+    // Check for duplicate names (if Admin changes the name)
     if (name !== community.name) {
       const existing = await prisma.community.findUnique({ where: { name } });
-      if (existing) return res.status(400).json({ error: "Tên cộng đồng đã tồn tại!" });
+      if (existing) return res.status(400).json({ error: "Community name already exists!" });
     }
 
     const updatedCommunity = await prisma.community.update({
@@ -118,8 +118,8 @@ router.put('/api/communities/:id', async (req: Request, res: Response): Promise<
 
     res.status(200).json(updatedCommunity);
   } catch (error) { 
-    console.error("LỖI SỬA COMMUNITY:", error);
-    res.status(500).json({ error: "Lỗi cập nhật cộng đồng" }); 
+    console.error("Error updating community:", error);
+    res.status(500).json({ error: "Error updating community" }); 
   }
 });
 

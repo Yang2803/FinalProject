@@ -1,5 +1,5 @@
 import express, { Request, Response } from 'express';
-import prisma from '../config/db'; // Nhúng DB dùng chung
+import prisma from '../config/db'; 
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 
@@ -14,7 +14,7 @@ router.get('/api/anime/top', async (req: Request, res: Response): Promise<any> =
     if (period === 'day') startDate.setDate(startDate.getDate() - 1);
     else if (period === 'week') startDate.setDate(startDate.getDate() - 7);
     else if (period === 'month') startDate.setMonth(startDate.getMonth() - 1);
-    else return res.status(400).json({ message: "Period không hợp lệ." });
+    else return res.status(400).json({ message: "Invalid period." });
 
     const topViews = await prisma.animeViewLog.groupBy({
       by: ['animeId'],
@@ -47,37 +47,37 @@ router.get('/api/anime/top', async (req: Request, res: Response): Promise<any> =
 
     res.status(200).json(sortedTopAnimes);
   } catch (error) {
-    console.error("Lỗi lấy Top Anime:", error);
-    res.status(500).json({ message: "Lỗi server khi lấy bảng xếp hạng anime." });
+    console.error("Error retrieving Top Anime:", error);
+    res.status(500).json({ message: "Error occurred while fetching top anime." });
   }
 });
 
 // ==========================================
-// 👁️ 2. API: GHI NHẬN 1 LƯỢT XEM ANIME (LOG VIEW)
+// 👁️ 2. API: RECORD ANIME VIEW (LOG VIEW)
 // ==========================================
 router.post('/api/anime/:id/view', async (req: Request, res: Response): Promise<any> => {
   try {
     const animeId = String(req.params.id);
 
     const anime = await prisma.anime.findUnique({ where: { id: animeId } });
-    if (!anime) return res.status(404).json({ message: "Anime không tồn tại!" });
+    if (!anime) return res.status(404).json({ message: "Anime not found!" });
 
     await prisma.animeViewLog.create({
       data: { animeId: anime.id }
     });
 
-    res.status(200).json({ message: "Đã ghi nhận lượt xem!" });
+    res.status(200).json({ message: "View log recorded!" });
   } catch (error) {
-    console.error("Lỗi ghi log lượt xem Anime:", error);
-    res.status(500).json({ message: "Lỗi server khi ghi nhận lượt xem." });
+    console.error("Error recording anime view:", error);
+    res.status(500).json({ message: "Error occurred while recording view." });
   }
 });
 
 // ==========================================
-// API QUẢN LÝ ANIME & EPISODE (ADMIN)
+// API MANAGE ANIME & EPISODE (ADMIN)
 // ==========================================
 
-// 1. Lấy danh sách rút gọn của Anime để đưa vào ô chọn (Dropdown Select)
+// 1. Retrieve a list of anime to populate a dropdown selection menu.
 router.get('/api/admin/anime/list-select', async (req: Request, res: Response) => {
   try {
     const animes = await prisma.anime.findMany({
@@ -86,13 +86,13 @@ router.get('/api/admin/anime/list-select', async (req: Request, res: Response) =
     });
     res.status(200).json(animes);
   } catch (error) {
-    res.status(500).json({ message: "Lỗi tải danh sách phim." });
+    res.status(500).json({ message: "Error occurred while fetching anime list." });
   }
 });
 
-// 2. API: Tạo tập phim mới kèm theo mảng phụ đề và liên kết Manga
+// 2. API: Create a new episode, including a set of subtitles and a link to the manga.
 
-// 🌟 HÀM HELPER: Nhúng chuỗi văn bản (bất kể ngôn ngữ) thành Vector 768 chiều
+// 🌟 HELPER FUNCTION: Embeds a text string (regardless of language) into a 768-dimensional vector
 async function generateEmbedding(text: string): Promise<number[]> {
   const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
   const model = genAI.getGenerativeModel({ model: "gemini-embedding-001" });
@@ -100,7 +100,7 @@ async function generateEmbedding(text: string): Promise<number[]> {
   return result.embedding.values;
 }
 
-// 2. API: Tạo tập phim mới kèm theo mảng phụ đề, liên kết Manga và Tọa độ Vector Plot
+// 2. API: Create a new episode, including a set of subtitles and a link to the manga
 router.post('/api/admin/episode', async (req: Request, res: Response): Promise<any> => {
   try {
     const { 
@@ -119,7 +119,7 @@ router.post('/api/admin/episode', async (req: Request, res: Response): Promise<a
       return res.status(400).json({ message: "Please fill in all required information!" });
     }
 
-    // CHUYỂN ĐỔI CHUỖI CHARACTERS THÀNH MẢNG (ARRAY)
+    // CONVERTING A STRING OF CHARACTERS INTO AN ARRAY
     let characterArray: string[] = [];
     if (typeof characters === 'string' && characters.trim().length > 0) {
       characterArray = characters
@@ -130,7 +130,7 @@ router.post('/api/admin/episode', async (req: Request, res: Response): Promise<a
       characterArray = characters;
     }
 
-    // BƯỚC 1: Tạo dữ liệu văn bản thuần túy trước để lấy ID tập phim
+    // STEP 1: Create the episode data before fetching the episode ID
     const newEpisode = await prisma.episode.create({
       data: {
         animeId,
@@ -148,35 +148,34 @@ router.post('/api/admin/episode', async (req: Request, res: Response): Promise<a
       include: { subtitles: true }
     });
 
-    // BƯỚC 2: TỰ ĐỘNG SINH VECTOR EMBEDDING VÀ LƯU VÀO CỘT UNSUPPORTED
+    // STEP 2: AUTOMATICALLY GENERATE VECTOR EMBEDDING AND STORE IT IN THE UNSUPPORTED COLUMN
     if (plotSummary && plotSummary.trim().length > 0) {
       try {
-        // Gọi AI của Google để tính toán chuỗi số tọa độ ngữ nghĩa
+        // Call Google's AI to calculate the semantic coordinates
         const vectorValues = await generateEmbedding(plotSummary);
         
-        // Định dạng mảng số thành chuỗi cấu trúc mảng PostgreSQL: "[0.123, -0.456, ...]"
+        // Format the array of numbers into a PostgreSQL array string: "[0.123, -0.456, ...]"
         const vectorStr = `[${vectorValues.join(',')}]`; 
         
-        // Ép kiểu chuỗi số về dạng dữ liệu dữ liệu dạng ::vector và nạp vào Postgres
+        // Cast the string of numbers into the ::vector data type and insert into Postgres
         await prisma.$executeRawUnsafe(
           `UPDATE "Episode" SET embedding = $1::vector WHERE id = $2`,
           vectorStr,
           newEpisode.id
         );
         
-        console.log(`✨ Đã nạp thành công Vector Embedding cho Tập số ${episodeNumber}.`);
+        console.log(`✨ Vector embeddings have been successfully loaded for the episode ${episodeNumber}.`);
       } catch (embedError) {
-        // Bọc try-catch riêng ở đây để nếu AI Key hết hạn hoặc lỗi mạng, 
-        // tập phim vẫn được tải lên thành công (không làm hỏng luồng chính của hệ thống).
-        console.error("Lỗi trong quá trình sinh hoặc nạp Vector Embedding:", embedError);
+        // Wrap this in a separate try-catch block so that if the AI ​​Key expires or a network error occurs,
+        // the episode can still be uploaded successfully (without disrupting the system's main workflow).
+        console.error("Error during the generation or ingestion of Vector Embeddings:", embedError);
       }
     }
 
     // ==========================================
-    // 🌟 TỰ ĐỘNG BẮN THÔNG BÁO CHO NGƯỜI THEO DÕI ANIME
+    // 🌟 AUTOMATICALLY SEND NOTIFICATIONS TO ANIME FOLLOWERS
     // ==========================================
     try {
-      // ⚠️ Đảm bảo tên bảng 'watchList' viết đúng theo file schema.prisma của cậu
       const usersInWatchList = await prisma.watchList.findMany({
         where: { animeId: animeId } 
       });
@@ -187,7 +186,7 @@ router.post('/api/admin/episode', async (req: Request, res: Response): Promise<a
           select: { title: true }
         });
 
-        const animeTitleStr = animeInfo?.title || "Một bộ Anime bạn theo dõi";
+        const animeTitleStr = animeInfo?.title || "An anime series you follow";
 
         const notificationsToInsert = usersInWatchList.map((item: any) => ({
           userId: item.userId,
@@ -201,10 +200,10 @@ router.post('/api/admin/episode', async (req: Request, res: Response): Promise<a
           data: notificationsToInsert
         });
         
-        console.log(`✨ Đã gửi thông báo cho ${usersInWatchList.length} người dùng đang xem Anime này!`);
+        console.log(`✨ Notification has been sent to ${usersInWatchList.length} users following this anime!`);
       }
     } catch (notiError) {
-      console.error("Lỗi khi gửi thông báo Anime:", notiError);
+      console.error("Error while sending anime notifications:", notiError);
     }
 
     res.status(201).json({ 
@@ -213,29 +212,29 @@ router.post('/api/admin/episode', async (req: Request, res: Response): Promise<a
     });
 
   } catch (error) {
-    console.error("Lỗi đăng tập phim:", error);
-    res.status(500).json({ message: "Lỗi server khi lưu tập phim." });
+    console.error("Error uploading episode:", error);
+    res.status(500).json({ message: "Server error when saving the episode." });
   }
 });
 
-// 3. API: Lấy danh sách toàn bộ Anime cho trang Quản trị
+// 3. API: Retrieve the full list of anime for the admin page
 router.get('/api/admin/anime', async (req: Request, res: Response) => {
   try {
     const animes = await prisma.anime.findMany({
-      orderBy: { createdAt: 'desc' }, // Phim mới thêm lên đầu
+      orderBy: { createdAt: 'desc' }, // Newest anime at the top
       include: {
         _count: {
-          select: { episodes: true } // Đếm số lượng tập phim để hiển thị cho Admin dễ quản lý
+          select: { episodes: true } // Count the number of episodes for easy management by Admin
         }
       }
     });
     res.status(200).json(animes);
   } catch (error) {
-    res.status(500).json({ message: "Lỗi server khi tải danh sách Anime." });
+    res.status(500).json({ message: "Server error when loading the anime list." });
   }
 });
 
-// 4. API: Xóa bộ Anime (Sẽ tự động xóa luôn các Episode và Subtitle bên trong nhờ onDelete: Cascade)
+// 4. API: Delete an anime (Will automatically delete its episodes and subtitles due to onDelete: Cascade)
 router.delete('/api/admin/anime/:id', async (req: Request, res: Response): Promise<any> => {
   try {
     const id = req.params.id as string;
@@ -244,12 +243,12 @@ router.delete('/api/admin/anime/:id', async (req: Request, res: Response): Promi
     });
     res.status(200).json({ message: "New anime deleted successfully!" });
   } catch (error) {
-    console.error("Lỗi xóa Anime:", error);
-    res.status(500).json({ message: "Lỗi server khi xóa phim." });
+    console.error("Error deleting anime:", error);
+    res.status(500).json({ message: "Server error when deleting the anime." });
   }
 });
 
-// 5. [NÂNG CẤP] API: Lấy chi tiết 1 bộ Anime kèm danh sách tập phim đã đăng
+// 5. API: Retrieve details of a single anime with its episode list
 router.get('/api/admin/anime/:id', async (req: Request, res: Response): Promise<any> => {
   try {
     const animeId = req.params.id as string;
@@ -258,7 +257,7 @@ router.get('/api/admin/anime/:id', async (req: Request, res: Response): Promise<
       where: { id: animeId },
       include: {
         episodes: {
-          orderBy: { createdAt: 'asc' } // Sắp xếp tập phim từ cũ đến mới (Tập 1, 2, 3...)
+          orderBy: { createdAt: 'asc' } // Sort episodes from oldest to newest (Episodes 1, 2, 3...)
         }
       }
     });
@@ -270,19 +269,19 @@ router.get('/api/admin/anime/:id', async (req: Request, res: Response): Promise<
   }
 });
 
-// 6. [THÊM MỚI] API: Chỉnh sửa thông tin phim (Sửa Tên, Mô tả, Ảnh bìa, Fandom Prefix)
+// 6. API: Edit anime information (Edit Title, Description, Cover Image, Fandom Prefix)
 router.put('/api/admin/anime/:id', async (req: Request, res: Response): Promise<any> => {
   try {
     const animeId = req.params.id as string;
     
-    // 🌟 THÊM fandomPrefix VÀO ĐÂY ĐỂ HỨNG DỮ LIỆU
+    // 🌟 ADD fandomPrefix HERE TO CAPTURE DATA
     const { title, description, coverImage, fandomPrefix } = req.body;
 
     if (!title) return res.status(400).json({ message: "The anime title cannot be empty!" });
 
     const updatedAnime = await prisma.anime.update({
       where: { id: animeId },
-      // 🌟 THÊM fandomPrefix VÀO ĐÂY ĐỂ LƯU VÀO DATABASE
+      // 🌟 ADD fandomPrefix HERE TO SAVE TO DATABASE
       data: { 
         title, 
         description, 
@@ -298,7 +297,7 @@ router.put('/api/admin/anime/:id', async (req: Request, res: Response): Promise<
   }
 });
 
-// 7. API: Xóa tập phim
+// 7. API: Delete an episode
 router.delete('/api/admin/episode/:id', async (req: Request, res: Response): Promise<any> => {
   try {
     const episodeId = req.params.id as string;
@@ -307,12 +306,12 @@ router.delete('/api/admin/episode/:id', async (req: Request, res: Response): Pro
     });
     res.status(200).json({ message: "Episode deleted successfully!" });
   } catch (error) {
-    console.error("Lỗi xóa tập phim:", error);
-    res.status(500).json({ message: "Lỗi server khi xóa tập phim." });
+    console.error("Error deleting episode:", error);
+    res.status(500).json({ message: "Server error when deleting the episode." });
   }
 });
 
-// 8. API: Lấy chi tiết 1 tập phim (Dùng cho trang Edit)
+// 8. API: Retrieve details of a single episode (Used for the Edit page)
 router.get('/api/admin/episode-detail/:id', async (req: Request, res: Response): Promise<any> => {
   try {
     const episodeId = req.params.id as string;
@@ -320,19 +319,19 @@ router.get('/api/admin/episode-detail/:id', async (req: Request, res: Response):
       where: { id: episodeId },
       include: { subtitles: true }
     });
-    if (!episode) return res.status(404).json({ message: "Không tìm thấy tập phim" });
+    if (!episode) return res.status(404).json({ message: "Episode not found." });
     res.status(200).json(episode);
   } catch (error) {
-    res.status(500).json({ message: "Lỗi tải thông tin tập phim." });
+    res.status(500).json({ message: "Error loading episode details." });
   }
 });
 
-// 9. API: Cập nhật tập phim (Đổi tên, video, subtitle, Manga Sync hoặc Cập nhật chi tiết AI)
+// 9. API: Update an episode (Change name, video, subtitle, Manga Sync or update AI details)
 router.put('/api/admin/episode/:id', async (req: Request, res: Response): Promise<any> => {
   try {
     const episodeId = req.params.id as string;
     
-    // 1. BÓC TÁCH CÁC TRƯỜNG DỮ LIỆU TỪ FRONTEND
+    // 1. EXTRACTING DATA FIELDS FROM THE FRONTEND
     const { 
       title, 
       videoUrl, 
@@ -344,7 +343,7 @@ router.put('/api/admin/episode/:id', async (req: Request, res: Response): Promis
       plotSummary    
     } = req.body;
 
-    // 2. CẬP NHẬT DỮ LIỆU VĂN BẢN VÀO PRISMA TRƯỚC
+    // 2. UPDATE TEXT DATA INTO PRISMA FIRST
     const updatedEpisode = await prisma.episode.update({
       where: { id: episodeId },
       data: {
@@ -358,10 +357,10 @@ router.put('/api/admin/episode/:id', async (req: Request, res: Response): Promis
       }
     });
 
-    // 🌟 3. XỬ LÝ LẠI TỌA ĐỘ VECTOR NẾU PLOT SUMMARY BỊ THAY ĐỔI
+    // 🌟 3. RECALCULATE VECTOR COORDINATES IF PLOT SUMMARY IS CHANGED
     if (plotSummary !== undefined) {
       if (plotSummary.trim().length > 0) {
-        // NẾU CÓ NỘI DUNG: Gọi AI sinh Vector mới và ghi đè vào DB
+        // IF CONTENT EXISTS: Invoke AI to generate a new Vector and overwrite it in the DB
         try {
           const vectorValues = await generateEmbedding(plotSummary);
           const vectorStr = `[${vectorValues.join(',')}]`;
@@ -371,12 +370,12 @@ router.put('/api/admin/episode/:id', async (req: Request, res: Response): Promis
             vectorStr,
             episodeId
           );
-          console.log(`✨ Đã cập nhật lại Vector 3072 chiều cho tập phim ID: ${episodeId}`);
+          console.log(`✨ Updated Vector 3072 dimensions for episode ID: ${episodeId}`);
         } catch (embedError) {
-          console.error("Lỗi nạp Vector Embedding khi Edit:", embedError);
+          console.error("Error loading Vector Embedding when editing:", embedError);
         }
       } else {
-        // NẾU BỊ XÓA TRẮNG: Reset cột vector về NULL cho sạch Database
+        // IF EMPTY: Reset the vector column to NULL for a clean Database
         await prisma.$executeRawUnsafe(
           `UPDATE "Episode" SET embedding = NULL WHERE id = $1`,
           episodeId
@@ -384,7 +383,7 @@ router.put('/api/admin/episode/:id', async (req: Request, res: Response): Promis
       }
     }
 
-    // 4. XỬ LÝ PHỤ ĐỀ MỚI (NẾU CÓ GỬI LÊN)
+    // 4. HANDLE NEW SUBTITLES (IF ANY ARE SENT)
     if (newSubtitles && newSubtitles.length > 0) {
       await prisma.subtitle.deleteMany({ where: { episodeId: episodeId } });
       await prisma.subtitle.createMany({
@@ -398,43 +397,43 @@ router.put('/api/admin/episode/:id', async (req: Request, res: Response): Promis
 
     res.status(200).json({ message: "Episode updated successfully!", episode: updatedEpisode });
   } catch (error) {
-    console.error("Lỗi cập nhật tập phim:", error);
-    res.status(500).json({ message: "Lỗi server khi cập nhật tập phim." });
+    console.error("Error updating episode:", error);
+    res.status(500).json({ message: "Server error when updating episode." });
   }
 });
 
-//10. API: Tạo bộ Anime mới
+//10. API: Create a new anime series
 router.post('/api/admin/anime', async (req: Request, res: Response): Promise<any> => {
   try {
-    // 🌟 1. HỨNG THÊM fandomPrefix TỪ FRONTEND
+    // 🌟 1. EXTRACT fandomPrefix FROM FRONTEND
     const { title, description, coverImage, fandomPrefix } = req.body;
 
     if (!title) {
-      return res.status(400).json({ message: "Tên Anime không được để trống!" });
+      return res.status(400).json({ message: "The anime name cannot be blank!" });
     }
 
-    // 🌟 2. TRUYỀN VÀO PRISMA ĐỂ LƯU XUỐNG DATABASE
+    // 🌟 2. PASS TO PRISMA TO SAVE TO THE DATABASE
     const newAnime = await prisma.anime.create({
       data: {
         title,
         description: description || "",
         coverImage: coverImage || "",
-        fandomPrefix: fandomPrefix || "", // Bổ sung dòng này
+        fandomPrefix: fandomPrefix || "", 
       }
     });
 
-    res.status(201).json({ message: "Đã thêm bộ Anime mới thành công!", anime: newAnime });
+    res.status(201).json({ message: "New anime series added successfully!", anime: newAnime });
   } catch (error) {
-    console.error("Lỗi tạo Anime:", error);
-    res.status(500).json({ message: "Lỗi server khi thêm Anime." });
+    console.error("Error creating anime:", error);
+    res.status(500).json({ message: "Server error when adding anime." });
   }
 });
 
 // ==========================================
-// API ANIME DÀNH CHO USER (PUBLIC)
+// ANIME API FOR USERS (PUBLIC)
 // ==========================================
 
-// 1. Lấy danh sách tất cả Anime (Mới nhất lên đầu)
+// 1. Get a list of all anime (newest first)
 router.get('/api/anime', async (req: Request, res: Response) => {
   try {
     const animes = await prisma.anime.findMany({
@@ -445,11 +444,11 @@ router.get('/api/anime', async (req: Request, res: Response) => {
     });
     res.status(200).json(animes);
   } catch (error) {
-    res.status(500).json({ message: "Lỗi tải danh sách phim." });
+    res.status(500).json({ message: "Error loading anime list." });
   }
 });
 
-// 2. Lấy chi tiết 1 bộ Anime kèm toàn bộ Tập phim và Phụ đề
+// 2. Get details of a single anime with all episodes and subtitles
 router.get('/api/anime/:id', async (req: Request, res: Response): Promise<any> => {
   try {
     const animeId = req.params.id as string;
@@ -457,8 +456,8 @@ router.get('/api/anime/:id', async (req: Request, res: Response): Promise<any> =
       where: { id: animeId },
       include: {
         episodes: {
-          orderBy: { createdAt: 'asc' }, // Sắp xếp Tập 1, Tập 2...
-          include: { subtitles: true }   // Lấy luôn phụ đề để xem
+          orderBy: { createdAt: 'asc' }, //order by oldest to newest (Episode 1, 2, 3...)
+          include: { subtitles: true }   
         }
       }
     });
@@ -466,11 +465,11 @@ router.get('/api/anime/:id', async (req: Request, res: Response): Promise<any> =
     if (!anime) return res.status(404).json({ message: "The anime could not be found." });
     res.status(200).json(anime);
   } catch (error) {
-    res.status(500).json({ message: "Lỗi tải thông tin phim." });
+    res.status(500).json({ message: "Error loading anime details." });
   }
 });
 
-// Cấu hình lại S3 Client (Dùng cho việc upload file dịch lên R2)
+// Reconfigure the S3 Client (Used for uploading translated files to R2)
 const s3Client = new S3Client({
   region: "auto",
   endpoint: process.env.R2_ENDPOINT as string,
@@ -481,22 +480,22 @@ const s3Client = new S3Client({
   forcePathStyle: true,
 });
 
-// Đặt Map này ở ngoài router (toàn cục trong file route)
+// Place this Map outside the router (globally within the route file)
 const pendingSubTranslations = new Map<string, Promise<any>>();
 
-// API: Dịch phụ đề tự động bằng Gemini (Có tích hợp Request Coalescing)
+// API: Automatic subtitle translation using Gemini (with integrated Request Coalescing)
 router.post('/api/anime/translate-sub', async (req: Request, res: Response): Promise<any> => {
   try {
     const { episodeId, targetLang } = req.body;
 
     if (!episodeId || !targetLang) {
-      return res.status(400).json({ message: "Thiếu thông tin tập phim hoặc ngôn ngữ đích." });
+      return res.status(400).json({ message: "Missing episode information or target language." });
     }
 
     const newLabel = `${targetLang} (Auto)`;
     const taskKey = `${episodeId}_${targetLang.toLowerCase()}`;
 
-    // 1. KIỂM TRA CACHE: Xem ngôn ngữ này đã từng được dịch chưa
+    // 1. CHECK CACHE: See if this language has been translated before
     const existingSub = await prisma.subtitle.findFirst({
       where: { episodeId, label: newLabel }
     });
@@ -505,20 +504,20 @@ router.post('/api/anime/translate-sub', async (req: Request, res: Response): Pro
       return res.status(200).json({ message: "Loaded from cache", subtitle: existingSub });
     }
 
-    // 2. KIỂM TRA TIẾN TRÌNH ĐANG CHẠY (REQUEST COALESCING)
+    // 2. CHECK RUNNING PROCESS (REQUEST COALESCING)
     let translationPromise = pendingSubTranslations.get(taskKey);
 
     if (!translationPromise) {
       translationPromise = (async () => {
         try {
-          // 2.1. TÌM FILE GỐC (Ưu tiên tiếng Anh)
+          // 2.1. FIND ORIGINAL FILE (English preferred)
           const episode = await prisma.episode.findUnique({
             where: { id: episodeId },
             include: { subtitles: true }
           });
 
           if (!episode || episode.subtitles.length === 0) {
-            throw { status: 404, message: "Tập phim này chưa có phụ đề gốc nào để dịch." };
+            throw { status: 404, message: "The episode does not have any original subtitles to translate." };
           }
 
           let sourceSub = episode.subtitles.find(sub =>
@@ -529,15 +528,15 @@ router.post('/api/anime/translate-sub', async (req: Request, res: Response): Pro
             sourceSub = episode.subtitles[0];
           }
           if (!sourceSub) {
-            throw { status: 404, message: "Không tìm thấy dữ liệu phụ đề gốc hợp lệ." };
+            throw { status: 404, message: "No valid source subtitle found." };
           }
 
-          // 2.2. TẢI NỘI DUNG FILE VTT GỐC
+          // 2.2. UPLOAD ORIGINAL VTT FILE CONTENT
           const response = await fetch(sourceSub.url);
           if (!response.ok) throw new Error("Unable to download source subtitle");
           const vttContent = await response.text();
 
-          // 2.3. GỌI GEMINI DỊCH THUẬT
+          // 2.3. CALL GEMINI TRANSLATION
           const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
           const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash-lite" });
 
@@ -559,7 +558,7 @@ router.post('/api/anime/translate-sub', async (req: Request, res: Response): Pro
 
           translatedVtt = translatedVtt.replace(/```vtt/gi, '').replace(/```/g, '').trim();
 
-          // 2.4. UPLOAD FILE VTT MỚI LÊN CLOUDFLARE R2
+          // 2.4. UPLOAD NEW FILE VTT TO CLOUDFLARE R2
           const fileName = `translated-${episodeId}-${Date.now()}.vtt`;
 
           const command = new PutObjectCommand({
@@ -572,7 +571,7 @@ router.post('/api/anime/translate-sub', async (req: Request, res: Response): Pro
           await s3Client.send(command);
           const publicUrl = `${process.env.R2_PUBLIC_DOMAIN}/${fileName}`;
 
-          // 2.5. LƯU VÀO DATABASE
+          // 2.5. SAVE TO DATABASE
           const newSubtitle = await prisma.subtitle.create({
             data: {
               label: newLabel,
@@ -583,75 +582,75 @@ router.post('/api/anime/translate-sub', async (req: Request, res: Response): Pro
 
           return newSubtitle;
         } finally {
-          // Xóa khỏi Map an toàn bên trong hàm async, không sinh Promise thừa gây crash
+          // Safely remove from the Map within an async function, without creating redundant Promises that could cause a crash
           pendingSubTranslations.delete(taskKey);
         }
       })();
 
-      // Lưu Promise đang chạy vào Map
+      // Save Promise is running into Map
       pendingSubTranslations.set(taskKey, translationPromise);
     } else {
-      console.log(`⏳ [Translate Sub] Đang gộp yêu cầu vào tiến trình dịch sẵn có: ${taskKey}`);
+      console.log(`⏳ [Translate Sub] Merging request into an existing translation process: ${taskKey}`);
     }
 
-    // 3. Cả các user bấm cùng lúc đều await chung 1 Promise và nhận về kết quả
+    // 3. All users who click at the same time await the same Promise and receive the result.
     const newSubtitle = await translationPromise;
 
     return res.status(200).json({ message: "Translated successfully", subtitle: newSubtitle });
   } catch (error: any) {
-    console.error("Lỗi Dịch Auto:", error);
+    console.error("Error translating subtitles:", error);
     if (error?.status) {
       return res.status(error.status).json({ message: error.message });
     }
-    return res.status(500).json({ message: "Lỗi server khi dịch tự động." });
+    return res.status(500).json({ message: "Server error when translating automatically." });
   }
 });
 
 
 // =========================================================================
-// HÀM PHỤ TRỢ: CHUYÊN GIA BÓC TÁCH SỐ CHAPTER TỪ CHUỖI TEXT CỦA WIKI
+// HELPER FUNCTION: SPECIALIST FOR EXTRACTING CHAPTER NUMBERS FROM WIKI TEXT STRINGS
 // =========================================================================
 function extractChapterNumbers(text: string): number[] {
   if (!text || typeof text !== 'string') return [];
   
-  // Bỏ qua nếu Fandom ghi "Không rõ", "TBA", "Unknown"
+  // Skip if Fandom states "Not specified," "TBA," or "Unknown."
   if (text.toLowerCase().includes('không rõ') || text.toLowerCase().includes('tba') || text.toLowerCase().includes('unknown')) {
     return [];
   }
 
   const chapters = new Set<number>();
   
-  // 1. Dọn rác: Xóa sạch mọi thứ nằm trong dấu ngoặc đơn (Ví dụ: "(p. 4 - 25)")
+  // 1. Clean up: Remove everything contained within parentheses (e.g., "(p. 4 - 25)")
   const cleanText = text.replace(/\([^)]*\)/g, ' '); 
 
-  // 🌟 2. CHIẾN THUẬT MỚI: Bắt trọn ổ toàn bộ chuỗi số đứng sau "Chapter"
-  // Regex này bắt chữ Chapter, theo sau là danh sách số có thể chứa phẩy, dấu gạch ngang, chữ and...
-  // Ví dụ: Bắt trọn cụm "1, 2", "1 - 5", "1, 2 and 3", "#1, #2"
+  // 🌟 2. NEW TACTIC: Capture the entire sequence of numbers following "Chapter"
+  //This regex matches the word "Chapter," followed by a list of numbers that may include commas, hyphens, the word "and," etc.
+  // For example: Captures sequences such as "1, 2", "1 - 5", "1, 2 and 3", and "#1, #2"
   const blockRegex = /(?:chapter|chap|ch)\w*\.?\s*((?:#?\s*\d+\s*(?:,|&|and|-|–|to)\s*)*#?\s*\d+)/gi;
   let blockMatch;
 
   while ((blockMatch = blockRegex.exec(cleanText)) !== null) {
-    const numberString = blockMatch[1]!; // Lấy được cục text chứa số (vd: "1, 2" hoặc "1 - 3")
+    const numberString = blockMatch[1]!; // Extract the text segment containing numbers (e.g., "1, 2" or "1 - 3")
     
-    // 3. Tách nhỏ cục text này dựa trên dấu phẩy (,), dấu (&), hoặc chữ (and)
+    // 3. Split this piece of text based on commas (,), ampersands (&), or the word "and".
     const parts = numberString.split(/\s*(?:,|&|and)\s*/i);
     
     for (const part of parts) {
-      // 4a. Kiểm tra xem phần tử này có phải là khoảng (range) không (vd: "1 - 3" hoặc "#1 to #5")
+      // 4a. Check if this element is a range (e.g., "1 - 3" or "#1 to #5")
       const rangeMatch = part.match(/(\d+)\s*(?:-|–|to)\s*#?\s*(\d+)/i);
       
       if (rangeMatch) {
         const start = parseInt(rangeMatch[1]!);
         const end = parseInt(rangeMatch[2]!);
         
-        // Trải dài các số từ start đến end và add vào Set
+        // Iterate through the numbers from start to end and add them to the Set
         if (start && end && start <= end && end - start < 100) { 
           for (let i = start; i <= end; i++) {
             chapters.add(i);
           }
         }
       } else {
-        // 4b. Nếu không phải khoảng, nó là một số đơn (vd: "1" hoặc "#2")
+        // 4b. If it is not a range, it is a single number (e.g., "1" or "#2").
         const singleMatch = part.match(/(\d+)/);
         if (singleMatch) {
           chapters.add(parseInt(singleMatch[1]!));
@@ -660,33 +659,33 @@ function extractChapterNumbers(text: string): number[] {
     }
   }
 
-  // Trả về mảng đã được sắp xếp tăng dần cho gọn gàng (VD: [1, 2, 3])
+  // Return an array sorted in ascending order for tidiness (e.g., [1, 2, 3])
   return Array.from(chapters).sort((a, b) => a - b);
 }
 // =========================================================================
-// API TỰ ĐỘNG LIÊN KẾT (SMART MAP: REGEX FIRST -> AI FALLBACK)
+// AUTOMATED LINKING API (SMART MAP: REGEX FIRST -> AI FALLBACK)
 // =========================================================================
 router.post('/api/admin/auto-map-chapters', async (req: Request, res: Response): Promise<any> => {
   try {
     const { animeName, episodeNumber, mangaId, adaptedFrom } = req.body;
     let chapterNumbers: number[] = [];
-    let mappingSource = "Hệ thống Bóc tách Văn bản (Regex)";
+    let mappingSource = "Text Extraction System (Regex)";
 
     // -------------------------------------------------------------
-    // GIAI ĐOẠN 1: THỬ TRÍCH XUẤT TỪ TRƯỜNG "ADAPTED FROM"
+    // PHASE 1: TESTING THE EXTRACTION OF THE "ADAPTED FROM" FIELD
     // -------------------------------------------------------------
     if (adaptedFrom) {
       chapterNumbers = extractChapterNumbers(adaptedFrom);
     }
 
     // -------------------------------------------------------------
-    // GIAI ĐOẠN 2: NẾU THẤT BẠI (Rỗng), GỌI AI RA CỨU GIÁ
+    // PHASE 2: IF IT FAILS (EMPTY), CALL AI TO SAVE THE DAY
     // -------------------------------------------------------------
     if (chapterNumbers.length === 0) {
-      mappingSource = "Trí tuệ nhân tạo (Gemini AI)";
+      mappingSource = "Artificial Intelligence (Gemini AI)";
       const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
       const model = genAI.getGenerativeModel({ 
-        model: "gemini-2-flash",
+        model: "gemini-3.5-flash-lite",
         generationConfig: { responseMimeType: "application/json" } 
       });
 
@@ -704,18 +703,18 @@ router.post('/api/admin/auto-map-chapters', async (req: Request, res: Response):
     }
 
     // -------------------------------------------------------------
-    // GIAI ĐOẠN 3: LƯU TRỮ VÀ KHỚP VỚI DATABASE
+    // PHASE 3: SAVING AND MAPPING TO DATABASE
     // -------------------------------------------------------------
     if (chapterNumbers.length === 0) {
       return res.status(200).json({ 
         mappedChapterIds: [], 
-        message: `Đây là tập Filler (Ngoại truyện), không có Manga. (Nguồn: ${mappingSource})` 
+        message: `This is a Filler episode (Side Story), no Manga chapters. (Source: ${mappingSource})` 
       });
     }
 
     const mappedChapterIds: string[] = [];
     for (const chapNum of chapterNumbers) {
-      // Tìm chap trong DB thuộc bộ Manga đó, có chứa số chapter
+      // Find the chapter within that manga series that contains the chapter number.
       const chapterInDb = await prisma.chapter.findFirst({
         where: {
           mangaId: mangaId,
@@ -733,17 +732,17 @@ router.post('/api/admin/auto-map-chapters', async (req: Request, res: Response):
     res.status(200).json({ 
       mappedChapterIds, 
       foundNumbers: chapterNumbers,
-      message: `Tìm liên kết thành công qua: ${mappingSource}!` 
+      message: `Successfully found links via: ${mappingSource}!` 
     });
 
   } catch (error) {
-    console.error("Lỗi Auto-Map:", error);
-    res.status(500).json({ message: "Lỗi server khi tự động liên kết." });
+    console.error("Auto-Map Error:", error);
+    res.status(500).json({ message: "Server error during automatic linking." });
   }
 });
 
 
-// Auto generate Anime description using Gemini 2.5 Flash
+// Auto generate Anime description using Gemini 3.5 Flash lite
 router.post('/api/admin/generate-anime-desc', async (req: Request, res: Response): Promise<any> => {
   try {
     const { title } = req.body;
@@ -755,15 +754,15 @@ router.post('/api/admin/generate-anime-desc', async (req: Request, res: Response
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
     const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash-lite" });
 
-    // Cấu hình Prompt (Câu lệnh) cho AI
+    // Configure Prompt (Command) for AI
     const prompt = `
-      Bạn là một chuyên gia đánh giá Anime (Wibu chính hiệu).
-      Hãy viết một đoạn tóm tắt nội dung hấp dẫn, chính xác cho bộ anime có tên là "${title}".
-      YÊU CẦU BẮT BUỘC:
-      1. Viết bằng Tiếng Anh.
-      2. Độ dài khoảng 3-4 câu (ngắn gọn, súc tích).
-      3. Tuyệt đối KHÔNG tiết lộ nội dung quan trọng (No spoilers).
-      4. Chỉ trả về văn bản tóm tắt, không giải thích gì thêm, không dùng markdown code block.
+      You are an expert anime reviewer (a true anime enthusiast).
+      Write an engaging and accurate plot summary for the anime titled "${title}".
+      STRICT REQUIREMENTS:
+      1. Write in English.
+      2. Keep the length around 3-4 sentences (short and concise).
+      3. Strictly NO spoilers (do not reveal major plot points).
+      4. Return ONLY the summary text, with no extra explanations and no markdown code blocks.
     `;
 
     const aiResult = await model.generateContent(prompt);
@@ -772,8 +771,8 @@ router.post('/api/admin/generate-anime-desc', async (req: Request, res: Response
     res.status(200).json({ description });
 
   } catch (error) {
-    console.error("Lỗi AI viết tóm tắt:", error);
-    res.status(500).json({ message: "Lỗi server khi nhờ AI viết tóm tắt." });
+    console.error("AI summarization error:", error);
+    res.status(500).json({ message: "Server error when requesting AI to write a summary." });
   }
 });
 

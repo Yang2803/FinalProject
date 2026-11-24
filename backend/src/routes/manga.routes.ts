@@ -162,6 +162,27 @@ router.get('/api/admin/manga/:id', async (req: Request, res: Response): Promise<
   }
 });
 
+// API: Lấy danh sách chapters của 1 Manga (dùng cho trang Upload/Edit Episode)
+router.get('/api/admin/manga/:id/chapters', async (req: Request, res: Response): Promise<any> => {
+  try {
+    const id = req.params.id as string;
+
+    const chapters = await prisma.chapter.findMany({
+      where: { mangaId: id },
+      select: {
+        id: true,
+        title: true,
+      },
+      orderBy: { createdAt: 'asc' }
+    });
+
+    res.status(200).json(chapters);
+  } catch (error) {
+    console.error("Error fetching manga chapters:", error);
+    res.status(500).json({ message: "Server error while fetching chapters." });
+  }
+});
+
 router.put('/api/admin/manga/:id', async (req: Request, res: Response): Promise<any> => {
   /* ... Paste ruột API Cập nhật thông tin truyện ... */
   try {

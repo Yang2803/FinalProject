@@ -4,7 +4,7 @@ import prisma from '../config/db';
 
 const router = express.Router();
 
-// Hàm gọi trực tiếp MediaWiki API của Fandom (Không cần Puppeteer, tương thích 100% với Render)
+// Function for direct calls to Fandom's MediaWiki API 
 async function fetchFandomApi(url: string) {
   try {
     const response = await fetch(url, {
@@ -33,25 +33,25 @@ router.post('/api/admin/episode/auto-fill', async (req, res) => {
     });
 
     if (!anime || !anime.fandomPrefix) {
-      return res.status(400).json({ error: "Anime chưa được cấu hình Fandom Prefix!" });
+      return res.status(400).json({ error: "The Fandom Prefix for Anime has not been configured!" });
     }
 
     const apiBase = `https://${anime.fandomPrefix}.fandom.com/api.php`;
 
     // =========================================================
-    // GIAI ĐOẠN 1: DÒ TÌM ĐA TẦNG VÀ GIỮ VỮNG BEST MATCH TITLE
+    // PHASE 1: MULTI-LEVEL SEARCH AND HOLDING BEST MATCH TITLE
     // =========================================================
     let contentData: any = null;
     let bestMatchTitle: string = "";
 
     // ---------------------------------------------------------
-    // 🛡️ TẦNG 1: DÒ TÌM TRỰC TIẾP (Bơm thêm anime.title để trị Franchise Collision)
+    // 🛡️ LAYER 1: DIRECT LOOKUP (Inject `anime.title` to resolve Franchise Collision)
     // ---------------------------------------------------------
     const directTitles = [
-      `${anime.title} Episode ${episodeNumber}`,                      // VD: "Naruto Episode 1"
-      `${anime.title} Episode ${String(episodeNumber).padStart(2, '0')}`, // VD: "Naruto Episode 01"
-      `Episode ${episodeNumber} (${anime.title})`,                    // VD: "Episode 1 (Naruto)"
-      `Episode ${episodeNumber}`,                                     // Dự phòng mặc định
+      `${anime.title} Episode ${episodeNumber}`,                      // e.g., "Naruto Episode 1"
+      `${anime.title} Episode ${String(episodeNumber).padStart(2, '0')}`, // e.g., "Naruto Episode 01"
+      `Episode ${episodeNumber} (${anime.title})`,                    // e.g., "Episode 1 (Naruto)"
+      `Episode ${episodeNumber}`,                                     // e.g., "Episode 1"
       `Episode ${String(episodeNumber).padStart(2, '0')}`,
       `Episode ${episodeNumber} (Anime)`
     ];
@@ -60,7 +60,7 @@ router.post('/api/admin/episode/auto-fill', async (req, res) => {
       const parseUrl = `${apiBase}?action=parse&page=${encodeURIComponent(title)}&redirects=1&format=json&prop=text&origin=*`;
       const data = await fetchFandomApi(parseUrl);
 
-      // 🌟 CHỐT CHẶN: Phải đảm bảo data có parse và KHÔNG CÓ trường error
+      // 🌟 GATEKEEPER: Ensure the data is parsed and contains NO 'error' field.
       if (data && data.parse && !data.error) {
         contentData = data;
         bestMatchTitle = data.parse.title;
@@ -69,10 +69,10 @@ router.post('/api/admin/episode/auto-fill', async (req, res) => {
     }
 
     // ---------------------------------------------------------
-    // 🛡️ TẦNG 2: NẾU TẦNG 1 THẤT BẠI, DÙNG API TÌM KIẾM
+    // 🛡️ LAYER 2: IF LAYER 1 FAILS, USE SEARCH API
     // ---------------------------------------------------------
     if (!contentData) {
-      // 🌟 Đưa anime.title vào từ khóa tìm kiếm để ép hệ thống Fandom nhả đúng phim
+      // 🌟 Inject anime.title into search query to force Fandom system to return the correct anime
       const searchQuery = encodeURIComponent(`${anime.title} Episode ${episodeNumber}`);
       const searchUrl = `${apiBase}?action=query&list=search&srsearch=${searchQuery}&format=json&utf8=1&origin=*`;
 
@@ -91,29 +91,29 @@ router.post('/api/admin/episode/auto-fill', async (req, res) => {
       }
     }
 
-    // Kiểm tra chốt chặn trước khi đưa cho Cheerio
+    // KCheck the locking mechanism before handing it to Cheerio.
     if (!contentData) {
-      return res.status(404).json({ error: "Không tìm thấy dữ liệu tập phim này trên Fandom." });
+      return res.status(404).json({ error: "Data for this episode could not be found on Fandom." });
     }
 
     const rawHtml = contentData.parse?.text?.['*'];
 
     if (!rawHtml) {
-      return res.status(500).json({ error: "Dữ liệu HTML trả về bị rỗng." });
+      return res.status(500).json({ error: "The returned HTML data is empty." });
     }
 
     // =========================================================
-    // GIAI ĐOẠN 2: CHEERIO BÓC TÁCH DỮ LIỆU (KHÔNG DÙNG AI)
+    // PHASE 2: CHEERIO DATA EXTRACTION (NO AI USED)
     // =========================================================
     const $ = cheerio.load(rawHtml);
 
     let extractedData = {
       plotSummary: "",
       characters: [] as string[],
-      adaptedFrom: "Không rõ"
+      adaptedFrom: "Unknown" // Default value if not found
     };
 
-    // A. BÓC TÁCH "ADAPTED FROM"
+    // A. PARSING "ADAPTED FROM"
     $('.pi-data-label').each((_, el) => {
       const labelText = $(el).text().toLowerCase();
       if (labelText.includes('manga') || labelText.includes('chapter') || labelText.includes('adapted')) {
@@ -122,38 +122,38 @@ router.post('/api/admin/episode/auto-fill', async (req, res) => {
     });
 
     // =========================================================
-    // B. BÓC TÁCH "PLOT SUMMARY / PLOT DETAILS" (SMART FALLBACK)
+    // B. PARSING "PLOT SUMMARY / PLOT DETAILS" (SMART FALLBACK)
     // =========================================================
     const potentialHeaders: { id: string, element: any, priority: number }[] = [];
 
-    // 1. Quét trang, thu gom các thẻ tiêu đề và GẮN ĐIỂM ƯU TIÊN
+    // 1. Scan the page, collect heading tags, and ASSIGN PRIORITY SCORES
     $('span.mw-headline').each((_: number, el: any) => {
       const id = $(el).attr('id')?.toLowerCase() || '';
-      let priority = 99; // Mặc định điểm cực thấp
+      let priority = 99; // Default lowest priority
 
-      if (id.includes('plot')) priority = 1;          // Ưu tiên 1: Plot Details, Plot...
-      else if (id.includes('long')) priority = 2;     // Ưu tiên 2: Long Summary...
-      else if (id.includes('summary')) priority = 3;  // Ưu tiên 3: Summary...
-      else if (id.includes('synopsis')) priority = 4; // Ưu tiên 4: Synopsis...
-      else if (id.includes('story')) priority = 5;    // Ưu tiên 5: Story...
+      if (id.includes('plot')) priority = 1;          // Priority 1: Plot Details, Plot...
+      else if (id.includes('long')) priority = 2;     // Priority 2: Long Summary...
+      else if (id.includes('summary')) priority = 3;  // Priority 3: Summary...
+      else if (id.includes('synopsis')) priority = 4; // Priority 4: Synopsis...
+      else if (id.includes('story')) priority = 5;    // Priority 5: Story...
 
       if (priority < 99) {
         potentialHeaders.push({ id: id, element: $(el).parent(), priority: priority });
       }
     });
 
-    // Sắp xếp mảng theo độ ưu tiên (từ 1 đến 5)
+    // Sort the array by priority (from 1 to 5)
     potentialHeaders.sort((a, b) => a.priority - b.priority);
 
-    // 2. Lặp qua từng thẻ đã xếp hạng để ĐỌC THỬ
+    // 2. Iterate through each ranked card to READ A SAMPLE
     for (const header of potentialHeaders) {
-      let tempText = ""; // Biến chứa nháp
+      let tempText = ""; // Variable for temporary storage
 
       header.element.nextUntil('h2').each((_: number, el: any) => {
         if (el.tagName.toLowerCase() === 'p') {
-          let paragraph = $(el).text().replace(/\[\d+\]/g, '').trim(); // Xóa các số ref dạng [1], [2]
+          let paragraph = $(el).text().replace(/\[\d+\]/g, '').trim(); // Remove reference numbers such as [1], [2]
 
-          // 🌟 BỘ LỌC RÁC: Bỏ qua dòng chữ báo hiệu trang chưa hoàn thiện (stub)
+          // 🌟 FILTER: Ignore text indicating an incomplete page (stub)
           if (paragraph && !paragraph.toLowerCase().includes('this section is a stub')) {
             tempText += paragraph + "\n\n";
           }
@@ -162,18 +162,18 @@ router.post('/api/admin/episode/auto-fill', async (req, res) => {
 
       tempText = tempText.trim();
 
-      // 3. CHỐT KẾT QUẢ: Nếu cào được chữ thật sự (dài hơn 10 ký tự), thì chốt luôn và thoát vòng lặp!
+      // 3. FINALIZE RESULTS: If data is successfully extracted (longer than 10 characters), finalize and exit the loop!
       if (tempText.length > 10) {
         extractedData.plotSummary = tempText;
         break;
       }
     }
 
-    // C. BÓC TÁCH "CHARACTERS"
+    // C. PARSING "CHARACTERS"
     let charHeader: any = null;
 
     // =========================================================
-    // 1. TÌM TRONG NỘI DUNG CHÍNH (Xử lý cả List và Table)
+    // 1. SEARCH WITHIN MAIN CONTENT (Handles both Lists and Tables)
     // =========================================================
     $('span.mw-headline').each((_: number, el: any) => {
       const id = $(el).attr('id')?.toLowerCase() || '';
@@ -187,18 +187,18 @@ router.post('/api/admin/episode/auto-fill', async (req, res) => {
     if (charHeader && charHeader.length > 0) {
       const sectionContent = charHeader.nextUntil('h2');
 
-      // 🌟 TÌM TẤT CẢ CÁC BẢNG (Dù nó là thẻ gốc hay bị bọc trong div)
+      // 🌟 FIND ALL TABLES (Whether it's a root tag or wrapped in a div)
       const tables = sectionContent.filter('table').add(sectionContent.find('table'));
 
-      // TRƯỜNG HỢP A: Nếu có BẢNG (Như mục Credits của Naruto)
+      // CASE A: If there are tables (Like the Credits section of Naruto)
       if (tables.length > 0) {
         tables.find('tr').each((_: number, tr: any) => {
-          const firstCol = $(tr).find('td, th').first(); // Chỉ túm lấy cột đầu tiên
+          const firstCol = $(tr).find('td, th').first(); // Only get the first column
 
           let charName = firstCol.find('a').first().text().trim();
           if (!charName) charName = firstCol.text().trim();
 
-          // Dọn rác (ví dụ: Naruto Uzumaki [1] -> Naruto Uzumaki)
+          // Clean up (e.g., Naruto Uzumaki [1] -> Naruto Uzumaki)
           charName = charName.replace(/\[\d+\]/g, '').trim();
 
           if (charName && charName.length > 1 && charName.toLowerCase() !== 'role' && !charName.includes('File:') && !extractedData.characters.includes(charName)) {
@@ -206,7 +206,7 @@ router.post('/api/admin/episode/auto-fill', async (req, res) => {
           }
         });
       }
-      // TRƯỜNG HỢP B: Nếu là DANH SÁCH (Như Jujutsu Kaisen, One Piece)
+      // CASE B: If it's a LIST (Like Jujutsu Kaisen, One Piece)
       else {
         sectionContent.find('li a').each((_: number, el: any) => {
           let charName = $(el).text().trim();
@@ -220,7 +220,7 @@ router.post('/api/admin/episode/auto-fill', async (req, res) => {
     }
 
     // =========================================================
-    // 2. PHƯƠNG ÁN B: TÌM TRONG INFOBOX (Vớt vát nếu nội dung chính không có)
+    // 2. OPTION B: CHECK THE INFOBOX (A fallback if the information is missing from the main content)
     // =========================================================
     if (extractedData.characters.length === 0) {
       const infoboxChars = $('.portable-infobox [data-source*="character" i], .portable-infobox [data-source*="Character" i]');
@@ -247,7 +247,7 @@ router.post('/api/admin/episode/auto-fill', async (req, res) => {
     }
 
     // =========================================================
-    // 3. DỌN DẸP DỮ LIỆU LẦN CUỐI
+    // 3. FINAL CLEANUP OF DATA
     // =========================================================
     extractedData.characters = extractedData.characters.filter(c => c.length > 1 && !c.includes('File:'));
     extractedData.plotSummary = extractedData.plotSummary.trim();
@@ -259,8 +259,8 @@ router.post('/api/admin/episode/auto-fill', async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Lỗi Auto-fill Episode:", error);
-    res.status(500).json({ error: "Lỗi hệ thống khi tự động cào và xử lý dữ liệu." });
+    console.error("Auto-fill Episode Error:", error);
+    res.status(500).json({ error: "System error during automated data scraping and processing." });
   }
 });
 

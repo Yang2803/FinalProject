@@ -74,7 +74,7 @@ router.post(
         currentSessionId = newSession.id;
       }
 
-      // Lưu tin nhắn của user vào Database
+      // Save user messages to the database
       const savedUserContent = imageBase64
         ? `📷 *[Attached an image]*\n\n${userText}`
         : userText;
@@ -111,7 +111,7 @@ router.post(
       );
 
       // =====================================================================
-      // 🌟 1. KHAI BÁO TOOLS CHO AI (Dùng mô tả song ngữ trung lập)
+      // 🌟 1. DEFINING TOOLS FOR AI (Using neutral, bilingual descriptions)
       // =====================================================================
       const tools: Tool[] = [
         {
@@ -163,7 +163,7 @@ router.post(
       ];
 
       // =====================================================================
-      // 🌟 2. SYSTEM INSTRUCTION CHUẨN HÓA ĐA NGÔN NGỮ
+      // 🌟 2. MULTILINGUAL STANDARDIZATION SYSTEM INSTRUCTION
       // =====================================================================
       const systemInstruction = `
         You are a highly intelligent Otaku/Anime assistant for the "Smart Anime Platform".
@@ -203,14 +203,14 @@ router.post(
           - Match the identified series with [AVAILABLE ANIME] and [AVAILABLE MANGA] above and provide the direct clickable Markdown link if available in the system.
         `;
 
-      // 🌟 Truyền systemInstruction vào đúng thuộc tính chuẩn của Gemini SDK
+      // 🌟 Pass `systemInstruction` to the correct standard property of the Gemini SDK.
       const aiModel = genAI.getGenerativeModel({
         model: "gemini-3.5-flash-lite",
         systemInstruction,
         tools,
       });
 
-      // Không chèn câu trả lời tiếng Việt giả định vào đầu history nữa
+      // Stop inserting hypothetical Vietnamese responses at the beginning of the history.
       const chat = aiModel.startChat({
         history: history.slice(0, -1).map((msg) => ({
           role: msg.role === "user" ? "user" : "model",
@@ -219,7 +219,7 @@ router.post(
       });
 
       // =====================================================================
-      // HELPER: GỬI FUNCTION RESPONSE VỀ GEMINI
+      // HELPER: SEND FUNCTION RESPONSE TO GEMINI
       // =====================================================================
       const sendFunctionResult = async (
         functionName: string,
@@ -246,7 +246,7 @@ router.post(
       };
 
       // =====================================================================
-      // 🌟 3. ĐÓNG GÓI PAYLOAD (TEXT + IMAGE NẾU CÓ) GỬI CHO GEMINI
+      // 🌟 3. PACKAGING PAYLOAD (TEXT + IMAGE IF ANY) TO SEND TO GEMINI
       // =====================================================================
       const messageParts: Part[] = [
         {
@@ -270,7 +270,7 @@ router.post(
       let aiResult = await chat.sendMessage(messageParts);
       const call = aiResult.response.functionCalls()?.[0];
 
-      // 🟢 XỬ LÝ: TÌM KIẾM NHÂN VẬT
+      // 🟢 PROCESSING: SEARCHING FOR CHARACTER APPEARANCES IN EPISODES/CHAPTERS
       if (call && call.name === "findCharacterAppearances") {
         const args = call.args as {
           characterName?: string;
@@ -335,7 +335,7 @@ router.post(
           dbResultStr
         );}
 
-      // 🟢 XỬ LÝ: TÌM KIẾM CỐT TRUYỆN BẰNG VECTOR RAG
+      // 🟢 PROCESSING: SEARCHING FOR STORY PLOTS USING VECTOR RAG
       else if (call && call.name === "searchStoryByPlot") {
         const args = call.args as {
           searchQuery?: string;
@@ -397,7 +397,7 @@ router.post(
             dbResultStr
           );
         } catch (vectorError) {
-          console.error("Lỗi Vector Search:", vectorError);
+          console.error("Vector Search Error:", vectorError);
           aiResult = await sendFunctionResult(
             "searchStoryByPlot",
             "NO_DATA_FOUND"
@@ -407,7 +407,7 @@ router.post(
 
       const responseText = aiResult.response.text();
 
-      // Update lại thời gian updatedAt của Session
+      // Update the `updatedAt` timestamp of the Session
       await prisma.aiChatSession
         .update({
           where: { id: currentSessionId },
@@ -429,7 +429,7 @@ router.post(
       });
     } catch (error) {
       console.error("Chat API Error:", error);
-      res.status(500).json({ message: "Lỗi kết nối AI" });
+      res.status(500).json({ message: "AI connection error" });
     }
   }
 );

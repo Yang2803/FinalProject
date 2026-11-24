@@ -8,7 +8,7 @@ import prisma from '../config/db';
 
 const router = express.Router();
 
-// Cấu hình S3 Client cho Cloudflare R2
+// Configuring an S3 Client for Cloudflare R2
 const s3Client = new S3Client({
   region: 'auto',
   endpoint: process.env.R2_ENDPOINT!,
@@ -18,23 +18,23 @@ const s3Client = new S3Client({
   },
 });
 
-// 🌟 MAP LƯU CÁC TIẾN TRÌNH LỒNG TIẾNG ĐANG CHẠY (REQUEST COALESCING)
+// 🌟 MAP FOR TRACKING ACTIVE VOICE-OVER PROCESSES (REQUEST COALESCING)
 const pendingDubs = new Map<string, Promise<void>>();
 
 // =================================================================
-// 🌟 HÀM DỌN DẸP PHỤ ĐỀ, TỰ ĐỘNG SỬA LỖI THỜI GIAN
+// 🌟 SUBTITLE CLEANUP FUNCTION WITH AUTOMATIC TIMING ERROR CORRECTION
 // =================================================================
 function sanitizeVtt(vttString: string): string {
   if (!vttString) return "";
 
   return vttString
-    // 1. Sửa lỗi dùng dấu phẩy (,) thay vì dấu chấm (.) ở phần mili-giây
+    // 1. Fix the issue of using a comma (,) instead of a period (.) for the milliseconds portion
     .replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2')
 
-    // 2. Sửa lỗi thiếu múi Giờ (chỉ có Phút:Giây.MiliGiây) -> Thêm 00:
+    // 2. Fix the issue of missing timezone (only has minutes:seconds.milliseconds) -> Add 00:
     .replace(/(^|\n|\s)(\d{2}:\d{2}\.\d{3})/g, '$100:$2')
 
-    // 3. Sửa lỗi giờ chỉ có 1 chữ số (vd: 1:05:10 -> 01:05:10)
+    // 3. Fix the issue of hours having only one digit (e.g., 1:05:10 -> 01:05:10)
     .replace(/(^|\n|\s)(\d):(\d{2}:\d{2}\.\d{3})/g, '$10$2:$3');
 }
 
@@ -42,43 +42,43 @@ router.post('/api/anime/generate-dub', async (req: Request, res: Response): Prom
   const { episodeId, subtitleUrl, targetLang } = req.body;
 
   if (!episodeId || !subtitleUrl || !targetLang) {
-    return res.status(400).json({ error: "Thiếu thông tin tập phim, phụ đề hoặc ngôn ngữ." });
+    return res.status(400).json({ error: "Missing episode information, subtitles, or language." });
   }
 
   const taskKey = `${episodeId}_${targetLang.toLowerCase()}`;
 
   try {
-    // 1. KIỂM TRA CACHE TRONG DATABASE TRƯỚC
+    // 1. CHECK CACHE IN DATABASE FIRST
     const episode = await prisma.episode.findUnique({
       where: { id: episodeId },
       select: { dubbedLanguages: true },
     });
 
     if (!episode) {
-      return res.status(404).json({ error: "Không tìm thấy tập phim." });
+      return res.status(404).json({ error: "Episode not found." });
     }
 
     if (episode.dubbedLanguages.includes(targetLang)) {
-      return res.status(200).json({ message: "Bản lồng tiếng đã có sẵn (Loaded from cache)!" });
+      return res.status(200).json({ message: "Dubbed version is already available (Loaded from cache)!" });
     }
 
-    // 2. KIỂM TRA TIẾN TRÌNH ĐANG CHẠY (REQUEST COALESCING)
+    // 2. CHECK ACTIVE VOICE-OVER PROCESSES (REQUEST COALESCING)
     let dubPromise = pendingDubs.get(taskKey);
 
     if (!dubPromise) {
       dubPromise = (async () => {
         try {
-          // 2.1. Tải file VTT
+          // 2.1. Load file VTT
           const vttResponse = await axios.get(subtitleUrl);
           let vttContent = vttResponse.data;
 
-          // Áp dụng hàm dọn dẹp trước khi parse
+          // Apply a cleanup function before parsing
           vttContent = sanitizeVtt(vttContent);
 
-          // Bỏ qua các lỗi định dạng lặt vặt
+          // Ignore small formatting errors
           const parsedVtt = parse(vttContent, { strict: false });
 
-          // 2.2. Chọn giọng đọc (Voice)
+          // 2.2. Choose voice based on the target language
           const voiceMappings: Record<string, string> = {
             "Vietnamese": "vi-VN-HoaiMyNeural",
             "Japanese": "ja-JP-NanamiNeural",
@@ -120,11 +120,11 @@ router.post('/api/anime/generate-dub', async (req: Request, res: Response): Prom
             }
           }
 
-          // 2.3. Khởi tạo đối tượng TTS với định dạng MP3 chất lượng cao
+          // 2.3. Initialize a TTS object with high-quality MP3 format
           const tts = new MsEdgeTTS();
           await tts.setMetadata(voiceName, OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);
 
-          // 2.4. Vòng lặp: Đọc từng câu và up thẳng lên Cloudflare R2
+          // 2.4. Loop: Speak each sentence and upload it directly to Cloudflare R2
           for (let index = 0; index < parsedVtt.cues.length; index++) {
             const cue = parsedVtt.cues[index];
             const cleanText = cue.text.replace(/<[^>]+>/g, '');
@@ -151,11 +151,11 @@ router.post('/api/anime/generate-dub', async (req: Request, res: Response): Prom
               // Nghỉ ngơi 300ms tránh bị Rate Limit
               await new Promise(resolve => setTimeout(resolve, 300));
             } catch (err) {
-              console.error(`Lỗi đọc câu index ${index}:`, err);
+              console.error(`Index reading error ${index}:`, err);
             }
           }
 
-          // 2.5. Cập nhật Database
+          // 2.5. Update Database
           await prisma.episode.update({
             where: { id: episodeId },
             data: {
@@ -165,24 +165,24 @@ router.post('/api/anime/generate-dub', async (req: Request, res: Response): Prom
             },
           });
         } finally {
-          // Xóa khỏi Map an toàn bên trong hàm async, không sinh Promise thừa
+          // Safely remove from a Map inside an async function, without creating redundant Promises
           pendingDubs.delete(taskKey);
         }
       })();
 
-      // Lưu Promise vào Map
+      // Save Promise to Map
       pendingDubs.set(taskKey, dubPromise);
     } else {
-      console.log(`⏳ [Generate Dub] Đang gộp yêu cầu vào tiến trình lồng tiếng sẵn có: ${taskKey}`);
+      console.log(`⏳ [Generate Dub]Merging the request into the ongoing dubing process: ${taskKey}`);
     }
 
-    // 3. Các user bấm cùng lúc đều chờ chung 1 Promise này
+    // 3. Users who click at the same time all end up waiting on this same Promise.
     await dubPromise;
 
-    return res.status(200).json({ message: "Tạo lồng tiếng thành công!" });
+    return res.status(200).json({ message: "Successfully create a voiceover!" });
   } catch (error) {
-    console.error("Lỗi khi parse file hoặc tạo lồng tiếng:", error);
-    return res.status(500).json({ error: "Lỗi hệ thống khi tạo lồng tiếng" });
+    console.error("Error while parsing the file or generating the voiceover:", error);
+    return res.status(500).json({ error: "System error during voiceover generation" });
   }
 });
 

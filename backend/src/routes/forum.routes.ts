@@ -17,15 +17,15 @@ router.post('/api/forum/analyze', async (req: Request, res: Response): Promise<a
     });
 
     const prompt = `
-      Bạn là hệ thống kiểm duyệt Forum Anime/Manga. Hãy phân tích bài viết này.
+      You are an Anime/Manga Forum moderation system. Analyze this post.
       Title: "${title}"
       Content: "${content}"
       
-      Nhiệm vụ:
-      1. isSpoiler: Trả về true nếu nội dung có chứa tiết lộ tình tiết quan trọng, kết cục, hoặc cái chết của nhân vật. Nếu an toàn, trả về false.
-      2. tags: Trích xuất 3-5 keywords ngắn gọn nhất làm mảng chuỗi (ví dụ: ["Jujutsu Kaisen", "Review", "Gojo"]).
+      Tasks:
+      1. isSpoiler: Return true if the content contains major plot reveals, endings, or character deaths. If safe, return false.
+      2. tags: Extract 3-5 of the most concise keywords as an array of strings (e.g., ["Jujutsu Kaisen", "Review", "Gojo"]).
       
-      Trả về ĐÚNG định dạng JSON: {"isSpoiler": boolean, "tags": [string]}
+      Return ONLY the EXACT JSON format: {"isSpoiler": boolean, "tags": [string]}
     `;
 
     const result = await model.generateContent(prompt);
@@ -33,16 +33,16 @@ router.post('/api/forum/analyze', async (req: Request, res: Response): Promise<a
 
     res.status(200).json(analysis);
   } catch (error) {
-    res.status(500).json({ error: "Lỗi AI phân tích" });
+    res.status(500).json({ error: "Error analyzing with AI" });
   }
 });
 
 // ==========================================
-// 📝 API 2: Tạo bài viết mới
+// 📝 API 2: Create a new forum post
 // ==========================================
 router.post('/api/forum/posts', async (req: Request, res: Response): Promise<any> => {
   try {
-    // 🌟 Hứng thêm mediaUrl từ Frontend
+    // 🌟 Receive `mediaUrl` from the frontend
     const { title, content, mediaUrl, category, tags, isSpoiler, authorId, communityId } = req.body;
 
     const post = await prisma.forumPost.create({
@@ -52,18 +52,18 @@ router.post('/api/forum/posts', async (req: Request, res: Response): Promise<any
       }
     });
 
-    res.status(201).json({ message: "Đăng bài thành công!", post });
+    res.status(201).json({ message: "Successfully created a forum post!", post });
   } catch (error) {
-    res.status(500).json({ error: "Lỗi khi lưu bài viết" });
+    res.status(500).json({ error: "Error saving the forum post" });
   }
 });
 
 // ==========================================
-// 🔍 API 3: Lấy danh sách Feed (Có lọc Anime/Manga)
+// 🔍 API 3: Get Feed List (With Anime/Manga Filtering)
 // ==========================================
 router.get('/api/forum/posts', async (req: Request, res: Response): Promise<any> => {
   try {
-    const { category, tag } = req.query; // 🌟 Hứng thêm biến tag từ URL
+    const { category, tag } = req.query; // 🌟 Receive additional `tag` parameter from URL
     
     let filterCondition: any = {};
     
@@ -72,7 +72,7 @@ router.get('/api/forum/posts', async (req: Request, res: Response): Promise<any>
       filterCondition.category = category;
     }
 
-    // 🌟 Nếu có truyền Tag, dùng lệnh { has: tag } của Prisma để tìm trong mảng
+    // 🌟 If a tag is passed, use the `{ has: tag }` command in Prisma to search within the array.
     if (tag) {
       filterCondition.tags = { has: tag as string };
     }
@@ -85,42 +85,41 @@ router.get('/api/forum/posts', async (req: Request, res: Response): Promise<any>
 
     res.status(200).json(posts);
   } catch (error) {
-    res.status(500).json({ error: "Lỗi tải Feed" });
+    res.status(500).json({ error: "Error loading Feed" });
   }
 });
 
 // ==========================================
-// ✏️ API 4: Sửa bài viết (Chỉ chính chủ)
+// ✏️ API 4: Edit post (Owner only)
 // ==========================================
 router.put('/api/forum/posts/:id', async (req: Request, res: Response): Promise<any> => {
   try {
-    // 1. Ép kiểu id chuẩn xác để tránh lỗi TypeScript
+    // 1. Accurately casting the 'id' type to avoid TypeScript errors
     const postId = req.params.id as string; 
     
-    // 2. Nhận đầy đủ dữ liệu từ Frontend (Bao gồm cả mediaUrl)
+    // 2. Receive all data from the frontend (including mediaUrl)
     const { title, content, tags, category, isSpoiler, mediaUrl, authorId } = req.body;
 
     const post = await prisma.forumPost.findUnique({ where: { id: postId } });
-    if (!post) return res.status(404).json({ error: "Không tìm thấy bài viết!" });
-    if (post.authorId !== authorId) return res.status(403).json({ error: "Không có quyền sửa bài viết này!" });
+    if (!post) return res.status(404).json({ error: "Post not found!" });
+    if (post.authorId !== authorId) return res.status(403).json({ error: "You are not the owner of this post!" });
 
     // 3. Cập nhật vào Database
     const updatedPost = await prisma.forumPost.update({
       where: { id: postId },
-      data: { title, content, tags, category, isSpoiler, mediaUrl }, // 🌟 Bổ sung mediaUrl
+      data: { title, content, tags, category, isSpoiler, mediaUrl }, 
       include: { author: { select: { id: true, name: true, image: true } } }
     });
 
-    res.status(200).json({ message: "Đã cập nhật bài viết!", post: updatedPost });
+    res.status(200).json({ message: "Successfully updated the post!", post: updatedPost });
   } catch (error) {
-    // 🌟 In thẳng lỗi ra màn hình Terminal của VS Code để dễ bắt bệnh
-    console.error("LỖI BACKEND KHI SỬA BÀI:", error); 
-    res.status(500).json({ error: "Lỗi khi sửa bài" });
+    console.error("ERROR BACKEND WHEN EDITING POST:", error); 
+    res.status(500).json({ error: "Error updating the post" });
   }
 });
 
 // ==========================================
-// 🗑️ API 5: Xóa bài viết (Chỉ chính chủ)
+// 🗑️ API 5: Delete post (Owner only)
 // ==========================================
 router.delete('/api/forum/posts/:id', async (req: Request, res: Response): Promise<any> => {
   try {
@@ -128,17 +127,17 @@ router.delete('/api/forum/posts/:id', async (req: Request, res: Response): Promi
     const { authorId } = req.body;
 
     const post = await prisma.forumPost.findUnique({ where: { id } });
-    if (!post || post.authorId !== authorId) return res.status(403).json({ error: "Không có quyền xóa bài viết này!" });
+    if (!post || post.authorId !== authorId) return res.status(403).json({ error: "You are not the owner of this post!" });
 
     await prisma.forumPost.delete({ where: { id } });
-    res.status(200).json({ message: "Đã xóa bài viết thành công!" });
+    res.status(200).json({ message: "Successfully deleted the post!" });
   } catch (error) {
-    res.status(500).json({ error: "Lỗi khi xóa bài" });
+    res.status(500).json({ error: "Error deleting the post" });
   }
 });
 
 // ==========================================
-// ⚖️ API 6: Hệ thống Vote (Upvote / Downvote)
+// ⚖️ API 6: Systems Vote (Upvote / Downvote)
 // ==========================================
 router.post('/api/forum/posts/:id/vote', async (req: Request, res: Response): Promise<any> => {
   try {
@@ -154,12 +153,12 @@ router.post('/api/forum/posts/:id/vote', async (req: Request, res: Response): Pr
 
     if (existingVote) {
       if (existingVote.type === type) {
-        // Bấm lại nút cũ -> Hủy vote
+        // Press the same button again -> Cancel vote
         await prisma.forumVote.delete({ where: { id: existingVote.id } });
         if (type === 'UP') upIncrement = -1;
         else downIncrement = -1;
       } else {
-        // Đổi từ UP sang DOWN hoặc ngược lại
+        // Switch from UP to DOWN or DOWN to UP
         await prisma.forumVote.update({
           where: { id: existingVote.id },
           data: { type }
@@ -173,13 +172,13 @@ router.post('/api/forum/posts/:id/vote', async (req: Request, res: Response): Pr
         }
       }
     } else {
-      // Chưa từng vote -> Tạo mới vote
+      // No previous vote -> Create new vote
       await prisma.forumVote.create({ data: { userId, postId, type } });
       if (type === 'UP') upIncrement = 1;
       else downIncrement = 1;
     }
 
-    // Cập nhật độc lập cả 2 cột trong DB
+    // Independently update both 2 columns in the database
     const updatedPost = await prisma.forumPost.update({
       where: { id: postId },
       data: {
@@ -197,62 +196,62 @@ router.post('/api/forum/posts/:id/vote', async (req: Request, res: Response): Pr
       downvoteCount: Math.max(0, updatedPost.downvoteCount)
     });
   } catch (error) {
-    console.error("Lỗi vote bài viết:", error);
-    res.status(500).json({ error: "Lỗi khi vote" });
+    console.error("Error voting for post:", error);
+    res.status(500).json({ error: "Error occurred while voting" });
   }
 });
 
 // ==========================================
-// 💬 API 7: BÌNH LUẬN (ĐẦY ĐỦ TÍNH NĂNG)
+// 💬 API 7: COMMENTS (FULLY FUNCTIONAL)
 // ==========================================
 
-// 1. Lấy danh sách comment của bài viết
+// 1. Get post's comments list (including replies)
 router.get('/api/forum/posts/:id/comments', async (req: Request, res: Response): Promise<any> => {
   try {
     const comments = await prisma.forumComment.findMany({
       where: { postId: req.params.id as string },
-      include: { author: { select: { id: true, name: true, image: true } } }, // Giữ đúng select name như đã fix
+      include: { author: { select: { id: true, name: true, image: true } } }, 
       orderBy: { createdAt: 'asc' }
     });
     res.status(200).json(comments);
-  } catch (error) { res.status(500).json({ error: "Lỗi tải comment" }); }
+  } catch (error) { res.status(500).json({ error: "Error loading comments" }); }
 });
 
-// 2. Viết comment mới (hoặc Reply)
+// 2. Write new comment (or Reply)
 router.post('/api/forum/posts/:id/comments', async (req: Request, res: Response): Promise<any> => {
   try {
     const { content, authorId, parentId } = req.body; 
     const postId = req.params.id as string;
     
-    // 1. Tạo bình luận vào Database
+    // 1. Save comment to Database
     const comment = await prisma.forumComment.create({
       data: { content, authorId, postId, parentId },
       include: { author: { select: { id: true, name: true, image: true } } }
     });
 
     // ==========================================
-    // 🌟 TỰ ĐỘNG BẮN THÔNG BÁO (REPLY & CHỦ BÀI VIẾT)
+    // 🌟 AUTO-SEND NOTIFICATIONS (REPLY & POST OWNER)
     // ==========================================
     try {
-      const replierName = comment.author?.name || "Một người dùng";
+      const replierName = comment.author?.name || "A user";
       
-      // A. Lấy thông tin bài viết gốc để biết "chủ thớt" là ai và lấy tiêu đề bài viết
+      // A. Get original post information to know the "owner" and fetch the post title
       const post = await prisma.forumPost.findUnique({
         where: { id: postId },
         select: { authorId: true, title: true }
       });
 
-      // Biến lưu ID của người đã nhận thông báo Reply (để tránh gửi trùng lặp cho chủ bài viết)
+      // Store the ID of the person who received a reply notification (to avoid sending duplicate notifications to the original poster)
       let notifiedReplyUserId: string | null = null;
 
-      // B. XỬ LÝ THÔNG BÁO CHO NGƯỜI BỊ REPLY (Nếu có parentId)
+      // B. HANDLING NOTIFICATIONS FOR THE RECIPIENT OF A REPLY (If a parentId exists)
       if (parentId) {
         const parentComment = await prisma.forumComment.findUnique({
           where: { id: parentId },
           select: { authorId: true }
         });
 
-        // Chỉ gửi nếu người reply KHÁC với chủ bình luận gốc
+        // Only send notification if the replier is different from the original comment author
         if (parentComment && parentComment.authorId !== authorId) {
           notifiedReplyUserId = parentComment.authorId;
           await prisma.notification.create({
@@ -264,14 +263,14 @@ router.post('/api/forum/posts/:id/comments', async (req: Request, res: Response)
               isRead: false
             }
           });
-          console.log(`✨ Đã gửi thông báo Reply cho user ID: ${parentComment.authorId}`);
+          console.log(`✨ Reply notification sent to user ID: ${parentComment.authorId}`);
         }
       }
 
-      // C. XỬ LÝ THÔNG BÁO CHO CHỦ BÀI VIẾT
-      // - Chỉ gửi khi Post tồn tại
-      // - Người comment KHÁC chủ bài viết (Không tự thông báo cho chính mình)
-      // - Chủ bài viết CHƯA nhận được thông báo Reply ở bước B (Tránh nhận 2 thông báo cùng lúc)
+      // C. HANDLING NOTIFICATIONS FOR THE POST OWNER
+      // - Only send when the post exists
+      // The person commenting is someone OTHER than the author of the post (i.e., one cannot notify oneself)
+      // - The author of the post has NOT yet received a "Reply" notification at step B (to avoid receiving two notifications simultaneously).
       if (post && post.authorId !== authorId && post.authorId !== notifiedReplyUserId) {
         await prisma.notification.create({
           data: {
@@ -282,28 +281,28 @@ router.post('/api/forum/posts/:id/comments', async (req: Request, res: Response)
             isRead: false
           }
         });
-        console.log(`✨ Đã gửi thông báo Comment cho chủ bài viết ID: ${post.authorId}`);
+        console.log(`✨ New comment notification sent to user ID: ${post.authorId}`);
       }
 
     } catch (notiError) {
-      console.error("Lỗi khi xử lý luồng thông báo:", notiError);
+      console.error("Error occurred while processing notifications:", notiError);
     }
     // ==========================================
 
     res.status(201).json(comment);
   } catch (error) { 
-    res.status(500).json({ error: "Lỗi đăng comment" }); 
+    res.status(500).json({ error: "Comment upload error" }); 
   }
 });
 
-// 3. Sửa comment
+// 3. Edit comment
 router.put('/api/forum/comments/:id', async (req: Request, res: Response): Promise<any> => {
   try {
     const commentId = req.params.id as string;
     const { content, authorId } = req.body;
     
     const comment = await prisma.forumComment.findUnique({ where: { id: commentId } });
-    if (!comment || comment.authorId !== authorId) return res.status(403).json({ error: "Không có quyền sửa!" });
+    if (!comment || comment.authorId !== authorId) return res.status(403).json({ error: "You do not have permission to edit this comment!" });
 
     const updatedComment = await prisma.forumComment.update({
       where: { id: commentId },
@@ -311,21 +310,21 @@ router.put('/api/forum/comments/:id', async (req: Request, res: Response): Promi
       include: { author: { select: { id: true, name: true, image: true } } }
     });
     res.status(200).json(updatedComment);
-  } catch (error) { res.status(500).json({ error: "Lỗi sửa comment" }); }
+  } catch (error) { res.status(500).json({ error: "Comment edit error" }); }
 });
 
-// 4. Xóa comment
+// 4. Delete comment
 router.delete('/api/forum/comments/:id', async (req: Request, res: Response): Promise<any> => {
   try {
     const commentId = req.params.id as string;
     const { authorId } = req.body;
 
     const comment = await prisma.forumComment.findUnique({ where: { id: commentId } });
-    if (!comment || comment.authorId !== authorId) return res.status(403).json({ error: "Không có quyền xóa!" });
+    if (!comment || comment.authorId !== authorId) return res.status(403).json({ error: "You do not have permission to delete this comment!" });
 
     await prisma.forumComment.delete({ where: { id: commentId } });
-    res.status(200).json({ message: "Đã xóa comment" });
-  } catch (error) { res.status(500).json({ error: "Lỗi xóa comment" }); }
+    res.status(200).json({ message: "Comment deleted successfully" });
+  } catch (error) { res.status(500).json({ error: "Comment delete error" }); }
 });
 
 // 5. Vote Comment
@@ -356,20 +355,20 @@ router.post('/api/forum/comments/:id/vote', async (req: Request, res: Response):
       where: { id: commentId }, data: { upvoteCount: { increment: scoreChange } }
     });
     res.status(200).json({ upvoteCount: updatedComment.upvoteCount });
-  } catch (error) { res.status(500).json({ error: "Lỗi vote comment" }); }
+  } catch (error) { res.status(500).json({ error: "Comment vote error" }); }
 });
 
 // ==========================================
-// 📈 API 8: Lấy danh sách Trending Tags (Top 5)
+// 📈 API 8: Get a list of Trending Tags (Top 5)
 // ==========================================
 router.get('/api/forum/trending-tags', async (req: Request, res: Response): Promise<any> => {
   try {
-    // Lấy tất cả bài viết và chỉ lấy trường tags
+    // Get all forum posts and only select the tags field
     const posts = await prisma.forumPost.findMany({
       select: { tags: true }
     });
 
-    // Tạo một object (từ điển) để đếm số lần xuất hiện của từng tag
+    // Create an object (dictionary) to count the occurrences of each tag
     const tagCount: Record<string, number> = {};
     
     posts.forEach(post => {
@@ -380,21 +379,21 @@ router.get('/api/forum/trending-tags', async (req: Request, res: Response): Prom
       }
     });
 
-    // Chuyển object thành mảng, sắp xếp giảm dần theo số lượng và cắt lấy top 5
+    // Convert object to array, sort descending by count and slice top 5
     const trendingTags = Object.entries(tagCount)
-      .sort((a, b) => b[1] - a[1]) // Sắp xếp giảm dần (b - a)
-      .slice(0, 5)                 // Lấy 5 phần tử đầu tiên
-      .map(entry => entry[0]);     // Chỉ lấy tên tag, bỏ phần số lượng đi
+      .sort((a, b) => b[1] - a[1]) // Sort descending (b - a)
+      .slice(0, 5)                 // Take first 5 elements
+      .map(entry => entry[0]);     // Only take tag names, discard counts
 
     res.status(200).json(trendingTags);
   } catch (error) {
-    console.error("LỖI TRENDING TAGS:", error);
-    res.status(500).json({ error: "Lỗi tải trending tags" });
+    console.error("TRENDING TAGS ERROR:", error);
+    res.status(500).json({ error: "Error fetching trending tags" });
   }
 });
 
 // ==========================================
-// 📄 API 9: Lấy chi tiết 1 bài viết Forum
+// 📄 API 9: Get details of a Forum Post
 // ==========================================
 router.get('/api/forum/posts/:id', async (req: Request, res: Response): Promise<any> => {
   try {
@@ -407,20 +406,20 @@ router.get('/api/forum/posts/:id', async (req: Request, res: Response): Promise<
       }
     });
 
-    if (!post) return res.status(404).json({ error: "Bài viết không tồn tại" });
+    if (!post) return res.status(404).json({ error: "Post not found" });
     
     res.status(200).json(post);
   } catch (error) {
-    res.status(500).json({ error: "Lỗi tải chi tiết bài viết" });
+    res.status(500).json({ error: "Error fetching post details" });
   }
 });
 
 // ==========================================
-// 📊 API 10: Lấy toàn bộ dữ liệu thống kê cho Sidebar
+// 📊 API 10: Get all statistics data for Sidebar
 // ==========================================
 router.get('/api/forum/sidebar-stats', async (req: Request, res: Response): Promise<any> => {
   try {
-    // 1. Top 5 Community có nhiều bài viết nhất
+    // 1. Top 5 communities with the most posts
     const topCommunities = await prisma.community.findMany({
       take: 5,
       orderBy: { posts: { _count: 'desc' } },
@@ -431,7 +430,7 @@ router.get('/api/forum/sidebar-stats', async (req: Request, res: Response): Prom
       }
     });
 
-    // 2. Top 5 User đăng bài, comment, và vote nhiều nhất
+    // 2. Top 5 Users who post, comment, and vote the most
     const topPosters = await prisma.user.findMany({
       take: 5,
       orderBy: { forumPosts: { _count: 'desc' } },
@@ -450,7 +449,7 @@ router.get('/api/forum/sidebar-stats', async (req: Request, res: Response): Prom
       select: { id: true, name: true, image: true, _count: { select: { forumVotes: true } } }
     });
 
-    // 3. Top 5 Bài viết Hot nhất (Dựa trên số lượng Upvote)
+    // 3. Top 5 Hot Posts (Based on Upvote Count)
     const hotPosts = await prisma.forumPost.findMany({
       take: 5,
       orderBy: { upvoteCount: 'desc' },
@@ -468,8 +467,8 @@ router.get('/api/forum/sidebar-stats', async (req: Request, res: Response): Prom
       hotPosts
     });
   } catch (error) {
-    console.error("LỖI SIDEBAR STATS:", error);
-    res.status(500).json({ error: "Lỗi tải thống kê" });
+    console.error("SIDEBAR STATS ERROR:", error);
+    res.status(500).json({ error: "Error fetching sidebar statistics" });
   }
 });
 

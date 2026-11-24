@@ -4,7 +4,7 @@ import prisma from '../config/db';
 
 const router = express.Router();
 
-// Hàm gọi trực tiếp MediaWiki API của Fandom (Không cần Puppeteer, chạy siêu nhẹ trên Render)
+// Function that directly calls Fandom’s MediaWiki API 
 async function fetchFandomApi(url: string) {
   try {
     const response = await fetch(url, {
@@ -24,37 +24,37 @@ async function fetchFandomApi(url: string) {
   }
 }
 
-// API Auto-fill dành riêng cho Manga Chapter
+// Auto-fill API specifically for Manga Chapters
 router.post('/api/admin/chapter/auto-fill', async (req, res) => {
   const { mangaId, chapterNumber } = req.body;
 
   try {
-    // 1. Lấy thông tin Manga từ Database
+    // 1. Get Manga info from Database
     const manga = await prisma.manga.findUnique({
       where: { id: mangaId }
     });
 
     if (!manga || !manga.fandomPrefix) {
-      return res.status(400).json({ error: "Manga chưa được cấu hình Fandom Prefix!" });
+      return res.status(400).json({ error: "The Fandom Prefix for this manga has not been configured!" });
     }
 
     const apiBase = `https://${manga.fandomPrefix}.fandom.com/api.php`;
 
     // =========================================================
-    // GIAI ĐOẠN 1: DÒ TÌM ĐA TẦNG CHO MANGA CHAPTER QUA FANDOM API
+    // PHASE 1: MULTI-LAYERED DISCOVERY OF MANGA CHAPTERS VIA FANDOM API
     // =========================================================
     let contentData: any = null;
     let bestMatchTitle: string = "";
 
     // ---------------------------------------------------------
-    // 🛡️ TẦNG 1: Dò tìm trực tiếp với từ khóa "Chapter"
+    // 🛡️ LEVEL 1: Search directly using the keyword "Chapter"
     // ---------------------------------------------------------
     const directTitles = [
-      `Chapter ${chapterNumber}`,                             // Dạng chuẩn nhất: "Chapter 1"
-      `Chapter ${String(chapterNumber).padStart(3, '0')}`,    // Dạng 3 số: "Chapter 001"
-      `Chapter ${String(chapterNumber).padStart(2, '0')}`,    // Dạng 2 số: "Chapter 01"
-      `${manga.title} Chapter ${chapterNumber}`,              // VD: "Jujutsu Kaisen Chapter 1"
-      `Chapter ${chapterNumber} (${manga.title})`             // VD: "Chapter 1 (Jujutsu Kaisen)"
+      `Chapter ${chapterNumber}`,                             // Standard format: "Chapter 1"
+      `Chapter ${String(chapterNumber).padStart(3, '0')}`,    // 3-digit format: "Chapter 001"
+      `Chapter ${String(chapterNumber).padStart(2, '0')}`,    // 2-digit format: "Chapter 01"
+      `${manga.title} Chapter ${chapterNumber}`,              // e.g., "Jujutsu Kaisen Chapter 1"
+      `Chapter ${chapterNumber} (${manga.title})`             // e.g., "Chapter 1 (Jujutsu Kaisen)"
     ];
 
     for (const title of directTitles) {
@@ -69,7 +69,7 @@ router.post('/api/admin/chapter/auto-fill', async (req, res) => {
     }
 
     // ---------------------------------------------------------
-    // 🛡️ TẦNG 2: Nếu Tầng 1 thất bại, dùng API tìm kiếm
+    // 🛡️ LEVEL 2: If LEVEL 1 fails, use the search API
     // ---------------------------------------------------------
     if (!contentData) {
       const searchQuery = encodeURIComponent(`Chapter ${chapterNumber}`);
@@ -91,17 +91,17 @@ router.post('/api/admin/chapter/auto-fill', async (req, res) => {
     }
 
     if (!contentData) {
-      return res.status(404).json({ error: "Không tìm thấy dữ liệu Chapter này trên Fandom." });
+      return res.status(404).json({ error: "Chapter data not found on Fandom." });
     }
 
     const rawHtml = contentData.parse?.text?.['*'];
 
     if (!rawHtml) {
-      return res.status(500).json({ error: "Dữ liệu HTML trả về bị rỗng." });
+      return res.status(500).json({ error: "The returned HTML data is empty." });
     }
 
     // =========================================================
-    // GIAI ĐOẠN 2: CHEERIO BÓC TÁCH (Plot Summary & Characters)
+    // PHASE 2: CHEERIO PARSING (Plot Summary & Characters)
     // =========================================================
     const $ = cheerio.load(rawHtml);
 
@@ -110,18 +110,18 @@ router.post('/api/admin/chapter/auto-fill', async (req, res) => {
       characters: [] as string[]
     };
 
-    // A. BÓC TÁCH "PLOT SUMMARY / SYNOPSIS"
+    // A. PARSING "PLOT SUMMARY / SYNOPSIS"
     const potentialHeaders: { id: string, element: any, priority: number }[] = [];
 
     $('span.mw-headline').each((_: number, el: any) => {
       const id = $(el).attr('id')?.toLowerCase() || '';
       let priority = 99;
 
-      if (id.includes('plot')) priority = 1;          // Ưu tiên 1: Plot Details, Plot...
-      else if (id.includes('long')) priority = 2;     // Ưu tiên 2: Long Summary...
-      else if (id.includes('summary')) priority = 3;  // Ưu tiên 3: Summary...
-      else if (id.includes('synopsis')) priority = 4; // Ưu tiên 4: Synopsis...
-      else if (id.includes('story')) priority = 5;    // Ưu tiên 5: Story...
+      if (id.includes('plot')) priority = 1;          // Priority 1: Plot Details, Plot...
+      else if (id.includes('long')) priority = 2;     // Priority 2: Long Summary...
+      else if (id.includes('summary')) priority = 3;  // Priority 3: Summary...
+      else if (id.includes('synopsis')) priority = 4; // Priority 4: Synopsis...
+      else if (id.includes('story')) priority = 5;    // Priority 5: Story...
 
       if (priority < 99) {
         potentialHeaders.push({ id: id, element: $(el).parent(), priority: priority });
@@ -151,10 +151,10 @@ router.post('/api/admin/chapter/auto-fill', async (req, res) => {
       }
     }
 
-    // B. BÓC TÁCH "CHARACTERS"
+    // B. PARSING "CHARACTERS"
     let charHeader: any = null;
 
-    // 1. TÌM TRONG NỘI DUNG CHÍNH (Xử lý List và Table)
+    // 1. SEARCH WITHIN MAIN CONTENT (Handling Lists and Tables)
     $('span.mw-headline').each((_: number, el: any) => {
       const id = $(el).attr('id')?.toLowerCase() || '';
 
@@ -194,7 +194,7 @@ router.post('/api/admin/chapter/auto-fill', async (req, res) => {
       }
     }
 
-    // 2. TÌM TRONG INFOBOX (Vớt vát)
+    // 2. SEARCH IN INFOBOX 
     if (extractedData.characters.length === 0) {
       const infoboxChars = $('.portable-infobox [data-source*="character" i]');
 
@@ -208,7 +208,7 @@ router.post('/api/admin/chapter/auto-fill', async (req, res) => {
       }
     }
 
-    // 3. DỌN DẸP LẦN CUỐI
+    // 3. Clean lastime
     extractedData.characters = extractedData.characters.filter(c => c.length > 1 && !c.includes('File:'));
     extractedData.plotSummary = extractedData.plotSummary.trim();
 
@@ -219,8 +219,8 @@ router.post('/api/admin/chapter/auto-fill', async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Lỗi Auto-fill Manga Chapter:", error);
-    res.status(500).json({ error: "Lỗi hệ thống khi tự động cào dữ liệu Manga Chapter." });
+    console.error("Auto-fill Manga Chapter Error:", error);
+    res.status(500).json({ error: "System error during the automated scraping of Manga chapter data." });
   }
 });
 

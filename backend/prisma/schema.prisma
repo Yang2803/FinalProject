@@ -5,7 +5,7 @@ generator client {
 
 datasource db {
   provider   = "postgresql"
-  extensions = [vector] // Khai báo dùng pgvector
+  extensions = [vector] // Declare the use of pgvector
 }
 
 model User {
@@ -14,7 +14,7 @@ model User {
   name     String?
   password String?
   image    String?
-  role     String  @default("USER") // USER hoặc ADMIN
+  role     String  @default("USER") // USER or ADMIN
 
   resetToken       String?   @unique
   resetTokenExpiry DateTime?
@@ -53,7 +53,7 @@ model Anime {
   watchListedBy  WatchList[]
   comments       Comment[]
   animeHistories AnimeHistory[]
-  fandomPrefix   String         @default("") // Ví dụ: "jujutsu-kaisen", "naruto"
+  fandomPrefix   String         @default("") // e.g., "jujutsu-kaisen", "naruto"
 
   partyRooms    PartyRoom[]
   animeViewLogs AnimeViewLog[]
@@ -61,13 +61,13 @@ model Anime {
 
 model Manga {
   id          String  @id @default(uuid())
-  title       String  @unique // Thêm @unique để tìm truyện theo tên không bị trùng
+  title       String  @unique // Add @unique to find manga by title without duplicates
   description String? @db.Text
   author      String?
   coverImage  String?
   status      String  @default("ONGOING")
 
-  // Mối quan hệ 1 Manga có nhiều Chapter
+  // A manga series with many chapters
   chapters Chapter[]
 
   createdAt      DateTime       @default(now())
@@ -83,20 +83,20 @@ model Manga {
 
 model Episode {
   id               String                       @id @default(uuid())
-  title            String // Ví dụ: "Tập 01", "Tập 02"
-  videoUrl         String // Đường dẫn video từ Cloudinary
+  title            String // e.g., "Episode 01", "Episode 02"
+  videoUrl         String // Path to video from Cloudinary
   animeId          String
   anime            Anime                        @relation(fields: [animeId], references: [id], onDelete: Cascade)
-  subtitles        Subtitle[] // Một tập phim có thể có nhiều phụ đề (Việt, Anh, Nhật...)
+  subtitles        Subtitle[] // A episode can have multiple subtitles (Vietnamese, English, Japanese...)
   createdAt        DateTime                     @default(now())
   comments         Comment[]
   animeHistories   AnimeHistory[]
   mappedChapterIds String[]                     @default([])
   episodeNumber    Int?
   dubbedLanguages  String[]                     @default([])
-  plotSummary      String?                      @db.Text // Nội dung cốt truyện (Dùng @db.Text để lưu văn bản dài)
-  characters       String[]                     @default([]) // Mảng chứa danh sách tên nhân vật xuất hiện
-  adaptedFrom      String? // Lưu thông tin chuyển thể từ chapter nào (Ví dụ: "Chapters 1-2")
+  plotSummary      String?                      @db.Text // Content summary (Use @db.Text to store long text)
+  characters       String[]                     @default([]) // Array containing list of characters appearing
+  adaptedFrom      String? // Store information about adaptation from which chapter (e.g., "Chapters 1-2")
   embedding        Unsupported("vector(3072)")?
 
   partyRooms PartyRoom[]
@@ -104,24 +104,24 @@ model Episode {
 
 model Subtitle {
   id        String  @id @default(uuid())
-  label     String // Nhãn hiển thị, ví dụ: "Tiếng Việt", "English"
-  url       String // Đường dẫn file .srt hoặc .ass từ Cloudinary
+  label     String // Display label, e.g., "Vietnamese", "English"
+  url       String // Path to .srt or .ass file from Cloudinary
   episodeId String
   episode   Episode @relation(fields: [episodeId], references: [id], onDelete: Cascade)
 }
 
 model Chapter {
   id     String   @id @default(uuid())
-  title  String // Tên chương (VD: Chapter 1)
-  images String[] // Lưu danh sách link ảnh Cloudinary dưới dạng mảng
+  title  String // Chapter name (e.g., Chapter 1)
+  images String[] // Store list of Cloudinary image links as an array
 
-  // Khóa ngoại liên kết với bảng Manga
+  // Foreign key linking to the Manga table
   mangaId String
   manga   Manga  @relation(fields: [mangaId], references: [id], onDelete: Cascade)
 
-  chapterNumber Float? // Dùng Float để phòng hờ có Chapter 1.5, 10.1...
-  characters    String[] // Mảng chứa tên nhân vật
-  plotSummary   String? // Nội dung tóm tắt
+  chapterNumber Float? // Use Float to accommodate chapters like 1.5, 10.1...
+  characters    String[] // Array containing names of characters
+  plotSummary   String? // Content summary
   embedding     Unsupported("vector(3072)")?
 
   createdAt      DateTime       @default(now())
@@ -130,10 +130,9 @@ model Chapter {
   mangaCoRooms   MangaCoRoom[]
 }
 
-// Bảng lưu điểm đánh giá truyện
 model Rating {
   id    String @id @default(uuid())
-  score Int // Điểm từ 1 đến 5
+  score Int // Points from 1 to 5
 
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -143,11 +142,11 @@ model Rating {
 
   createdAt DateTime @default(now())
 
-  // Đảm bảo 1 user chỉ được đánh giá 1 truyện 1 lần duy nhất
+  // Ensure 1 user only rates 1 manga once
   @@unique([userId, mangaId])
 }
 
-// Bảng lưu bình luận (Dùng chung cho cả Manga và Chapter)
+// Comment table (Used for both Manga and Chapters)
 model Comment {
   id        String   @id @default(uuid())
   content   String   @db.Text
@@ -156,13 +155,13 @@ model Comment {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // -- DÀNH CHO MANGA (Đã có sẵn, bạn giữ nguyên) --
+  // -- For MANGA --
   mangaId   String?
   manga     Manga?   @relation(fields: [mangaId], references: [id], onDelete: Cascade)
   chapterId String?
   chapter   Chapter? @relation(fields: [chapterId], references: [id], onDelete: Cascade)
 
-  // -- DÀNH CHO ANIME (Bạn THÊM phần này vào) --
+  // -- For ANIME  --
   animeId   String?
   anime     Anime?   @relation(fields: [animeId], references: [id], onDelete: Cascade)
   episodeId String?
@@ -172,21 +171,21 @@ model Comment {
 model ReadingList {
   id String @id @default(uuid())
 
-  // Liên kết với bảng User
+  // Foreign key linking to the User table
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // Liên kết với bảng Manga
+  // Foreign key linking to the Manga table
   mangaId String
   manga   Manga  @relation(fields: [mangaId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
 
-  // Ràng buộc: Một người dùng chỉ được thêm một bộ truyện vào danh sách một lần duy nhất
+  // Constraint: A user may add a given series to their list only once.
   @@unique([userId, mangaId])
 }
 
-// Bảng lưu lịch sử đọc Truyện
+// Reading History Table
 model MangaHistory {
   id String @id @default(uuid())
 
@@ -196,21 +195,21 @@ model MangaHistory {
   mangaId String
   manga   Manga  @relation(fields: [mangaId], references: [id], onDelete: Cascade)
 
-  // Lưu lại đúng cái Chapter mà user đang đọc dở
+  // Save the exact chapter that the user is currently reading.
   chapterId String
   chapter   Chapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
 
-  // updatedAt rất quan trọng để sắp xếp lịch sử từ mới nhất đến cũ nhất
+  // updatedAt is very important to sort history from newest to oldest
   updatedAt DateTime @default(now()) @updatedAt
 
-  // Đảm bảo 1 user chỉ có 1 bản ghi lịch sử cho 1 bộ truyện (ghi đè khi đọc chap mới)
+  // Ensure 1 user only has 1 history record for 1 manga (overwrite when reading new chapter)
   @@unique([userId, mangaId])
 }
 
-// Bảng lưu điểm Đánh giá Sao của Anime
+// Star Rating for Anime (1-5 points)
 model AnimeRating {
   id        String   @id @default(uuid())
-  score     Int // Điểm từ 1 đến 5
+  score     Int // Points from 1 to 5
   createdAt DateTime @default(now())
 
   userId  String
@@ -219,11 +218,11 @@ model AnimeRating {
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
   anime Anime @relation(fields: [animeId], references: [id], onDelete: Cascade)
 
-  // RẤT QUAN TRỌNG: Đảm bảo 1 user chỉ được đánh giá 1 lần cho 1 bộ phim
+  // Ensure that each user can rate a given movie only once.
   @@unique([userId, animeId])
 }
 
-// Bảng lưu Danh sách xem (Watchlist)
+// Watchlist
 model WatchList {
   id        String   @id @default(uuid())
   createdAt DateTime @default(now())
@@ -234,7 +233,7 @@ model WatchList {
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
   anime Anime @relation(fields: [animeId], references: [id], onDelete: Cascade)
 
-  // Đảm bảo không bị thêm trùng 1 phim nhiều lần vào danh sách
+  // Ensure that a user cannot add the same anime to their watchlist multiple times
   @@unique([userId, animeId])
 }
 
@@ -249,23 +248,23 @@ model AnimeHistory {
   anime   Anime   @relation(fields: [animeId], references: [id], onDelete: Cascade)
   episode Episode @relation(fields: [episodeId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, animeId]) // Đảm bảo mỗi tập phim chỉ ghi nhận 1 lần cập nhật
+  @@unique([userId, animeId]) // Ensure each episode is only recorded once per user
 }
 
 model TranslationCache {
   id         String   @id @default(uuid())
-  imageUrl   String // Link ảnh gốc
-  targetLang String // Ngôn ngữ đích (Vietnamese, English...)
-  blocks     Json // Lưu trữ toàn bộ mảng JSON tọa độ và chữ
+  imageUrl   String // Link to original image
+  targetLang String // Target language (Vietnamese, English...)
+  blocks     Json // Store the entire JSON array of coordinates and text
   createdAt  DateTime @default(now())
 
-  // Tạo khóa Unique kép: Đảm bảo 1 ảnh + 1 ngôn ngữ chỉ lưu đúng 1 dòng
+  // Create a unique composite key: Ensure that 1 image + 1 language only saves 1 row
   @@unique([imageUrl, targetLang])
 }
 
 model AiChatSession {
   id        String          @id @default(uuid())
-  title     String // Tên phiên chat (Tự động lấy từ câu hỏi đầu tiên)
+  title     String // Chat session name (Automatically derived from the first question)
   userId    String
   user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   messages  AiChatMessage[]
@@ -273,43 +272,43 @@ model AiChatSession {
   updatedAt DateTime        @updatedAt
 }
 
-// Bảng lưu từng tin nhắn trong phiên chat
+// A table storing individual messages within a chat session
 model AiChatMessage {
   id        String        @id @default(uuid())
   sessionId String
   session   AiChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  role      String // Chỉ nhận 2 giá trị: "user" hoặc "model"
+  role      String // Accepts only 2 values: "user" or "model"
   content   String        @db.Text
   createdAt DateTime      @default(now())
 }
 
-// 1. Chuyên mục cứng của hệ thống
+// 1. System's core modules
 enum PostCategory {
   ANIME
   MANGA
   GENERAL
 }
 
-// 2. Bảng Nhóm cộng đồng (Sub-forum)
+// 2. Community Groups (Sub-forum)
 model Community {
   id          String   @id @default(uuid())
   name        String   @unique
   description String   @db.Text
-  coverImage  String? // Ảnh bìa của nhóm
+  coverImage  String? // Group cover image
   createdAt   DateTime @default(now())
 
-  // Người tạo nhóm (Admin)
+  // Group creator (Admin)
   creatorId String
   creator   User   @relation("CommunityCreator", fields: [creatorId], references: [id])
 
-  // Danh sách thành viên tham gia
+  // List of members
   members User[] @relation("CommunityMembers")
 
-  // Danh sách bài viết trong nhóm
+  // List of posts within the group
   posts ForumPost[]
 }
 
-// 3. Bảng Bài viết chính
+// 3. Main Forum Posts (User-generated content)
 model ForumPost {
   id            String       @id @default(uuid())
   title         String
@@ -333,7 +332,7 @@ model ForumPost {
   forumComments ForumComment[]
 }
 
-// Thêm 2 bảng mới này vào cuối file
+// 4. Voting system for posts and comments in forum (Upvote/Downvote)
 enum VoteType {
   UP
   DOWN
@@ -347,14 +346,14 @@ model ForumVote {
   postId String
   post   ForumPost @relation(fields: [postId], references: [id], onDelete: Cascade)
 
-  // Đảm bảo mỗi user chỉ được vote 1 lần cho 1 bài viết
+  // Ensure that each user can vote only once per post.
   @@unique([userId, postId])
 }
 
 model ForumComment {
   id          String @id @default(uuid())
   content     String @db.Text
-  upvoteCount Int    @default(0) // 🌟 Điểm vote của comment
+  upvoteCount Int    @default(0) // 🌟 Comment vote score
 
   authorId String
   author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
@@ -362,18 +361,18 @@ model ForumComment {
   postId String
   post   ForumPost @relation(fields: [postId], references: [id], onDelete: Cascade)
 
-  // 🌟 HỖ TRỢ TRẢ LỜI CHÉO (REPLY ĐA CẤP)
+  // 🌟 SUPPORT FOR NESTED REPLIES (MULTI-LEVEL REPLIES)
   parentId String?
   parent   ForumComment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
   replies  ForumComment[] @relation("CommentReplies")
 
-  votes ForumCommentVote[] // Liên kết tới bảng vote
+  votes ForumCommentVote[] // Link to the voting table
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
 }
 
-// 🌟 BẢNG MỚI: Quản lý Vote của Comment
+// 🌟 NEW TABLE: Comment Vote Management
 model ForumCommentVote {
   id        String       @id @default(uuid())
   type      VoteType // Vẫn dùng enum VoteType (UP/DOWN) đã tạo trước đó
@@ -382,17 +381,17 @@ model ForumCommentVote {
   commentId String
   comment   ForumComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, commentId]) // Mỗi user chỉ vote 1 lần cho 1 comment
+  @@unique([userId, commentId]) // Each user can vote only once per comment.
 }
 
 // 🌟 Thêm Model này vào schema.prisma
 model Notification {
   id        String   @id @default(uuid())
   userId    String
-  // user      User     @relation(fields: [userId], references: [id]) // Bỏ comment nếu cậu có model User
-  title     String // VD: "Chương mới ra lò!"
-  message   String // VD: "Jujutsu Kaisen vừa cập nhật Chapter 236"
-  linkUrl   String // Link để click vào bay thẳng đến truyện
+  // user      User     @relation(fields: [userId], references: [id]) 
+  title     String // e.g., "New chapter is released!"
+  message   String // e.g., "Jujutsu Kaisen has been updated Chapter 236"
+  linkUrl   String // Click the link to go straight to the new chapter or episode
   isRead    Boolean  @default(false)
   createdAt DateTime @default(now())
 }
@@ -403,13 +402,13 @@ model Notification {
 
 model PartyRoom {
   id         String  @id @default(uuid())
-  name       String // Tên phòng (VD: "Cày cuốc Wano Quốc")
-  inviteCode String  @unique // Mã mời ngắn 6 ký tự để share link (VD: "X7K9P2")
-  isPrivate  Boolean @default(false) // true: Cần duyệt, false: Ai cũng vào được
-  status     String  @default("ACTIVE") // Trạng thái: "ACTIVE" (Đang mở), "CLOSED" (Đã đóng)
+  name       String // Room name 
+  inviteCode String  @unique // Invite code (6 characters) for sharing links (e.g., "X7K9P2")
+  isPrivate  Boolean @default(false) // true: Requires approval, false: Anyone can join
+  status     String  @default("ACTIVE") // Status: "ACTIVE" (Open), "CLOSED" (Closed)
 
-  hostId    String // Trưởng phòng
-  animeId   String? // Phim đang chiếu (Cho phép null lúc mới tạo phòng)
+  hostId    String // Room host
+  animeId   String? // Anime being watched (allows null when creating room)
   episodeId String? // Tập đang chiếu
 
   themeConfig Json? @default("{\"accent\":\"#3b82f6\",\"glow\":\"rgba(59,130,246,0.5)\",\"bgUrl\":\"\"}")
@@ -417,7 +416,7 @@ model PartyRoom {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Mối quan hệ (Relations)
+  // Relationships
   host    User         @relation("HostRooms", fields: [hostId], references: [id], onDelete: Cascade)
   anime   Anime?       @relation(fields: [animeId], references: [id], onDelete: SetNull)
   episode Episode?     @relation(fields: [episodeId], references: [id], onDelete: SetNull)
@@ -428,14 +427,14 @@ model RoomMember {
   id       String   @id @default(uuid())
   roomId   String
   userId   String
-  status   String   @default("PENDING") // Các trạng thái: "PENDING" (Chờ duyệt), "JOINED" (Đang trong phòng), "BANNED" (Bị chủ phòng kick)
+  status   String   @default("PENDING") // Status: "PENDING", "JOINED", "BANNED" 
   joinedAt DateTime @default(now())
 
-  // Mối quan hệ
+  // Relationships
   room PartyRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
   user User      @relation("MemberRooms", fields: [userId], references: [id], onDelete: Cascade)
 
-  // 🌟 Ràng buộc: Một User chỉ có 1 bản ghi trạng thái trong 1 Phòng duy nhất
+  // 🌟 Constraint: A user can have only one status record within a single room.
   @@unique([roomId, userId])
 }
 
@@ -447,7 +446,7 @@ model AnimeViewLog {
   anime Anime @relation(fields: [animeId], references: [id], onDelete: Cascade)
 
   @@index([animeId])
-  @@index([createdAt]) // Đánh index để query theo ngày/tuần/tháng cực nhanh
+  @@index([createdAt]) // Create an index to enable ultra-fast queries by day/week/month
 }
 
 model MangaViewLog {

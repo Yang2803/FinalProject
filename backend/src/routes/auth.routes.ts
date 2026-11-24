@@ -1,17 +1,19 @@
+import 'dotenv/config';
 import express, { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import nodemailer from "nodemailer";
 import crypto from "crypto";
-import prisma from '../config/db'; // Nhúng DB dùng chung vào đây
+import prisma from '../config/db'; 
+
 
 const router = express.Router();
 
-// Cấu hình gửi mail
+// Configuring Email using environment variables (.env)
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: "giangnnqgcs230038@fpt.edu.vn",
-    pass: "fqge zcxp tykg ztkj",
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
   },
 });
 
@@ -19,16 +21,16 @@ router.post('/register', async (req: Request, res: Response): Promise<any> => {
   try {
       const { email, password, name } = req.body;
   
-      // Kiểm tra user tồn tại
+      // Check if user exists
       const existingUser = await prisma.user.findUnique({ where: { email } });
       if (existingUser) {
-        return res.status(400).json({ message: 'Email đã được sử dụng!' });
+        return res.status(400).json({ message: 'Email has already been used!' });
       }
   
-      // Mã hóa mật khẩu
+      // Password encryption
       const hashedPassword = await bcrypt.hash(password, 10);
   
-      // Tạo user mới
+      // Create a new user
       const newUser = await prisma.user.create({
         data: {
           email,
@@ -47,69 +49,66 @@ router.post('/login', async (req: Request, res: Response): Promise<any> => {
   try {
       const { email, password } = req.body;
   
-      // Tìm user theo email
+      // Find user by email
       const user = await prisma.user.findUnique({ where: { email } });
       if (!user || !user.password) {
-        return res.status(401).json({ message: 'Email hoặc mật khẩu không đúng!' });
+        return res.status(401).json({ message: 'Email or password is incorrect!' });
       }
   
-      // So sánh mật khẩu
+      // Compare passwords
       const isPasswordValid = await bcrypt.compare(password, user.password);
       if (!isPasswordValid) {
-        return res.status(401).json({ message: 'Email hoặc mật khẩu không đúng!' });
+        return res.status(401).json({ message: 'Email or password is incorrect!' });
       }
   
-      // Trả về thông tin user (Không trả về password)
+      // Returns user information (does not return the password)
       res.status(200).json({
         id: user.id,
         email: user.email,
         name: user.name,
         role: user.role,
-        image: user.image, // Bổ sung image trả về
+        image: user.image, 
       });
     } catch (error) {
-      res.status(500).json({ message: 'Lỗi server', error });
+      res.status(500).json({ message: 'Server error', error });
     }
 });
 
 // ==========================================
-// 🌟 API ĐƯỢC CẬP NHẬT: Xử lý OAuth (Google)
+// 🌟 OAuth (Google) handling
 // ==========================================
 router.post('/oauth', async (req: Request, res: Response): Promise<any> => {
   try {
-    // Đổi 'avatar' thành 'image' để đồng bộ với Frontend NextAuth và DB Prisma
     const { email, name, image, provider } = req.body;
 
     if (!email) {
-      return res.status(400).json({ message: 'Không lấy được email từ provider' });
+      return res.status(400).json({ message: 'Unable to retrieve email from the provider' });
     }
 
-    // Sử dụng UPSERT: Cập nhật nếu đã có, hoặc Tạo mới nếu chưa có
+    // Use UPSERT: Update if it already exists, or create a new entry if it does not.
     const user = await prisma.user.upsert({
       where: { email },
       update: {
-        name: name || undefined,   // Cập nhật tên nếu Google có thay đổi
-        image: image || undefined, // Cập nhật lại ảnh mới nhất từ Google
+        name: name || undefined,
+        image: image || undefined,
       },
       create: {
         email,
         name: name || "User Ẩn Danh",
-        image: image || null,      // Lưu link ảnh vào DB
-        // Không lưu password vì đăng nhập qua mạng xã hội
+        image: image || null,
       },
     });
 
-    // Trả về user để Frontend gán vào token
     res.status(200).json({
       id: user.id,
       email: user.email,
       name: user.name,
       role: user.role,
-      image: user.image, // 🌟 Trả về image cho NextAuth session
+      image: user.image,
     });
   } catch (error) {
-    console.error("Lỗi OAuth:", error);
-    res.status(500).json({ message: 'Lỗi server khi xử lý OAuth', error });
+    console.error("OAuth Error:", error);
+    res.status(500).json({ message: 'Server error during OAuth processing', error });
   }
 });
 
@@ -117,17 +116,17 @@ router.post("/forgot-password", async (req: Request, res: Response): Promise<any
   try {
       const { email } = req.body;
   
-      // Kiểm tra user có tồn tại không
+      // Check if the user exists
       const user = await prisma.user.findUnique({ where: { email } });
       if (!user) {
-        return res.status(404).json({ message: "Email này không tồn tại trong hệ thống!" });
+        return res.status(404).json({ message: "This email does not exist in the system!" });
       }
   
-      // Tạo một chuỗi Token ngẫu nhiên và đặt thời gian hết hạn là 15 phút
+      // Generate a random token string and set an expiration time of 15 minutes.
       const token = crypto.randomBytes(32).toString("hex");
       const expiry = new Date(Date.now() + 15 * 60 * 1000); 
   
-      // Lưu Token vào database
+      // Save Token to database
       await prisma.user.update({
         where: { email },
         data: {
@@ -136,12 +135,13 @@ router.post("/forgot-password", async (req: Request, res: Response): Promise<any
         },
       });
   
-      // Đường link dẫn đến trang đặt lại mật khẩu ở Frontend kèm theo mã token
-      const resetUrl = `http://localhost:3000/reset-password?token=${token}`;
+      // Retrieve the Frontend URL from an environment variable (automatically removing any trailing "/" if present)
+      const frontendUrl = (process.env.FRONTEND_URL || "http://localhost:3000").replace(/\/$/, "");
+      const resetUrl = `${frontendUrl}/reset-password?token=${token}`;
   
-      // Nội dung Email gửi cho người dùng
+      // Email content to be sent to the user
       const mailOptions = {
-        from: '"Smart Anime Platform" <giangnnqgcs230038@fpt.edu.vn>',
+        from: `"Smart Anime Platform" <${process.env.EMAIL_USER}>`,
         to: user.email,
         subject: "System password reset request",
         html: `
@@ -156,10 +156,10 @@ router.post("/forgot-password", async (req: Request, res: Response): Promise<any
       };
   
       await transporter.sendMail(mailOptions);
-      res.status(200).json({ message: "Liên kết đặt lại mật khẩu đã được gửi vào Email của bạn!" });
+      res.status(200).json({ message: "A password reset link has been sent to your email!" });
     } catch (error) {
-      console.error("Lỗi Forgot Password:", error);
-      res.status(500).json({ message: "Lỗi server khi xử lý yêu cầu." });
+      console.error("Forgot Password error:", error);
+      res.status(500).json({ message: "Server error while processing the request." });
     }
 });
 
@@ -168,25 +168,25 @@ router.post("/reset-password", async (req: Request, res: Response): Promise<any>
       const { token, newPassword } = req.body;
   
       if (!token || !newPassword) {
-        return res.status(400).json({ message: "Thiếu thông tin xác thực!" });
+        return res.status(400).json({ message: "Missing authentication information!" });
       }
   
-      // Tìm user sở hữu token này và kiểm tra xem token còn hạn không
+      // Find the user who owns this token and check if the token is still valid
       const user = await prisma.user.findFirst({
         where: {
           resetToken: token,
-          resetTokenExpiry: { gt: new Date() }, // Phải lớn hơn thời gian hiện tại
+          resetTokenExpiry: { gt: new Date() },
         },
       });
   
       if (!user) {
-        return res.status(400).json({ message: "Mã xác nhận không hợp lệ hoặc đã hết hạn!" });
+        return res.status(400).json({ message: "Invalid or expired reset token!" });
       }
   
-      // Mã hóa mật khẩu mới
+      // Hash the new password
       const hashedPassword = await bcrypt.hash(newPassword, 10);
   
-      // Cập nhật mật khẩu mới và xóa bỏ Token cũ trong DB
+      // Update the user's password and remove the old reset token from the DB
       await prisma.user.update({
         where: { id: user.id },
         data: {
@@ -198,7 +198,7 @@ router.post("/reset-password", async (req: Request, res: Response): Promise<any>
   
       res.status(200).json({ message: "Password reset successfully! You can log in now." });
     } catch (error) {
-      console.error("Lỗi Reset Password:", error);
+      console.error("Reset Password Error:", error);
       res.status(500).json({ message: "Server error while resetting password." });
     }
 });
