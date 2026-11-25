@@ -9,7 +9,6 @@ interface Manga {
   author: string;
   status: string;
   coverImage: string;
-  // Bổ sung thêm đếm số chapter nếu API backend có hỗ trợ
   _count?: {
     chapters: number;
   };
@@ -39,7 +38,7 @@ export default function AdminMangaList() {
   return (
     <div className="p-8 text-white min-h-screen bg-[#0f0f11]">
       
-      {/* THANH HEADER GIỐNG GIAO DIỆN ANIME */}
+      {/* HEADER BAR */}
       <div className="bg-[#1a1d24] rounded-2xl p-6 flex flex-col md:flex-row justify-between items-center mb-8 shadow-lg border border-gray-800">
         <div>
           <h1 className="text-2xl font-black text-green-400 mb-1">Manga Inventory Management</h1>
@@ -76,7 +75,7 @@ export default function AdminMangaList() {
               No manga available in the system.
             </div>
           ) : (
-            /* DANH SÁCH THẺ MANGA (GRID) */
+            /* MANGA CARD LIST (GRID) */
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
               {mangas.map((manga) => (
                 <Link 
@@ -84,7 +83,7 @@ export default function AdminMangaList() {
                   key={manga.id} 
                   className="group relative rounded-xl overflow-hidden bg-[#1a1d24] border border-gray-800 hover:border-blue-500 transition-all duration-300 shadow-lg flex flex-col cursor-pointer"
                 >
-                  {/* KHU VỰC ẢNH BÌA */}
+                  {/* Cover image area */}
                   <div className="relative aspect-[2/3] w-full overflow-hidden bg-gray-900">
                     <img 
                       src={manga.coverImage || "https://via.placeholder.com/300x450?text=No+Image"} 
@@ -92,13 +91,13 @@ export default function AdminMangaList() {
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
                     />
                     
-                    {/* NHÃN DÁN ĐẾM SỐ CHAPTER */}
+                    {/* CHAPTER COUNT BADGE */}
                     <div className="absolute top-2 left-2 bg-black/80 backdrop-blur-sm text-green-400 font-bold px-2.5 py-1 rounded-lg text-xs">
                       {manga._count?.chapters || 0} Chapters
                     </div>
                   </div>
 
-                  {/* KHU VỰC TIÊU ĐỀ */}
+                  {/* TITLE AREA */}
                   <div className="p-3.5 bg-[#1a1d24]">
                     <h3 className="font-bold text-gray-200 text-sm truncate group-hover:text-blue-400 transition-colors">
                       {manga.title}

@@ -26,7 +26,7 @@ export default function AdminMangaDetails({ params }: { params: Promise<{ id: st
   const mangaId = resolvedParams.id;
   const router = useRouter();
 
-  // State lưu trữ dữ liệu gốc
+  // State management for manga details
   const [title, setTitle] = useState("");
   const [author, setAuthor] = useState("");
   const [coverImage, setCoverImage] = useState("");
@@ -35,7 +35,7 @@ export default function AdminMangaDetails({ params }: { params: Promise<{ id: st
   const [fandomPrefix, setFandomPrefix] = useState(""); 
   const [chapters, setChapters] = useState<Chapter[]>([]);
 
-  // State quản lý file ảnh mới
+  // State for handling new cover image upload
   const [newCoverFile, setNewCoverFile] = useState<File | null>(null);
 
   const [loading, setLoading] = useState(true);
@@ -43,14 +43,14 @@ export default function AdminMangaDetails({ params }: { params: Promise<{ id: st
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  // Hàm xử lý chọn ảnh mới
+  // Function to handle cover image file selection
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setNewCoverFile(e.target.files[0]);
     }
   };
 
-  // Gọi API lấy thông tin bộ truyện
+  // Call API to fetch manga details when the component mounts
   useEffect(() => {
     const fetchMangaDetails = async () => {
       try {
@@ -74,7 +74,7 @@ export default function AdminMangaDetails({ params }: { params: Promise<{ id: st
     fetchMangaDetails();
   }, [mangaId]);
 
-  // Hàm xử lý CẬP NHẬT (SỬA) truyện
+  // Function to handle UPDATE (EDIT) manga
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
@@ -84,7 +84,7 @@ export default function AdminMangaDetails({ params }: { params: Promise<{ id: st
     try {
       let finalCoverUrl = coverImage;
 
-      // Nếu có ảnh mới, up lên Cloudinary trước
+      // 1. Upload new cover image to Cloudinary if a new file is selected
       if (newCoverFile) {
         const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
         const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
@@ -102,7 +102,7 @@ export default function AdminMangaDetails({ params }: { params: Promise<{ id: st
         finalCoverUrl = cloudData.secure_url;
       }
 
-      // Gửi dữ liệu cập nhật về Backend
+      // 2. Send updated data to Backend
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/admin/manga/${mangaId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -131,7 +131,7 @@ export default function AdminMangaDetails({ params }: { params: Promise<{ id: st
     }
   };
 
-  // Hàm xử lý XÓA truyện
+  // Function to handle DELETE manga
   const handleDelete = async () => {
     const confirmDelete = confirm(`Are you sure you want to DELETE the entire manga "${title}" along with all its chapters? This action cannot be undone!`);
     if (!confirmDelete) return;
@@ -152,7 +152,7 @@ export default function AdminMangaDetails({ params }: { params: Promise<{ id: st
     }
   };
   
-  // Hàm xử lý XÓA CHƯƠNG
+  // Function to handle DELETE chapter
   const handleDeleteChapter = async (chapterId: string, chapterTitle: string) => {
     const confirmDelete = confirm(`Are you sure you want to delete "${chapterTitle}"?`);
     if (!confirmDelete) return;
@@ -183,7 +183,7 @@ export default function AdminMangaDetails({ params }: { params: Promise<{ id: st
   return (
     <div className="p-8 text-white min-h-screen max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
       
-      {/* CỘT TRÁI: FORM XEM VÀ SỬA THÔNG TIN TRUYỆN */}
+      {/* LEFT COLUMN: FORM FOR VIEWING AND EDITING STORY INFORMATION  */}
       <div className="lg:col-span-2 bg-gray-800 p-6 rounded-2xl shadow-lg h-fit border border-gray-700">
         <div className="flex justify-between items-center mb-6 border-b border-gray-700 pb-4">
           <h1 className="text-2xl font-black text-blue-400">Detailed Information</h1>
@@ -199,10 +199,10 @@ export default function AdminMangaDetails({ params }: { params: Promise<{ id: st
         {error && <div className="mb-4 p-3 bg-red-900/50 text-red-400 border border-red-500 rounded-lg text-sm">{error}</div>}
 
         <form onSubmit={handleUpdate}>
-          {/* Bố cục chia 2 cột: Ảnh bên trái, Form bên phải */}
+          {/* The layout is divided into two columns: Image on the left, Form on the right.*/}
           <div className="flex flex-col md:flex-row gap-8">
             
-            {/* KHU VỰC ẢNH BÌA */}
+            {/* Cover image area */}
             <div className="w-full md:w-1/3 space-y-4">
               <div className="aspect-[2/3] w-full bg-gray-900 rounded-xl overflow-hidden border border-gray-700 relative">
                 {(newCoverFile || coverImage) ? (
@@ -226,14 +226,14 @@ export default function AdminMangaDetails({ params }: { params: Promise<{ id: st
               </div>
             </div>
 
-            {/* KHU VỰC NHẬP TEXT */}
+            {/* TEXT INPUT AREA */}
             <div className="w-full md:w-2/3 space-y-4">
               <div>
                 <label className="block text-xs font-bold text-gray-400 mb-1">Manga name (*)</label>
                 <input type="text" required value={title} onChange={(e) => setTitle(e.target.value)} className="w-full px-4 py-2.5 text-sm bg-gray-900 border border-gray-700 rounded-lg outline-none focus:border-blue-500 transition"/>
               </div>
 
-              {/* FORM NHẬP FANDOM PREFIX */}
+              {/* FORM FANDOM PREFIX */}
               <div>
                 <label className="block text-xs text-gray-400 font-bold mb-1">Fandom Prefix (Used for Auto-fill Data)</label>
                 <div className="flex bg-gray-900 border border-gray-700 rounded-lg overflow-hidden focus-within:border-blue-500 transition">
@@ -268,7 +268,7 @@ export default function AdminMangaDetails({ params }: { params: Promise<{ id: st
             </div>
           </div>
 
-          {/* KHU VỰC TÓM TẮT DƯỚI CÙNG */}
+          {/* DESCRIPTION AREA */}
           <div className="mt-6">
             <label className="block text-xs font-bold text-gray-400 mb-1">Description</label>
             <textarea rows={6} value={description} onChange={(e) => setDescription(e.target.value)} className="w-full px-4 py-3 text-sm bg-gray-900 border border-gray-700 rounded-lg outline-none focus:border-blue-500 resize-none transition"></textarea>
@@ -287,10 +287,10 @@ export default function AdminMangaDetails({ params }: { params: Promise<{ id: st
         </form>
       </div>
 
-      {/* CỘT PHẢI: QUẢN LÝ SỐ CHAPTER ĐÃ ĐĂNG */}
+      {/* RIGHT COLUMN: CHAPTER MANAGEMENT */}
       <div className="bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-700 h-fit">
         
-        {/* 🌟 THÊM NÚT NEW CHAPTER VÀO KHU VỰC HEADER */}
+        {/* 🌟 ADD NEW CHAPTER BUTTON TO HEADER AREA */}
         <div className="flex justify-between items-center mb-4 border-b border-gray-700 pb-4">
           <h2 className="text-xl font-black text-purple-400">
             Chapters ({chapters.length})

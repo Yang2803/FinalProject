@@ -29,7 +29,7 @@ export default function ForgotPasswordPage() {
         setError(data.message);
       }
     } catch (err) {
-      setError("Không thể kết nối đến server backend!");
+      setError("Cannot connect to backend server!");
     } finally {
       setLoading(false);
     }

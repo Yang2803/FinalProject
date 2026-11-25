@@ -32,22 +32,22 @@ function AiSearchChatContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
-  // States cho tính năng tìm kiếm bằng hình ảnh
+  // States for search by image
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [imageMimeType, setImageMimeType] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Cờ khóa để đảm bảo chỉ tự động gửi prompt từ URL đúng 1 lần
+  // The locking flag ensures that the prompt from the correct URL is only automatically sent once.
   const autoPromptTriggeredRef = useRef<string | null>(null);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  // Tự động cuộn xuống cuối
+  // Scroll to the bottom of the chat when new messages arrive or when loading state changes
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
 
-  // Load danh sách Session khi mới vào
+  // Load all chat sessions for the logged-in user
   useEffect(() => {
     if (session?.user?.id) {
       fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/chat/sessions/${session.user.id}`)
@@ -57,7 +57,7 @@ function AiSearchChatContent() {
     }
   }, [session?.user?.id]);
 
-  // Load tin nhắn khi bấm vào một Session cụ thể
+  // Load messages when clicking on a specific Session
   useEffect(() => {
     const fetchSessionMessages = async () => {
       if (activeSessionId) {
@@ -85,7 +85,7 @@ function AiSearchChatContent() {
     fetchSessionMessages();
   }, [activeSessionId]);
 
-  // 🌟 HÀM GỬI TIN NHẮN DÙNG CHUNG (HỖ TRỢ CẢ GÕ TAY LẪN AUTO-PROMPT TỪ TRANG CHỦ)
+  // 🌟 GENERAL MESSAGING FUNCTION (SUPPORTS BOTH MANUAL TYPING AND AUTO-PROMPT FROM THE HOMEPAGE)
   const sendPromptToAi = async (
     textToSend: string,
     imageBase64ToSend?: string | null,
@@ -129,10 +129,10 @@ function AiSearchChatContent() {
 
       const data = await res.json();
 
-      // Nạp tin nhắn AI vào UI
+      // Load AI messages into the UI.
       setMessages((prev) => [...prev, data.reply]);
 
-      // Nếu là chat mới tinh, cập nhật lại SessionID và load lại Sidebar
+      // If the session is new, set it as the active session and refresh the session list.
       if (!(targetSessionId ?? activeSessionId)) {
         setActiveSessionId(data.sessionId);
         const sessionRes = await fetch(
@@ -157,24 +157,24 @@ function AiSearchChatContent() {
     }
   };
 
-  // 🌟 TỰ ĐỘNG NHẬN PROMPT HOẶC CHẾ ĐỘ TÌM ẢNH TỪ TRANG CHỦ
+  // 🌟 AUTO-PROMPT & IMAGE SEARCH HANDLER (TRIGGERED BY HOMEPAGE BUTTONS)
   useEffect(() => {
     if (!session?.user?.id) return;
 
     const urlPrompt = searchParams.get("prompt");
     const urlMode = searchParams.get("mode");
 
-    // 1. Nếu có ?prompt=... trên URL -> Tự động gửi câu hỏi cho AI ngay lập tức
+    // 1. If the user clicked "Search by Text" from the homepage (?prompt=...) -> Automatically send the prompt to AI.
     if (urlPrompt && autoPromptTriggeredRef.current !== urlPrompt) {
       autoPromptTriggeredRef.current = urlPrompt;
       setActiveSessionId(null);
 
-      // Xóa query trên thanh địa chỉ để F5 không bị gửi lặp lại
+      // Remove the query from the address bar so that pressing F5 doesn't send a repeated request.
       router.replace("/ai-search");
 
       sendPromptToAi(urlPrompt, null, "", null);
     }
-    // 2. Nếu bấm nút "Tìm bằng Hình Ảnh" từ trang chủ (?mode=image) -> Tự bật hộp chọn ảnh
+    // 2. If the user clicked "Search by Image" from the homepage (?mode=image) -> Automatically open the image selection dialog
     else if (urlMode === "image" && autoPromptTriggeredRef.current !== "MODE_IMAGE") {
       autoPromptTriggeredRef.current = "MODE_IMAGE";
       router.replace("/ai-search");
@@ -184,7 +184,7 @@ function AiSearchChatContent() {
     }
   }, [searchParams, session?.user?.id]);
 
-  // Hàm xử lý khi người dùng chọn ảnh từ máy
+  // Function to handle image selection from the device
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -239,7 +239,7 @@ function AiSearchChatContent() {
 
   return (
     <div className="flex h-full bg-[#0f0f11] overflow-hidden font-sans relative">
-      {/* LỚP NỀN MỜ (BACKDROP) KHI MỞ LỊCH SỬ CHAT TRÊN MOBILE */}
+      {/* BACKDROP WHEN OPEN CHAT HISTORY ON MOBILE */}
       {isSidebarOpen && (
         <div
           className="fixed inset-0 bg-black/70 backdrop-blur-sm z-30 lg:hidden"
@@ -248,7 +248,7 @@ function AiSearchChatContent() {
       )}
 
       {/* ==================================================== */}
-      {/* SIDEBAR: LỊCH SỬ CHAT */}
+      {/* SIDEBAR: CHAT HISTORY */}
       {/* ==================================================== */}
       <div
         className={`${
@@ -268,7 +268,7 @@ function AiSearchChatContent() {
             <span>+</span> New Chat
           </button>
 
-          {/* Nút đóng nhanh Sidebar trên Mobile */}
+          {/* Quick close button for the sidebar on mobile. */}
           <button
             type="button"
             onClick={() => setIsSidebarOpen(false)}
@@ -308,7 +308,7 @@ function AiSearchChatContent() {
       <div className="flex-1 flex flex-col min-w-0 relative bg-[url('/your-anime-bg.jpg')] bg-cover bg-center bg-no-repeat">
         <div className="absolute inset-0 bg-[#0f0f11]/90 backdrop-blur-sm z-0"></div>
 
-        {/* HEADER KHUNG CHAT */}
+        {/* HEADER CHAT AREA */}
         <div className="relative z-10 px-3.5 py-3 sm:p-4 border-b border-gray-800 flex items-center gap-3 bg-gray-900/40 backdrop-blur-md shrink-0">
           <button
             type="button"
@@ -323,7 +323,7 @@ function AiSearchChatContent() {
           </h2>
         </div>
 
-        {/* DANH SÁCH TIN NHẮN */}
+        {/* MESSAGE LIST */}
         <div className="flex-1 overflow-y-auto p-3.5 sm:p-6 md:p-8 space-y-5 sm:space-y-6 relative z-10 custom-scrollbar">
           {messages.map((msg) => (
             <div
@@ -399,9 +399,9 @@ function AiSearchChatContent() {
           <div ref={chatEndRef} />
         </div>
 
-        {/* KHUNG NHẬP TIN NHẮN & TẢI ẢNH */}
+        {/* MESSAGE ENTRY & IMAGE UPLOAD BOX */}
         <div className="p-3 sm:p-4 md:p-6 bg-gradient-to-t from-[#0f0f11] via-[#0f0f11]/95 to-transparent relative z-10 shrink-0">
-          {/* KHUNG XEM TRƯỚC ẢNH ĐANG ĐÍNH KÈM */}
+          {/* THE ATTACHED IMAGE PREVIEW FRAME */}
           {selectedImage && (
             <div className="max-w-4xl mx-auto mb-2.5 sm:mb-3 flex items-center gap-2.5 sm:gap-3 bg-gray-900/95 border border-purple-500/50 p-2 sm:p-2.5 rounded-2xl w-full sm:w-fit shadow-xl backdrop-blur-md">
               <img
@@ -438,7 +438,7 @@ function AiSearchChatContent() {
           >
             <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-500 to-cyan-500 rounded-full blur opacity-30 group-focus-within:opacity-100 transition duration-500"></div>
 
-            {/* Input chọn file ảnh ẩn */}
+            {/* Input to select hidden image file */}
             <input
               type="file"
               accept="image/*"
@@ -447,7 +447,7 @@ function AiSearchChatContent() {
               className="hidden"
             />
 
-            {/* Nút bấm tải ảnh lên */}
+            {/* Button to trigger image upload */}
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}

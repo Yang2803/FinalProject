@@ -4,7 +4,7 @@ import prisma from '../config/db';
 const router = express.Router();
 
 
-// 1. Lấy danh sách thông báo & đếm số lượng chưa đọc
+// 1. Get the list of notifications and count the number of unread notifications.
 router.get('/api/notifications/:userId', async (req: Request, res: Response): Promise<any> => {
   try {
     const userId = req.params.userId as string;
@@ -13,16 +13,16 @@ router.get('/api/notifications/:userId', async (req: Request, res: Response): Pr
       orderBy: { createdAt: 'desc' }
     });
     
-    // Đếm số lượng chưa đọc
+    // Count the number of unread notifications
     const unreadCount = notifications.filter(n => !n.isRead).length;
 
     res.status(200).json({ notifications, unreadCount });
   } catch (error) {
-    res.status(500).json({ error: "Lỗi tải thông báo" });
+    res.status(500).json({ error: "Error loading notifications" });
   }
 });
 
-// 2. Đánh dấu TẤT CẢ thông báo là đã đọc (Gọi khi user vào trang /notifications)
+// 2. Mark ALL notifications as read (Called when user visits the /notifications page)
 router.put('/api/notifications/:userId/read', async (req: Request, res: Response): Promise<any> => {
   try {
     const userId = req.params.userId as string;
@@ -32,7 +32,7 @@ router.put('/api/notifications/:userId/read', async (req: Request, res: Response
     });
     res.status(200).json({ success: true });
   } catch (error) {
-    res.status(500).json({ error: "Lỗi cập nhật thông báo" });
+    res.status(500).json({ error: "Error updating notifications" });
   }
 });
 

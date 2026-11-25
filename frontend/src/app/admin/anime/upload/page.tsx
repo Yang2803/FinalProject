@@ -7,25 +7,25 @@ import Link from "next/link";
 export default function UploadAnimePage() {
   const router = useRouter();
 
-  // State quản lý form
+  // State manage form
   const [title, setTitle] = useState("");
-  // 🌟 1. STATE MỚI: Quản lý Fandom Prefix
+  // 🌟 1. STATE manage Fandom Prefix
   const [fandomPrefix, setFandomPrefix] = useState(""); 
   const [description, setDescription] = useState("");
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   
-  // Quản lý loading khi AI đang viết tóm tắt
+  // Manage loading while AI is writing a summary.
   const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
 
-  // Hàm xử lý chọn file ảnh bìa
+  // Function to handle cover image file selection
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setCoverFile(e.target.files[0]);
     }
   };
 
-  // Gọi AI viết tóm tắt
+  // Function to call AI for generating summary
   const handleGenerateDescription = async () => {
     if (!title) {
       alert("Please enter the Anime Title before using AI!");
@@ -43,14 +43,14 @@ export default function UploadAnimePage() {
       const data = await res.json();
       
       if (res.ok) {
-        // Tự động điền kết quả AI trả về vào ô Textarea
+        // Automatically fill in the text area with the AI-returned results.
         setDescription(data.description);
       } else {
-        alert(data.message || "Không thể tạo tóm tắt.");
+        alert(data.message || "Unable to create a summary.");
       }
     } catch (error) {
-      console.error("Lỗi:", error);
-      alert("Lỗi kết nối tới Server AI.");
+      console.error("Error:", error);
+      alert("Error connecting to AI Server.");
     } finally {
       setIsGeneratingDesc(false);
     }
@@ -63,12 +63,12 @@ export default function UploadAnimePage() {
     try {
       let uploadedCoverUrl = "";
 
-      // 1. Tải ảnh bìa lên Cloudinary
+      // 1. Upload cover to Cloudinary
       if (coverFile) {
         const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
         const animePreset = process.env.NEXT_PUBLIC_CLOUDINARY_ANIME_PRESET;
 
-        if (!cloudName || !animePreset) throw new Error("Thiếu cấu hình Cloudinary!");
+        if (!cloudName || !animePreset) throw new Error("Cloudinary configuration is missing.!");
 
         const formData = new FormData();
         formData.append("file", coverFile);
@@ -80,17 +80,17 @@ export default function UploadAnimePage() {
         });
 
         const cloudinaryData = await cloudinaryRes.json();
-        if (!cloudinaryRes.ok) throw new Error("Lỗi upload ảnh bìa");
+        if (!cloudinaryRes.ok) throw new Error("Failed to upload cover image");
         uploadedCoverUrl = cloudinaryData.secure_url;
       }
 
-      // 2. Gửi thông tin về Backend để lưu vào Database
+      // 2.End data to Backend to save to Database
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/admin/anime`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title,
-          fandomPrefix, // 🌟 2. BỔ SUNG GỬI FANDOM PREFIX LÊN BACKEND
+          fandomPrefix, 
           description,
           coverImage: uploadedCoverUrl,
         }),
@@ -99,14 +99,14 @@ export default function UploadAnimePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
 
-      alert("Đã thêm bộ Anime mới thành công!");
+      alert("Successfully added new anime!");
       router.push("/admin/anime"); 
 
     } catch (error) {
       if (error instanceof Error) {
-        alert(`Lỗi: ${error.message}`);
+        alert(`Error: ${error.message}`);
       } else {
-        alert("Đã xảy ra lỗi không xác định!");
+        alert("An undefined error occurred!");
       }
     } finally {
       setLoading(false);
@@ -124,7 +124,7 @@ export default function UploadAnimePage() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Tên phim */}
+          {/* Anime Title */}
           <div>
             <label className="block text-sm font-bold text-gray-300 mb-2">Anime Title (*)</label>
             <input
@@ -137,7 +137,7 @@ export default function UploadAnimePage() {
             />
           </div>
 
-          {/* 🌟 3. GIAO DIỆN NHẬP FANDOM PREFIX ĐÃ ĐƯỢC ĐỒNG BỘ STYLING */}
+          {/* 🌟 3. Fandom Prefix */}
           <div>
             <label className="block text-sm font-bold text-gray-300 mb-2">Fandom Prefix (Used for Auto-fill Data)</label>
             <div className="flex bg-gray-900 border border-gray-700 rounded-xl overflow-hidden focus-within:border-blue-500 transition">
@@ -160,7 +160,7 @@ export default function UploadAnimePage() {
             </p>
           </div>
 
-          {/* Chọn ảnh bìa */}
+          {/* Select Cover Image */}
           <div>
             <label className="block text-sm font-bold text-gray-300 mb-2">Cover Image</label>
             <input
@@ -172,7 +172,7 @@ export default function UploadAnimePage() {
             {coverFile && <p className="text-xs text-green-400 mt-2">✓ Selected: {coverFile.name}</p>}
           </div>
 
-          {/* Tóm tắt nội dung + NÚT AI */}
+          {/* Content Summary + AI Button */}
           <div>
             <div className="flex justify-between items-center mb-2">
               <label className="block text-sm font-bold text-gray-300">Content Summary</label>
@@ -203,7 +203,7 @@ export default function UploadAnimePage() {
             ></textarea>
           </div>
 
-          {/* Nút bấm Submit */}
+          {/* Submit Button */}
           <button
             type="submit"
             disabled={loading}

@@ -4,7 +4,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 const router = express.Router();
 
-// Khởi tạo Client kết nối với Cloudflare R2
+// Initialize the client to connect with Cloudflare R2.
 const s3Client = new S3Client({
   region: "auto",
   endpoint: process.env.R2_ENDPOINT as string,
@@ -17,31 +17,30 @@ const s3Client = new S3Client({
   responseChecksumValidation: "WHEN_REQUIRED",
 });
 
-// API Cấp link Upload (Presigned URL)
+// API to generate a presigned URL for uploading files to Cloudflare R2.
 router.post('/api/admin/get-upload-url', async (req: Request, res: Response): Promise<any> => {
-  /* ... Paste ruột API Tạo Presigned URL vào đây ... */
   try {
       const { fileName, fileType } = req.body;
       
-      // Tạo một tên file unique tránh trùng lặp khi up lên R2
+      // Create a unique filename to avoid duplication when uploading to R2.
       const uniqueFileName = `${Date.now()}-${fileName.replace(/\s+/g, '-')}`;
   
       const command = new PutObjectCommand({
         Bucket: process.env.R2_BUCKET_NAME as string,
         Key: uniqueFileName,
-        //ContentType: fileType, // Khai báo chuẩn loại file (video/mp4, text/vtt...)
+        //ContentType: fileType, // Declare the file type (video/mp4, text/vtt, etc.)
       });
   
-      // Tạo link upload có thời hạn 15 phút (900 giây)
+      // Create an upload link with a 15-minute (900-second) time limit.
       const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 900 });
       
-      // Link public để lát nữa lưu vào Database
+      // This is a public link to save to the database later.
       const publicUrl = `${process.env.R2_PUBLIC_DOMAIN}/${uniqueFileName}`;
   
       res.status(200).json({ uploadUrl, publicUrl });
     } catch (error) {
-      console.error("Lỗi tạo Presigned URL:", error);
-      res.status(500).json({ message: "Lỗi tạo link upload Cloudflare R2." });
+      console.error("Error creating Presigned URL:", error);
+      res.status(500).json({ message: "Error creating upload link for Cloudflare R2." });
     }
 });
 

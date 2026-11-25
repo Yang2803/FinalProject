@@ -4,20 +4,20 @@ import { AccessToken } from 'livekit-server-sdk';
 
 const router = express.Router();
 
-// 🌟 HÀM PHỤ TRỢ: Tạo mã mời ngẫu nhiên 6 ký tự (VD: MG7K9Q)
+// 🌟 SUPPORT FUNCTION: Generate a random 6-character invitation code (e.g., MG7K9Q)
 const generateInviteCode = (): string => {
   return Math.random().toString(36).substring(2, 8).toUpperCase();
 };
 
 // ==========================================
-// 🏠 1. API: TẠO PHÒNG MANGA CO-READING MỚI
+// 🏠 1. API: CREATE NEW MANGA CO-READING ROOMS
 // ==========================================
 router.post('/rooms', async (req: Request, res: Response): Promise<any> => {
   try {
     const { name, isPrivate, hostId, mangaId, chapterId } = req.body;
 
     if (!name || !hostId) {
-      return res.status(400).json({ message: "Thiếu tên phòng hoặc ID chủ phòng!" });
+      return res.status(400).json({ message: "Missing room name or host ID!" });
     }
 
     let inviteCode = generateInviteCode();
@@ -48,15 +48,15 @@ router.post('/rooms', async (req: Request, res: Response): Promise<any> => {
       }
     });
 
-    return res.status(201).json({ message: "Tạo phòng đọc thành công!", room: newRoom });
+    return res.status(201).json({ message: "Successfully created a reading room!", room: newRoom });
   } catch (error) {
     console.error("Lỗi tạo phòng manga:", error);
-    return res.status(500).json({ message: "Lỗi server khi tạo phòng manga." });
+    return res.status(500).json({ message: "Server error when creating a manga room." });
   }
 });
 
 // ==========================================
-// 🔍 2. API: LẤY THÔNG TIN PHÒNG (BẰNG MÃ MỜI HOẶC ID)
+// 🔍 2. API: GET ROOM INFORMATION (BY INVITE CODE OR ID)
 // ==========================================
 router.get('/rooms/:inviteCode', async (req: Request, res: Response): Promise<any> => {
   try {
@@ -84,18 +84,18 @@ router.get('/rooms/:inviteCode', async (req: Request, res: Response): Promise<an
     });
 
     if (!room) {
-      return res.status(404).json({ message: "Mã phòng không tồn tại hoặc phòng đã đóng!" });
+      return res.status(404).json({ message: "Invite code not found or room is closed!" });
     }
 
     return res.status(200).json(room);
   } catch (error) {
-    console.error("Lỗi tải thông tin phòng manga:", error);
-    return res.status(500).json({ message: "Lỗi server khi tải thông tin phòng manga." });
+    console.error("Error fetching manga room information:", error);
+    return res.status(500).json({ message: "Server error when fetching manga room information." });
   }
 });
 
 // ==========================================
-// 🚪 3. API: XIN VÀO PHÒNG (JOIN REQUEST)
+// 🚪 3. API: JOIN REQUEST
 // ==========================================
 router.post('/rooms/:inviteCode/join', async (req: Request, res: Response): Promise<any> => {
   try {
@@ -113,11 +113,11 @@ router.post('/rooms/:inviteCode/join', async (req: Request, res: Response): Prom
     });
 
     if (!room) {
-      return res.status(404).json({ message: "Phòng đọc không tồn tại." });
+      return res.status(404).json({ message: "Reading room not found." });
     }
 
     if (room.hostId === userId) {
-      return res.status(200).json({ message: "Trưởng phòng được vào thẳng.", status: "JOINED", room });
+      return res.status(200).json({ message: "Room host can join directly.", status: "JOINED", room });
     }
 
     const existingMember = await prisma.mangaCoMember.findUnique({
@@ -128,7 +128,7 @@ router.post('/rooms/:inviteCode/join', async (req: Request, res: Response): Prom
 
     if (existingMember) {
       if (existingMember.status === "BANNED") {
-        return res.status(403).json({ message: "Bạn đã bị cấm khỏi phòng đọc này." });
+        return res.status(403).json({ message: "You have been banned from this reading room." });
       }
 
       if (existingMember.status === "REJECTED") {
@@ -138,13 +138,13 @@ router.post('/rooms/:inviteCode/join', async (req: Request, res: Response): Prom
           data: { status: newStatus }
         });
         return res.status(newStatus === "PENDING" ? 202 : 200).json({
-          message: newStatus === "PENDING" ? "Đã gửi lại yêu cầu tham gia." : "Vào phòng thành công!",
+          message: newStatus === "PENDING" ? "Request to participate has been submitted. Please wait for the Department Head to approve it!" : "Successfully joined the reading room!",
           status: newStatus,
           room
         });
       }
 
-      return res.status(200).json({ message: "Bạn đã ở trong phòng.", status: existingMember.status, room });
+      return res.status(200).json({ message: "You are already in the room.", status: existingMember.status, room });
     }
 
     const memberStatus = room.isPrivate ? "PENDING" : "JOINED";
@@ -159,16 +159,16 @@ router.post('/rooms/:inviteCode/join', async (req: Request, res: Response): Prom
     if (memberStatus === "PENDING") {
       return res.status(202).json({ message: "Request to participate has been submitted. Please wait for the Department Head to approve it!", status: "PENDING" });
     } else {
-      return res.status(200).json({ message: "Vào phòng thành công!", status: "JOINED", room });
+      return res.status(200).json({ message: "Successfully joined the reading room!", status: "JOINED", room });
     }
   } catch (error) {
-    console.error("Lỗi join phòng manga:", error);
-    return res.status(500).json({ message: "Lỗi server khi xin vào phòng đọc." });
+    console.error("Manga Room Join Error:", error);
+    return res.status(500).json({ message: "Server error when joining manga room." });
   }
 });
 
 // ==========================================
-// 👑 4. API: TRƯỞNG PHÒNG DUYỆT / TỪ CHỐI THÀNH VIÊN
+// 👑 4. API: HOST APPROVAL / REJECTION OF MEMBER
 // ==========================================
 router.put('/rooms/:roomId/approve', async (req: Request, res: Response): Promise<any> => {
   try {
@@ -177,7 +177,7 @@ router.put('/rooms/:roomId/approve', async (req: Request, res: Response): Promis
 
     const room = await prisma.mangaCoRoom.findUnique({ where: { id: roomId } });
     if (!room || room.hostId !== hostId) {
-      return res.status(403).json({ message: "Bạn không có quyền duyệt thành viên cho phòng này!" });
+      return res.status(403).json({ message: "You do not have permission to approve members for this room!" });
     }
 
     if (action === "APPROVE") {
@@ -185,21 +185,21 @@ router.put('/rooms/:roomId/approve', async (req: Request, res: Response): Promis
         where: { roomId_userId: { roomId, userId: targetUserId } },
         data: { status: "JOINED" }
       });
-      return res.status(200).json({ message: "Đã duyệt thành viên thành công!" });
+      return res.status(200).json({ message: "Member approved successfully!" });
     } else {
       await prisma.mangaCoMember.update({
         where: { roomId_userId: { roomId, userId: targetUserId } },
         data: { status: "REJECTED" }
       });
-      return res.status(200).json({ message: "Đã từ chối thành viên." });
+      return res.status(200).json({ message: "Member rejected successfully!" });
     }
   } catch (error) {
-    return res.status(500).json({ message: "Lỗi server khi duyệt thành viên." });
+    return res.status(500).json({ message: "Server error when approving member." });
   }
 });
 
 // ==========================================
-// 🔄 5. API: TRƯỞNG PHÒNG ĐỔI MANGA / ĐỔI CHƯƠNG ĐỌC
+// 🔄 5. API: HOST CHANGE MANGA / CHANGE CHAPTER
 // ==========================================
 router.put('/rooms/:roomId/change-chapter', async (req: Request, res: Response): Promise<any> => {
   try {
@@ -208,7 +208,7 @@ router.put('/rooms/:roomId/change-chapter', async (req: Request, res: Response):
 
     const room = await prisma.mangaCoRoom.findUnique({ where: { id: roomId } });
     if (!room || room.hostId !== hostId) {
-      return res.status(403).json({ message: "Chỉ Trưởng phòng mới có quyền đổi truyện/chương!" });
+      return res.status(403).json({ message: "Only the room host has permission to change the manga/chapter!" });
     }
 
     const updatedRoom = await prisma.mangaCoRoom.update({
@@ -221,15 +221,15 @@ router.put('/rooms/:roomId/change-chapter', async (req: Request, res: Response):
       }
     });
 
-    return res.status(200).json({ message: "Đã chuyển chương đọc thành công!", room: updatedRoom });
+    return res.status(200).json({ message: "Successfully changed the manga/chapter!", room: updatedRoom });
   } catch (error) {
-    console.error("Lỗi đổi chương manga:", error);
-    return res.status(500).json({ message: "Lỗi server khi đổi chương." });
+    console.error("Manga Room Change Chapter Error:", error);
+    return res.status(500).json({ message: "Server error when changing manga/chapter." });
   }
 });
 
 // ==========================================
-// 🗑️ 6. API: GIẢI TÁN PHÒNG ĐỌC
+// 🗑️ 6. API: DISSBAND READING ROOM
 // ==========================================
 router.delete('/rooms/:roomId', async (req: Request, res: Response): Promise<any> => {
   try {
@@ -238,15 +238,15 @@ router.delete('/rooms/:roomId', async (req: Request, res: Response): Promise<any
     await prisma.mangaCoMember.deleteMany({ where: { roomId } });
     await prisma.mangaCoRoom.delete({ where: { id: roomId } });
 
-    return res.status(200).json({ message: "Phòng đọc đã được giải tán thành công!" });
+    return res.status(200).json({ message: "Reading room has been disbanded successfully!" });
   } catch (error) {
-    console.error("Lỗi khi giải tán phòng đọc:", error);
-    return res.status(500).json({ message: "Lỗi server khi giải tán phòng." });
+    console.error("Error when disbanding reading room:", error);
+    return res.status(500).json({ message: "Server error when disbanding room." });
   }
 });
 
 // ==========================================
-// 🔍 7. API: LẤY DANH SÁCH CÁC PHÒNG ĐANG MỞ
+// 🔍 7. API: GET A LIST OF AVAILABLE ROOMS
 // ==========================================
 router.get('/rooms', async (req: Request, res: Response): Promise<any> => {
   try {
@@ -263,26 +263,26 @@ router.get('/rooms', async (req: Request, res: Response): Promise<any> => {
 
     return res.status(200).json(rooms);
   } catch (error) {
-    console.error("Lỗi khi lấy danh sách phòng manga:", error);
-    return res.status(500).json({ message: "Lỗi server khi lấy danh sách phòng." });
+    console.error("Error when fetching manga rooms:", error);
+    return res.status(500).json({ message: "Server error when fetching room list." });
   }
 });
 
 // ==========================================
-// 🎤 8. API: LẤY TOKEN VOICE CHAT LIVEKIT
+// 🎤 8. API: GET VOICE CHAT TOKEN FOR LIVEKIT
 // ==========================================
 router.get('/rooms/:roomId/voice-token', async (req: Request, res: Response): Promise<any> => {
   try {
     const rawRoomId = String(req.params.roomId);
-    const userName = (req.query.userName as string) || "Bạn đọc";
-    // 🌟 Ưu tiên dùng userId cố định từ Session
+    const userName = (req.query.userName as string) || "Reader";
+    // 🌟 Prioritize using a fixed user ID from the Session.
     const userId = (req.query.userId as string) || `user_${Math.random().toString(36).substring(2, 8)}`;
 
     if (!process.env.LIVEKIT_API_KEY || !process.env.LIVEKIT_API_SECRET) {
-      return res.status(500).json({ message: "Máy chủ chưa được cấu hình LiveKit!" });
+      return res.status(500).json({ message: "Server has not been configured with LiveKit!" });
     }
 
-    // 🌟 Chuẩn hóa ID phòng: Đảm bảo mọi người cùng vào 1 room voice dù client truyền id hay inviteCode
+    // 🌟 Standardize room IDs: Ensure everyone joins the same voice room whether from the client provides an ID or invite code.
     const existingRoom = await prisma.mangaCoRoom.findFirst({
       where: {
         OR: [
@@ -293,33 +293,33 @@ router.get('/rooms/:roomId/voice-token', async (req: Request, res: Response): Pr
       select: { id: true }
     });
 
-    // Nếu tìm thấy phòng thì lấy ID chuẩn của DB, nếu không thì fallback rawRoomId
+    // If a room is found, retrieve the exact ID from the database; otherwise, fallback to rawRoomId.
     const canonicalRoomId = existingRoom ? existingRoom.id : rawRoomId;
 
     const at = new AccessToken(
       process.env.LIVEKIT_API_KEY,
       process.env.LIVEKIT_API_SECRET,
       {
-        identity: userId, // 🌟 ID cố định định danh duy nhất cho user này
-        name: userName    // Tên hiển thị thật sự khi nói
+        identity: userId, // 🌟 Fixed user ID for unique identification
+        name: userName    // Actual display name when speaking
       }
     );
 
-    // Thời gian sống của token (ví dụ: 6 tiếng)
+    // Token lifespan (e.g., 6 hours)
     at.ttl = '6h';
 
     at.addGrant({
       roomJoin: true,
       room: `manga_${canonicalRoomId}`,
-      canPublish: true,   // Cho phép bật Mic
-      canSubscribe: true  // Cho phép nghe tiếng người khác
+      canPublish: true,   // allow turn on Mic
+      canSubscribe: true  // allow listening to other users
     });
 
     const token = await at.toJwt();
     return res.status(200).json({ token });
   } catch (error) {
-    console.error("Lỗi tạo LiveKit token cho manga room:", error);
-    return res.status(500).json({ message: "Không thể khởi tạo Voice Chat." });
+    console.error("Error creating LiveKit token for manga room:", error);
+    return res.status(500).json({ message: "Unable to create Voice Chat token." });
   }
 });
 

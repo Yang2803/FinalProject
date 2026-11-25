@@ -2,10 +2,10 @@ import { Server as HttpServer } from "http";
 import { Server, Socket } from "socket.io";
 import prisma from "./config/db";
 
-// 🌟 Bộ nhớ lưu danh sách userId đã được phê duyệt theo từng roomId
+// 🌟 The memory stores a list of approved user IDs categorized by room ID.
 const roomApprovedUsers = new Map<string, Set<string>>();
 
-// 🌟 Bộ nhớ lưu trạng thái BGM của từng phòng (bao gồm cả thời gian thực để đồng bộ cho người vào sau)
+// 🌟 The memory stores the BGM state of each room (including the real-time timestamp for synchronization with latecomers)
 interface RoomBgmState {
   url: string;
   isPlaying: boolean;
@@ -14,7 +14,7 @@ interface RoomBgmState {
 }
 const roomBgmState = new Map<string, RoomBgmState>();
 
-// Hàm tính toán trạng thái nhạc kèm số giây hiện tại cho người vào sau
+// Function to calculate the current BGM state with elapsed seconds for latecomers
 function getCurrentRoomBgm(roomId: string) {
   const state = roomBgmState.get(roomId);
   if (!state || !state.url) return null;
@@ -39,17 +39,17 @@ export function initSocket(server: HttpServer) {
   });
 
   io.on("connection", (socket: Socket) => {
-    console.log(`🔌 Thiết bị kết nối Socket: ${socket.id}`);
+    console.log(`🔌 Device connected to Socket: ${socket.id}`);
 
     // ============================================
-    // 1. NHÓM SỰ KIỆN WATCH PARTY (ANIME)
+    // 1.WATCH PARTY (ANIME) EVENT GROUP
     // ============================================
     socket.on("join_room", (roomId: string, userName: string) => {
       socket.join(roomId);
-      console.log(`👤 ${userName} đã tham gia phòng: ${roomId}`);
+      console.log(`👤 ${userName} joined the room: ${roomId}`);
       socket.to(roomId).emit("receive_message", {
-        sender: "Hệ thống",
-        text: `${userName} vừa tham gia phòng!`,
+        sender: "System",
+        text: `${userName} just joined the room!`,
         isSystemMsg: true,
       });
     });
@@ -93,8 +93,8 @@ export function initSocket(server: HttpServer) {
     socket.on("leave_room", (roomId: string, userName: string) => {
       socket.leave(roomId);
       socket.to(roomId).emit("receive_message", {
-        sender: "Hệ thống",
-        text: `${userName} đã rời phòng.`,
+        sender: "System",
+        text: `${userName} has left the room.`,
         isSystemMsg: true,
       });
     });
@@ -115,7 +115,7 @@ export function initSocket(server: HttpServer) {
           if (!room || room.hostId !== data.hostId) {
             return socket.emit(
               "error_message",
-              "Chỉ trưởng phòng mới có quyền đổi theme!"
+              "Only the room host can change the theme!"
             );
           }
 
@@ -126,28 +126,28 @@ export function initSocket(server: HttpServer) {
 
           io.to(data.roomId).emit("receive_room_theme", data.newTheme);
           console.log(
-            `🎨 Phòng ${data.roomId} vừa đổi theme:`,
+            `🎨 Room ${data.roomId} just changed its theme:`,
             data.newTheme.accent
           );
         } catch (error) {
-          console.error("Lỗi khi cập nhật theme phòng:", error);
+          console.error("Error updating room theme:", error);
         }
       }
     );
 
     // ============================================
-    // 2. NHÓM SỰ KIỆN CO-READING ROOM (MANGA)
+    // 2. CO-READING ROOM EVENT GROUP (MANGA)
     // ============================================
     socket.on(
       "manga:join_room",
       ({ roomId, user }: { roomId: string; user: any }) => {
         socket.join(`manga_${roomId}`);
         console.log(
-          `📖 [Manga Room] ${user?.name || socket.id} đã vào phòng: ${roomId}`
+          `📖 [Manga Room] ${user?.name || socket.id} has joined the room: ${roomId}`
         );
         socket.to(`manga_${roomId}`).emit("manga:member_joined", { user });
 
-        // 🌟 Gửi nhạc hiện tại nếu có (Và gửi lại thêm 1 nhịp sau 600ms phòng trường hợp UI vừa mới mount)
+        // 🌟 Send the current music if available (And send an extra beat after 600ms in case the UI has just been mounted).
         const currentBgm = getCurrentRoomBgm(roomId);
         if (currentBgm) {
           socket.emit("manga:bgm_synced", currentBgm);
@@ -161,7 +161,7 @@ export function initSocket(server: HttpServer) {
       }
     );
 
-    // 🌟 SỰ KIỆN DÀNH RIÊNG CHO NGƯỜI VÀO SAU KHI COMPONENT BGM VỪA MOUNT XONG
+    // 🌟 event for latecomers to sync the current BGM state
     socket.on("manga:request_bgm", ({ roomId }: { roomId: string }) => {
       const currentBgm = getCurrentRoomBgm(roomId);
       if (currentBgm) {
@@ -179,7 +179,7 @@ export function initSocket(server: HttpServer) {
       }
     });
 
-    // 🌟 KHÁCH XIN VÀO PHÒNG KÍN: Kiểm tra xem đã từng được duyệt chưa
+    // 🌟 GUEST REQUESTING PRIVATE ROOM: Check if this has been approved before.
     socket.on(
       "manga:request_join",
       ({
@@ -195,13 +195,13 @@ export function initSocket(server: HttpServer) {
 
         const approvedSet = roomApprovedUsers.get(roomId)!;
 
-        // Nếu đã được duyệt trước đó -> Tự động cho vào luôn, không gọi Host
+        // If it has been previously approved -> It will be automatically added, no need to call the host.
         if (approvedSet.has(user?.id)) {
           socket.emit("manga:join_response", { approved: true });
           return;
         }
 
-        // Nếu là người mới -> Bắn yêu cầu tới Host
+        // If a new user -> Send a request to the Host
         socket.to(`manga_${roomId}`).emit("manga:receive_join_request", {
           applicant: user,
           applicantSocketId: socket.id,
@@ -209,7 +209,7 @@ export function initSocket(server: HttpServer) {
       }
     );
 
-    // 🌟 HOST TRẢ LỜI KẾT QUẢ DUYỆT: Lưu lại userId nếu đồng ý
+    // 🌟 HOST'S REVIEW RESULT: Save userId if aprroved, and send the result to the applicant.
     socket.on(
       "manga:respond_join_request",
       ({
@@ -227,13 +227,13 @@ export function initSocket(server: HttpServer) {
           if (!roomApprovedUsers.has(roomId)) {
             roomApprovedUsers.set(roomId, new Set<string>());
           }
-          // Ghi nhớ userId này vĩnh viễn trong phiên phòng
+          // Remember this userId permanently in the room session.
           roomApprovedUsers.get(roomId)!.add(applicantId);
         }
 
         io.to(applicantSocketId).emit("manga:join_response", { approved });
 
-        // 🌟 Ngay khi khách được Host duyệt vào phòng, đẩy luôn bài nhạc đang phát cho khách đó
+        // 🌟 As soon as the host approves the guest into the room, immediately play the currently playing music for that guest.
         if (approved && roomId) {
           setTimeout(() => {
             const currentBgm = getCurrentRoomBgm(roomId);
@@ -252,7 +252,7 @@ export function initSocket(server: HttpServer) {
       }
     );
 
-    // Đồng bộ cuộn dọc mượt mà
+    // vertical scrolling synchronization
     socket.on(
       "manga:sync_scroll",
       (data: { roomId: string; scrollPercent: number }) => {
@@ -260,7 +260,7 @@ export function initSocket(server: HttpServer) {
       }
     );
 
-    // Bật / Tắt Khóa phòng (Chỉ Host mới có quyền phát lệnh này)
+    // Turn Room Lock On/Off (Only the Host has the authority to issue this command)
     socket.on(
       "manga:toggle_lock",
       ({ roomId, isHostLocked }: { roomId: string; isHostLocked: boolean }) => {
@@ -268,7 +268,7 @@ export function initSocket(server: HttpServer) {
       }
     );
 
-    // Đồng bộ chế độ đọc (Single Page / Vertical Webtoon)
+    // Synchronize reading modes (Single Page / Vertical)
     socket.on(
       "manga:change_read_mode",
       ({
@@ -282,10 +282,6 @@ export function initSocket(server: HttpServer) {
       }
     );
 
-    socket.on("manga:laser_pointer", (data: any) => {
-      socket.to(`manga_${data.roomId}`).emit("manga:laser_updated", data);
-    });
-
     socket.on(
       "manga:leave_room",
       ({ roomId, userId }: { roomId: string; userId: string }) => {
@@ -294,14 +290,14 @@ export function initSocket(server: HttpServer) {
       }
     );
 
-    // Giải tán phòng: Dọn sạch danh sách duyệt + nhạc và thông báo mọi người out
+    // Disband the room: Clear the browsing list + music and notify everyone to leave.
     socket.on("manga:disband_room", ({ roomId }: { roomId: string }) => {
       roomApprovedUsers.delete(roomId);
       roomBgmState.delete(roomId);
       io.to(`manga_${roomId}`).emit("manga:room_disbanded");
     });
 
-    // Lắng nghe di chuyển chuột
+    // Listen for mouse movements.
     socket.on(
       "manga:move_cursor",
       ({ roomId, cursor }: { roomId: string; cursor: any }) => {
@@ -309,7 +305,7 @@ export function initSocket(server: HttpServer) {
       }
     );
 
-    // Lắng nghe nét vẽ laser khoanh vùng
+    // Listin for drawing lines (laser pointer).
     socket.on(
       "manga:laser_draw",
       ({ roomId, line }: { roomId: string; line: any }) => {
@@ -317,7 +313,7 @@ export function initSocket(server: HttpServer) {
       }
     );
 
-    // Lắng nghe sự kiện xóa nét vẽ
+    // Listen for the event to clear laser lines
     socket.on(
       "manga:clear_laser",
       ({ roomId, targetUserId }: { roomId: string; targetUserId?: string }) => {
@@ -325,7 +321,7 @@ export function initSocket(server: HttpServer) {
       }
     );
 
-    // Đồng bộ theme background Manga Room
+    // Synchronize Manga Room background theme
     socket.on(
       "manga:change_theme",
       ({
@@ -339,7 +335,7 @@ export function initSocket(server: HttpServer) {
       }
     );
 
-    // 🌟 ĐỒNG BỘ NHẠC NỀN YOUTUBE (BGM)
+    // 🌟 Synchronize YouTube Background Music (BGM)
     socket.on(
       "manga:sync_bgm",
       (data: {
@@ -351,7 +347,7 @@ export function initSocket(server: HttpServer) {
         const prev = roomBgmState.get(data.roomId);
         let nextTime = data.currentTime ?? 0;
 
-        // Nếu chỉ bấm Pause/Play trên cùng 1 bài hát mà không truyền currentTime, tự tính số giây đã trôi qua
+        // If only press Pause/Play on the same song without passing currentTime, it will automatically calculate the elapsed seconds.
         if (data.currentTime === undefined && prev && prev.url === data.url) {
           const elapsed = prev.isPlaying
             ? (Date.now() - prev.updatedAt) / 1000
@@ -359,7 +355,7 @@ export function initSocket(server: HttpServer) {
           nextTime = prev.currentTime + elapsed;
         }
 
-        // 1. Lưu lại vào cache kèm mốc thời gian thực
+        // 1. Save to cache with real-time timestamp.
         roomBgmState.set(data.roomId, {
           url: data.url,
           isPlaying: data.isPlaying,
@@ -367,7 +363,7 @@ export function initSocket(server: HttpServer) {
           updatedAt: Date.now(),
         });
 
-        // 2. Phát cho tất cả thành viên trong phòng
+        // 2. Distribute to all members in the room.
         io.to(`manga_${data.roomId}`).emit("manga:bgm_synced", {
           url: data.url,
           isPlaying: data.isPlaying,
@@ -379,7 +375,7 @@ export function initSocket(server: HttpServer) {
       }
     );
 
-    // 🌟 ĐỒNG BỘ TUA NHẠC (SEEK)
+    // 🌟 SYNCHRONIZE MUSIC ROUTE (SEEK)
     socket.on(
       "manga:seek_bgm",
       (data: { roomId: string; currentTime: number }) => {
@@ -392,7 +388,7 @@ export function initSocket(server: HttpServer) {
           });
         }
 
-        // Phát tới tất cả thành viên khác trong phòng
+        // Sync music to all other members in the room
         socket.to(`manga_${data.roomId}`).emit("manga:bgm_seeked", {
           currentTime: data.currentTime,
         });
@@ -402,7 +398,7 @@ export function initSocket(server: HttpServer) {
       }
     );
 
-    // 🌟 ĐỒNG BỘ THẢ CẢM XÚC BAY (DÙNG CHUNG CHO CẢ MANGA ROOM & WATCH PARTY)
+    // 🌟 SYNCHRONIZE EMOTICON EMISSION (SHARED FOR BOTH MANGA ROOM & WATCH PARTY)
     socket.on(
       "manga:send_reaction",
       (data: {
@@ -421,10 +417,10 @@ export function initSocket(server: HttpServer) {
     );
 
     // ============================================
-    // 3. NGẮT KẾT NỐI CHUNG
+    // 3. Disconnect Event
     // ============================================
     socket.on("disconnect", () => {
-      console.log(`🔌 Thiết bị đã ngắt kết nối: ${socket.id}`);
+      console.log(`🔌 The device has disconnected: ${socket.id}`);
     });
   });
 

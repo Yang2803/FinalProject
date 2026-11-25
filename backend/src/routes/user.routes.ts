@@ -4,46 +4,46 @@ import prisma from '../config/db'; // Nhúng DB dùng chung
 const router = express.Router();
 
 // ==========================================
-// API ĐÁNH GIÁ (RATING)
+// API Rating manga, anime
 // ==========================================
 
-// 1. Gửi hoặc Cập nhật Rating (Manga)
+// 1. Send or update Rating (Manga)
 router.post('/api/rating', async (req: Request, res: Response): Promise<any> => {
   try {
     const { userId, mangaId, score } = req.body;
-    if (!userId || !mangaId || !score) return res.status(400).json({ message: "Thiếu dữ liệu!" });
+    if (!userId || !mangaId || !score) return res.status(400).json({ message: "Missing data!" });
 
-    // Dùng upsert: Nếu user đã rate rồi thì update điểm mới, chưa thì tạo mới
+    // Use upsert: If the user has already rated, update the rating; otherwise, create a new one.
     const rating = await prisma.rating.upsert({
       where: { userId_mangaId: { userId, mangaId } },
       update: { score },
       create: { userId, mangaId, score }
     });
 
-    res.status(200).json({ message: "Cảm ơn bạn đã đánh giá!", rating });
+    res.status(200).json({ message: "Thank you for your rating!", rating });
   } catch (error) {
-    res.status(500).json({ message: "Lỗi server khi đánh giá." });
+    res.status(500).json({ message: "Server error while submitting rating." });
   }
 });
 
-// 2. Lấy thông tin Rating của 1 truyện Manga
+// 2. Get the Rating Information for a manga series.
 router.get('/api/rating/:mangaId', async (req: Request, res: Response): Promise<any> => {
   try {
     const mangaId = req.params.mangaId as string;
-    const { userId } = req.query; // Nhận userId từ Frontend (nếu user đã đăng nhập)
+    const { userId } = req.query; // Get userId from Frontend (if the user is logged in))
 
-    // Nhờ DB tính điểm trung bình (_avg) và tổng số lượt đánh giá (_count)
+    //The database calculates the average score (_avg) and the total number of reviews (_count).
     const aggregations = await prisma.rating.aggregate({
       _avg: { score: true },
       _count: { score: true },
       where: { mangaId }
     });
 
-    // Làm tròn 1 chữ số thập phân (VD: 4.5). Nếu chưa ai đánh giá thì mặc định là 0.
+    // Round to 1 decimal place (e.g., 4.5). If no one has rated, default to 0.
     const average = aggregations._avg.score ? Number(aggregations._avg.score.toFixed(1)) : 0;
     const count = aggregations._count.score;
 
-    // Phục hồi điểm của User hiện tại (Để tô vàng lại ngôi sao)
+    // Retrieve the current user's rating (to highlight the star)
     let userScore = 0;
     if (userId) {
       const userRating = await prisma.rating.findUnique({
@@ -54,16 +54,16 @@ router.get('/api/rating/:mangaId', async (req: Request, res: Response): Promise<
 
     res.status(200).json({ average, count, userScore });
   } catch (error) {
-    console.error("Lỗi tải thống kê rating:", error);
-    res.status(500).json({ message: "Lỗi server khi tải rating." });
+    console.error("Error fetching rating statistics:", error);
+    res.status(500).json({ message: "Server error while fetching rating." });
   }
 });
 
-// 3. POST: Gửi hoặc Cập nhật đánh giá Anime (Upsert)
+// 3. POST: Send or update Anime rating (Upsert)
 router.post('/api/rating/anime', async (req: Request, res: Response): Promise<any> => {
   try {
     const { userId, animeId, score } = req.body;
-    if (!userId || !animeId || !score) return res.status(400).json({ message: "Thiếu dữ liệu" });
+    if (!userId || !animeId || !score) return res.status(400).json({ message: "Missing data" });
 
     const rating = await prisma.animeRating.upsert({
       where: {
@@ -80,7 +80,7 @@ router.post('/api/rating/anime', async (req: Request, res: Response): Promise<an
   }
 });
 
-// 4. GET: Lấy điểm trung bình và điểm Anime của User hiện tại
+// 4. GET: Get the average score and the current user's rating for an anime
 router.get('/api/rating/anime/:id', async (req: Request, res: Response) => {
   try {
     const animeId = req.params.id as string;
@@ -106,16 +106,16 @@ router.get('/api/rating/anime/:id', async (req: Request, res: Response) => {
       userScore
     });
   } catch (error) {
-    res.status(500).json({ message: "Lỗi tải thông tin đánh giá" });
+    res.status(500).json({ message: "Error loading rating information" });
   }
 });
 
 
 // ==========================================
-// API BÌNH LUẬN DÙNG CHUNG (MANGA, CHAPTER, ANIME, EPISODE)
+// API COMMENTS FOR SHARED USE (MANGA, CHAPTER, ANIME, EPISODE)
 // ==========================================
 
-// 1. LẤY DANH SÁCH BÌNH LUẬN
+// 1. GET COMMENT LIST
 router.get('/api/comments', async (req: Request, res: Response) => {
   try {
     const { mangaId, chapterId, animeId, episodeId } = req.query;
@@ -133,17 +133,17 @@ router.get('/api/comments', async (req: Request, res: Response) => {
     });
     res.status(200).json(comments);
   } catch (error) {
-    res.status(500).json({ message: "Lỗi tải bình luận" });
+    res.status(500).json({ message: "Error fetching comments" });
   }
 });
 
-// 2. GỬI BÌNH LUẬN MỚI
+// 2. Send new comment (Manga, Chapter, Anime, Episode)
 router.post('/api/comments', async (req: Request, res: Response): Promise<any> => {
   try {
     const { userId, content, mangaId, chapterId, animeId, episodeId } = req.body;
 
     if (!userId || !content || (!mangaId && !chapterId && !animeId && !episodeId)) {
-      return res.status(400).json({ message: "Thiếu dữ liệu bắt buộc" });
+      return res.status(400).json({ message: "Missing required data" });
     }
 
     const newComment = await prisma.comment.create({
@@ -161,16 +161,16 @@ router.post('/api/comments', async (req: Request, res: Response): Promise<any> =
     res.status(201).json(newComment);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Lỗi đăng bình luận" });
+    res.status(500).json({ message: "Error posting comment" });
   }
 });
 
 
 // ==========================================
-// API QUẢN LÝ DANH SÁCH ĐỌC (READING LIST)
+// API manage Reading List (Manga) for Users
 // ==========================================
 
-// 1. Kiểm tra trạng thái Reading List
+// 1. Check Reading List status
 router.get('/api/reading-list/status', async (req: Request, res: Response): Promise<any> => {
   try {
     const userId = req.query.userId as string;
@@ -188,17 +188,17 @@ router.get('/api/reading-list/status', async (req: Request, res: Response): Prom
 
     res.status(200).json({ isInList: !!item });
   } catch (error) {
-    res.status(500).json({ message: "Lỗi kiểm tra danh sách đọc." });
+    res.status(500).json({ message: "Error checking reading list status." });
   }
 });
 
-// 2. Toggle trạng thái Reading List
+// 2. Toggle Reading List status
 router.post('/api/reading-list/toggle', async (req: Request, res: Response): Promise<any> => {
   try {
     const { userId, mangaId } = req.body;
 
     if (!userId || !mangaId) {
-      return res.status(400).json({ message: "Thiếu thông tin User ID hoặc Manga ID!" });
+      return res.status(400).json({ message: "Missing User ID or Manga ID!" });
     }
 
     const existingItem = await prisma.readingList.findUnique({
@@ -213,20 +213,20 @@ router.post('/api/reading-list/toggle', async (req: Request, res: Response): Pro
           userId_mangaId: { userId, mangaId }
         }
       });
-      return res.status(200).json({ isInList: false, message: "Đã xóa khỏi danh sách đọc!" });
+      return res.status(200).json({ isInList: false, message: "Removed from reading list!" });
     } else {
       await prisma.readingList.create({
         data: { userId, mangaId }
       });
-      return res.status(201).json({ isInList: true, message: "Đã thêm vào danh sách đọc!" });
+      return res.status(201).json({ isInList: true, message: "Added to reading list!" });
     }
   } catch (error) {
-    console.error("Lỗi toggle reading list:", error);
-    res.status(500).json({ message: "Lỗi server khi cập nhật danh sách đọc." });
+    console.error("Toggle reading list error:", error);
+    res.status(500).json({ message: "Server error while updating the reading list." });
   }
 });
 
-// 3. Lấy toàn bộ danh sách truyện trong Reading List của một User
+// 3. Get the entire reading list for a user
 router.get('/api/reading-list/:userId', async (req: Request, res: Response): Promise<any> => {
   try {
     const userId = req.params.userId as string;
@@ -242,21 +242,21 @@ router.get('/api/reading-list/:userId', async (req: Request, res: Response): Pro
     const mangas = readingList.map(item => item.manga);
     res.status(200).json(mangas);
   } catch (error) {
-    console.error("Lỗi tải Reading List:", error);
-    res.status(500).json({ message: "Lỗi server khi tải danh sách đọc." });
+    console.error("Error loading reading list:", error);
+    res.status(500).json({ message: "Server error when loading reading list." });
   }
 });
 
 
 // ==========================================
-// API WATCHLIST (DANH SÁCH XEM ANIME)
+// API WATCHLIST (ANIME) FOR USERS
 // ==========================================
 
-// 1. POST: Bật/Tắt danh sách xem (Toggle)
+// 1. POST:Toggle Anime (Add or Remove)
 router.post('/api/watchlist/toggle', async (req: Request, res: Response): Promise<any> => {
   try {
     const { userId, animeId } = req.body;
-    if (!userId || !animeId) return res.status(400).json({ message: "Thiếu dữ liệu" });
+    if (!userId || !animeId) return res.status(400).json({ message: "Missing data" });
 
     const existingItem = await prisma.watchList.findUnique({
       where: { userId_animeId: { userId, animeId } }
@@ -264,24 +264,24 @@ router.post('/api/watchlist/toggle', async (req: Request, res: Response): Promis
 
     if (existingItem) {
       await prisma.watchList.delete({ where: { id: existingItem.id } });
-      res.status(200).json({ isInList: false, message: "Đã xóa khỏi danh sách xem" });
+      res.status(200).json({ isInList: false, message: "Removed from watch list!" });
     } else {
       await prisma.watchList.create({ data: { userId, animeId } });
-      res.status(200).json({ isInList: true, message: "Đã thêm vào danh sách xem" });
+      res.status(200).json({ isInList: true, message: "Added to watch list!" });
     }
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Lỗi thao tác danh sách xem" });
+    res.status(500).json({ message: "Server error while updating the watch list." });
   }
 });
 
-// 2. GET: Kiểm tra trạng thái hiện tại Watchlist
+// 2. GET: Check the current status of the watchlist
 router.get('/api/watchlist/status', async (req: Request, res: Response): Promise<any> => {
   try {
     const userId = req.query.userId as string;
     const animeId = req.query.animeId as string;
 
-    if (!userId || !animeId) return res.status(400).json({ message: "Thiếu dữ liệu" });
+    if (!userId || !animeId) return res.status(400).json({ message: "Missing data" });
 
     const existingItem = await prisma.watchList.findUnique({
       where: { userId_animeId: { userId, animeId } }
@@ -289,15 +289,15 @@ router.get('/api/watchlist/status', async (req: Request, res: Response): Promise
 
     res.status(200).json({ isInList: !!existingItem });
   } catch (error) {
-    res.status(500).json({ message: "Lỗi kiểm tra trạng thái" });
+    res.status(500).json({ message: "Server error when checking watchlist status." });
   }
 });
 
-// 3. GET: Lấy toàn bộ danh sách xem của 1 User
+// 3. GET: Get the entire watchlist for a user
 router.get('/api/watchlist/:userId', async (req: Request, res: Response): Promise<any> => {
   try {
     const userId = req.params.userId as string;
-    if (!userId) return res.status(400).json({ message: "Thiếu ID người dùng" });
+    if (!userId) return res.status(400).json({ message: "Missing user ID" });
 
     const watchlists = await prisma.watchList.findMany({
       where: { userId: userId },
@@ -313,21 +313,21 @@ router.get('/api/watchlist/:userId', async (req: Request, res: Response): Promis
 
     res.status(200).json(watchlists);
   } catch (error) {
-    console.error("Lỗi lấy danh sách xem:", error);
-    res.status(500).json({ message: "Lỗi máy chủ khi tải danh sách" });
+    console.error("Error loading watchlist:", error);
+    res.status(500).json({ message: "Server error when loading watchlist." });
   }
 });
 
 
 // ==========================================
-// API LỊCH SỬ HOẠT ĐỘNG (HISTORY)
+// API History
 // ==========================================
 
-// 1. Ghi nhận lịch sử đọc Manga
+// 1. POST: Record Manga Reading History
 router.post('/api/history/manga', async (req: Request, res: Response): Promise<any> => {
   try {
     const { userId, mangaId, chapterId } = req.body;
-    if (!userId || !mangaId || !chapterId) return res.status(400).json({ message: "Thiếu dữ liệu" });
+    if (!userId || !mangaId || !chapterId) return res.status(400).json({ message: "Missing data" });
 
     await prisma.mangaHistory.upsert({
       where: { userId_mangaId: { userId, mangaId } },
@@ -335,20 +335,20 @@ router.post('/api/history/manga', async (req: Request, res: Response): Promise<a
       create: { userId, mangaId, chapterId }
     });
 
-    res.status(200).json({ message: "Đã lưu lịch sử đọc" });
+    res.status(200).json({ message: "Reading history saved!" });
   } catch (error) {
-    console.error("Lỗi lưu lịch sử:", error);
-    res.status(500).json({ message: "Lỗi server" });
+    console.error("Error saving history:", error);
+    res.status(500).json({ message: "Server error" });
   }
 });
 
-// 2. POST: Lưu hoặc cập nhật lịch sử xem Anime
+// 2. POST: Record or update Anime viewing history
 router.post('/api/history/anime', async (req: Request, res: Response): Promise<any> => {
   try {
     const { userId, animeId, episodeId } = req.body;
 
     if (!userId || !animeId || !episodeId) {
-      return res.status(400).json({ message: "Thiếu thông tin (userId, animeId, episodeId)" });
+      return res.status(400).json({ message: "Missing information (userId, animeId, episodeId)" });
     }
 
     const savedHistory = await prisma.animeHistory.upsert({
@@ -368,14 +368,14 @@ router.post('/api/history/anime', async (req: Request, res: Response): Promise<a
       }
     });
 
-    res.status(200).json({ message: "Đã lưu lịch sử xem", history: savedHistory });
+    res.status(200).json({ message: "Viewing history saved!", history: savedHistory });
   } catch (error) {
-    console.error("Lỗi lưu lịch sử Anime:", error);
-    res.status(500).json({ message: "Lỗi máy chủ khi lưu lịch sử" });
+    console.error("Error saving Anime history:", error);
+    res.status(500).json({ message: "Server error when saving history" });
   }
 });
 
-// 3. Lấy danh sách Lịch sử của User (Hiển thị ở Profile)
+// 3. Get History List for a User (Displayed in Profile)
 router.get('/api/history/:userId', async (req: Request, res: Response): Promise<any> => {
   try {
     const userId = req.params.userId as string;
@@ -402,8 +402,8 @@ router.get('/api/history/:userId', async (req: Request, res: Response): Promise<
 
     res.status(200).json({ mangaHistory, animeHistory });
   } catch (error) {
-    console.error("Lỗi lấy lịch sử:", error);
-    res.status(500).json({ message: "Lỗi server" });
+    console.error("Error loading history:", error);
+    res.status(500).json({ message: "Server error" });
   }
 });
 

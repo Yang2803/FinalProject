@@ -63,7 +63,7 @@ function SortableImageItem(props: { item: ImageItem; index: number; onRemove: (i
           onRemove(item.id);
         }}
         className="absolute top-1 right-1 bg-red-600 hover:bg-red-700 text-white w-6 h-6 rounded-full flex justify-center items-center font-bold text-xs shadow-md transition z-20 cursor-pointer"
-        title="Xóa ảnh này"
+        title="Delete this image"
       >
         X
       </button>
@@ -81,7 +81,6 @@ export default function EditChapterPage({ params }: { params: Promise<{ id: stri
   const chapterId = resolvedParams.chapterId;
   const router = useRouter();
 
-  // 🌟 1. BỔ SUNG CÁC STATE MỚI
   const [chapterNumber, setChapterNumber] = useState("");
   const [title, setTitle] = useState("");
   const [characters, setCharacters] = useState("");
@@ -90,7 +89,7 @@ export default function EditChapterPage({ params }: { params: Promise<{ id: stri
   const [imageItems, setImageItems] = useState<ImageItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [isAutoFilling, setIsAutoFilling] = useState(false); // State cho nút AI
+  const [isAutoFilling, setIsAutoFilling] = useState(false); // State for AI auto-fill button
 
   useEffect(() => {
     return () => {
@@ -107,7 +106,6 @@ export default function EditChapterPage({ params }: { params: Promise<{ id: stri
         if (!res.ok) throw new Error("Chapter information cannot be loaded.");
         const data = await res.json();
         
-        // 🌟 NẠP DỮ LIỆU CŨ VÀO STATE MỚI
         setTitle(data.title);
         setChapterNumber(data.chapterNumber ? String(data.chapterNumber) : "");
         setCharacters(data.characters ? data.characters.join(", ") : "");
@@ -166,7 +164,7 @@ export default function EditChapterPage({ params }: { params: Promise<{ id: stri
     }
   };
 
-  // 🌟 2. HÀM GỌI API AUTO-FILL MANGA CHAPTER
+  // 🌟 2. Function call API AUTO-FILL MANGA CHAPTER
   const handleAutoFill = async () => {
     if (!chapterNumber) {
       alert("Please enter Chapter Number before using Auto-fill!");
@@ -229,7 +227,7 @@ export default function EditChapterPage({ params }: { params: Promise<{ id: stri
         })
       );
 
-      // 🌟 3. GỬI KÈM DATA MỚI XUỐNG BACKEND
+      // 🌟 3. Send data to backend to save to Database
       const backendRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/admin/chapter/${chapterId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -272,7 +270,7 @@ export default function EditChapterPage({ params }: { params: Promise<{ id: stri
         
         <form onSubmit={handleSubmit} className="space-y-6">
           
-          {/* 🌟 KHU VỰC THÔNG TIN (ĐƯỢC NÂNG CẤP) */}
+          {/* 🌟 Information area */}
           <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-xl space-y-6">
             
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -341,7 +339,7 @@ export default function EditChapterPage({ params }: { params: Promise<{ id: stri
             </div>
           </div>
 
-          {/* KHU VỰC ẢNH VÀ DRAG-DROP */}
+          {/* IMAGE AREA AND DRAG-DROP */}
           <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-xl space-y-6">
             <div>
               <label className="block text-sm font-bold text-gray-300 mb-2 hover:text-blue-400 cursor-default transition">

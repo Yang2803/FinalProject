@@ -3,10 +3,10 @@ import dotenv from 'dotenv';
 import cors from "cors";
 import http from 'http';
 
-// 🌟 IMPORT HÀM KHỞI TẠO SOCKET VỪA TÁCH
+// 🌟 IMPORT THE SOCKET CONSTRUCTOR FUNCTION
 import { initSocket } from './socket';
 
-// Nhúng các file Router
+// Embed Router files
 import authRoutes from './routes/auth.routes';
 import mangaRoutes from './routes/manga.routes';
 import animeRoutes from './routes/anime.routes';
@@ -28,14 +28,14 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// TẠO HTTP SERVER VÀ NẠP SOCKET
+// Create an HTTP server and load the socket.
 const server = http.createServer(app);
-initSocket(server); // 🌟 Khởi tạo toàn bộ Socket.io tại đây chỉ với 1 dòng
+initSocket(server); // 🌟 Initialize the entire Socket.io application 
 
 // CẤU HÌNH MIDDLEWARE
 app.use(
   cors({
-    origin: true, // Tự động cho phép cả localhost:3000 lẫn Vercel và hỗ trợ credentials
+    origin: true, // Automatically allow both localhost:3000 and Vercel with credential support
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     credentials: true,
   })
@@ -43,7 +43,7 @@ app.use(
 app.use(express.json({ limit: "20mb" }));
 app.use(express.urlencoded({ limit: "20mb", extended: true }));
 
-// ĐĂNG KÝ ROUTES
+// ROUTES
 app.use('/api/auth', authRoutes);
 app.use('/', mangaRoutes);
 app.use('/', animeRoutes);
@@ -66,5 +66,5 @@ app.get('/', (req: Request, res: Response) => {
 
 server.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
-  console.log('Tất cả các route và Socket.io đã được nạp thành công!');
+  console.log('All routes and Socket.io have been loaded successfully!');
 });

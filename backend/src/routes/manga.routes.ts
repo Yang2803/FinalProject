@@ -15,31 +15,31 @@ async function generateEmbedding(text: string): Promise<number[]> {
 // ================= API ADMIN (MANGA & CHAPTER) =================
 
 // ==========================================
-// 🏆 1. API: LẤY BẢNG XẾP HẠNG TOP MANGA
+// 🏆 1. API: GET TOP MANGA RANKING
 // ==========================================
 router.get('/api/manga/top', async (req: Request, res: Response): Promise<any> => {
   try {
-    const period = req.query.period as string; // Nhận 'day', 'week', hoặc 'month'
+    const period = req.query.period as string; // Recieve 'day', 'week', hoặc 'month'
     
-    // 1. Xác định mốc thời gian bắt đầu lọc
+    // 1. The start time for the filter.
     const startDate = new Date();
     if (period === 'day') startDate.setDate(startDate.getDate() - 1);
     else if (period === 'week') startDate.setDate(startDate.getDate() - 7);
     else if (period === 'month') startDate.setMonth(startDate.getMonth() - 1);
     else return res.status(400).json({ message: "Invalid period. Please provide day, week, or month." });
 
-    // 2. Gom nhóm (groupBy) và đếm số log lượt xem trong khoảng thời gian
+    // 2. Group the logs by and count the number of views within that time period.
     const topViews = await prisma.mangaViewLog.groupBy({
       by: ['mangaId'],
       where: { createdAt: { gte: startDate } },
       _count: { mangaId: true },
       orderBy: { _count: { mangaId: 'desc' } },
-      take: 10 // Lấy Top 10
+      take: 10 // Get Top 10
     });
 
     if (topViews.length === 0) return res.status(200).json([]);
 
-    // 3. Lấy thông tin chi tiết của Top 10 Manga này
+    // 3. Get detailed information on this Top 10 Manga.
     const mangaIds = topViews.map(v => v.mangaId);
     const mangas = await prisma.manga.findMany({
       where: { id: { in: mangaIds } },
@@ -51,64 +51,64 @@ router.get('/api/manga/top', async (req: Request, res: Response): Promise<any> =
       }
     });
 
-    // 4. Map data lại theo đúng thứ tự xếp hạng (vì findMany không giữ thứ tự)
+    // 4. Map the data again in the correct ranking order (because findMany doesn't maintain the order).
     const sortedTopMangas = topViews.map(view => {
       const mangaDetail = mangas.find(m => m.id === view.mangaId);
       return {
         ...mangaDetail,
-        periodViews: view._count.mangaId // Gắn thêm field số view để Frontend hiển thị
+        periodViews: view._count.mangaId // Add a view number field for the frontend to display.
       };
-    }).filter(m => m.id); // Loại bỏ các record lỗi (nếu có)
+    }).filter(m => m.id); // Remove any error records (if any).
 
     res.status(200).json(sortedTopMangas);
   } catch (error) {
-    console.error("Lỗi lấy Top Manga:", error);
-    res.status(500).json({ message: "Lỗi server khi lấy bảng xếp hạng manga." });
+    console.error("Error fetching Top Manga:", error);
+    res.status(500).json({ message: "Server error when fetching manga ranking." });
   }
 });
 
 // ==========================================
-// 👁️ 2. API: GHI NHẬN 1 LƯỢT ĐỌC MANGA (LOG VIEW)
+// 👁️ 2. API: LOG VIEW (for ranking)
 // ==========================================
 router.post('/api/manga/:id/view', async (req: Request, res: Response): Promise<any> => {
   try {
     const mangaId = String(req.params.id);
 
-    // Kiểm tra xem truyện có tồn tại không
+    // Check if the manga exists.
     const manga = await prisma.manga.findUnique({ where: { id: mangaId } });
-    if (!manga) return res.status(404).json({ message: "Manga không tồn tại!" });
+    if (!manga) return res.status(404).json({ message: "Manga does not exist!" });
 
-    // Tạo 1 bản ghi log lượt xem mới
+    // Create a new view log entry
     await prisma.mangaViewLog.create({
       data: { mangaId: manga.id }
     });
 
-    res.status(200).json({ message: "Đã ghi nhận lượt đọc!" });
+    res.status(200).json({ message: "View logged successfully!" });
   } catch (error) {
-    console.error("Lỗi ghi log lượt đọc Manga:", error);
-    res.status(500).json({ message: "Lỗi server khi ghi nhận lượt xem." });
+    console.error("Error logging manga view:", error);
+    res.status(500).json({ message: "Server error when logging view." });
   }
 });
 
-
+//API ADMIN: CRUD MANGA & CHAPTER
+//Create new manga (only for Admin to manage manga)
 router.post('/api/admin/manga', async (req: Request, res: Response): Promise<any> => {
-  /* ... Paste ruột API Thêm Manga mới ... */
   try {
-    // 1. Nhận dữ liệu từ Frontend gửi lên, bao gồm cả userId để check quyền
+    // 1. Receive data sent from the frontend, including the user ID, to check permissions.
     const { title, description, author, coverImage, status, userId, fandomPrefix } = req.body;
 
     if (!title || !userId) {
-      return res.status(400).json({ message: "Thiếu thông tin bắt buộc (Tiêu đề hoặc ID người dùng)!" });
+      return res.status(400).json({ message: "Missing required information (Title or User ID)!" });
     }
 
-    // 2. Kiểm tra bảo mật: User này có tồn tại không và có phải ADMIN không?
+    // 2. Security check: Does this user exist and is they an administrator?
     const user = await prisma.user.findUnique({ where: { id: userId } });
     
     if (!user || user.role !== "ADMIN") {
-      return res.status(403).json({ message: "Từ chối truy cập! Chỉ Admin mới có quyền thực hiện hành động này." });
+      return res.status(403).json({ message: "Access denied! Only Admins can perform this action." });
     }
 
-    // 3. Nếu là ADMIN, tiến hành lưu Manga vào Database
+    // 3. If the user is an ADMIN, proceed to save the manga to the database
     const newManga = await prisma.manga.create({
       data: {
         title,
@@ -127,11 +127,11 @@ router.post('/api/admin/manga', async (req: Request, res: Response): Promise<any
   }
 });
 
+//Get all manga (Admin)
 router.get('/api/admin/manga', async (req: Request, res: Response): Promise<any> => {
-  /* ... Paste ruột API Lấy danh sách toàn bộ Manga (Admin) ... */
   try {
     const mangas = await prisma.manga.findMany({
-      orderBy: { createdAt: 'desc' }, // Sắp xếp truyện mới nhất lên đầu
+      orderBy: { createdAt: 'desc' }, // Arrange the manga stories at the top.
       include: { _count: { select: { chapters: true } } }
     });
     res.status(200).json(mangas);
@@ -141,15 +141,15 @@ router.get('/api/admin/manga', async (req: Request, res: Response): Promise<any>
   }
 });
 
+//Get each manga detail (Admin)
 router.get('/api/admin/manga/:id', async (req: Request, res: Response): Promise<any> => {
-  /* ... Paste ruột API Lấy chi tiết 1 Manga (Admin) ... */
   try {
     const id = req.params.id as string;
     const manga = await prisma.manga.findUnique({
       where: { id },
       include: {
         chapters: {
-          orderBy: { createdAt: 'desc' } // Chương mới lên đầu
+          orderBy: { createdAt: 'desc' } // Arrange new chapters at the top
         }
       }
     });
@@ -162,7 +162,7 @@ router.get('/api/admin/manga/:id', async (req: Request, res: Response): Promise<
   }
 });
 
-// API: Lấy danh sách chapters của 1 Manga (dùng cho trang Upload/Edit Episode)
+// API: Get a list of chapters for a manga (for use on the Episode Upload/Edit page)
 router.get('/api/admin/manga/:id/chapters', async (req: Request, res: Response): Promise<any> => {
   try {
     const id = req.params.id as string;
@@ -183,8 +183,8 @@ router.get('/api/admin/manga/:id/chapters', async (req: Request, res: Response):
   }
 });
 
+//Update manga information (Admin)
 router.put('/api/admin/manga/:id', async (req: Request, res: Response): Promise<any> => {
-  /* ... Paste ruột API Cập nhật thông tin truyện ... */
   try {
     const id = req.params.id as string;
     const { title, author, coverImage, status, description, fandomPrefix } = req.body;
@@ -201,31 +201,32 @@ router.put('/api/admin/manga/:id', async (req: Request, res: Response): Promise<
   }
 });
 
+//Delete manga (Admin)
 router.delete('/api/admin/manga/:id', async (req: Request, res: Response): Promise<any> => {
-  /* ... Paste ruột API Xóa truyện ... */
   try {
     const id = req.params.id as string;
 
-    // Vì schema đã cấu hình onDelete: Cascade nên khi xóa Manga, toàn bộ Chapter thuộc về nó sẽ tự động bị xóa sạch trong DB
+    // Because the schema is configured with onDelete: Cascade, when a manga is deleted, all chapters belonging to it will be automatically deleted from the database.
     await prisma.manga.delete({ where: { id } });
 
     res.status(200).json({ message: "New manga deleted successfully!" });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Lỗi server khi xóa truyện." });
+    res.status(500).json({ message: "Server error when deleting a story." });
   }
 });
 
+//Create new chapter (Admin)
 router.post('/api/admin/chapter', async (req: Request, res: Response): Promise<any> => {
   try {
-    // 🌟 1. HỨNG THÊM DỮ LIỆU TỪ FRONTEND
+    // 🌟 1. Receive data from FRONTEND
     const { mangaId, title, chapterNumber, characters, plotSummary, images } = req.body;
 
     if (!mangaId || !title || !images || images.length === 0) {
-      return res.status(400).json({ message: "Thiếu thông tin hoặc chưa có ảnh!" });
+      return res.status(400).json({ message: "Missing information or no images provided!" });
     }
 
-    // 🌟 2. XỬ LÝ CHUỖI CHARACTERS THÀNH ARRAY
+    // 🌟 2. Process the CHARACTERS string into an array
     let characterArray: string[] = [];
     if (typeof characters === 'string' && characters.trim().length > 0) {
       characterArray = characters.split(",").map(name => name.trim()).filter(name => name.length > 0);
@@ -233,7 +234,7 @@ router.post('/api/admin/chapter', async (req: Request, res: Response): Promise<a
       characterArray = characters;
     }
 
-    // 🌟 3. LƯU VÀO DATABASE
+    // 🌟 3. SAVE TO DATABASE
     const newChapter = await prisma.chapter.create({
       data: {
         mangaId,
@@ -246,7 +247,7 @@ router.post('/api/admin/chapter', async (req: Request, res: Response): Promise<a
     });
 
     // ==========================================
-    // 🌟 4. TỰ ĐỘNG SINH VECTOR EMBEDDING VÀ LƯU VÀO DB
+    // 🌟 4. AUTOMATICALLY GENERATE EMBEDDING VECTORS AND SAVE THEM TO THE DATABASE
     // ==========================================
     if (plotSummary && plotSummary.trim().length > 0) {
       try {
@@ -258,14 +259,14 @@ router.post('/api/admin/chapter', async (req: Request, res: Response): Promise<a
           vectorStr,
           newChapter.id
         );
-        console.log(`✨ Đã nạp thành công Vector Embedding cho Chapter mới.`);
+        console.log(`✨ Vector Embedding for the new Chapter has been successfully loaded.`);
       } catch (embedError) {
-        console.error("Lỗi nạp Vector Embedding:", embedError);
+        console.error("Vector Embedding Loading Error:", embedError);
       }
     }
 
     // ==========================================
-    // 🌟 5. TỰ ĐỘNG BẮN THÔNG BÁO CHO NGƯỜI THEO DÕI
+    // 🌟 5. AUTOMATICALLY SEND NOTIFICATIONS TO FOLLOWERS
     // ==========================================
     try {
       const usersInReadingList = await prisma.readingList.findMany({
@@ -278,7 +279,7 @@ router.post('/api/admin/chapter', async (req: Request, res: Response): Promise<a
           select: { title: true }
         });
 
-        const mangaTitleStr = mangaInfo?.title || "Một bộ truyện bạn theo dõi";
+        const mangaTitleStr = mangaInfo?.title || "A series you follow";
 
         const notificationsToInsert = usersInReadingList.map((item: any) => ({
           userId: item.userId,
@@ -291,10 +292,10 @@ router.post('/api/admin/chapter', async (req: Request, res: Response): Promise<a
         await prisma.notification.createMany({
           data: notificationsToInsert
         });
-        console.log(`✨ Đã gửi thông báo cho ${usersInReadingList.length} người dùng!`);
+        console.log(`✨ Sended notification for ${usersInReadingList.length} users!`);
       }
     } catch (notiError) {
-      console.error("Lỗi khi gửi thông báo:", notiError);
+      console.error("Error sending notifications:", notiError);
     }
 
     res.status(201).json({ message: "New chapter added successfully!", chapter: newChapter });
@@ -304,30 +305,30 @@ router.post('/api/admin/chapter', async (req: Request, res: Response): Promise<a
   }
 });
 
-// Lấy chi tiết 1 Chapter (Admin)
+// Get details of a single Chapter (Admin)
 router.get('/api/admin/chapter/:id', async (req: Request, res: Response): Promise<any> => {
   try {
     const id = req.params.id as string;
     const chapter = await prisma.chapter.findUnique({ where: { id } });
-    if (!chapter) return res.status(404).json({ message: "Không tìm thấy chương truyện này!" });
+    if (!chapter) return res.status(404).json({ message: "Chapter not found!" });
     res.status(200).json(chapter);
   } catch (error) {
-    res.status(500).json({ message: "Lỗi server khi tải thông tin chương." });
+    res.status(500).json({ message: "Server error while fetching chapter details." });
   }
 });
 
-// Sửa chương truyện (SỬA)
+// Edit chapter (Admin)
 router.put('/api/admin/chapter/:id', async (req: Request, res: Response): Promise<any> => {
   try {
     const id = req.params.id as string;
-    // 🌟 1. Hứng thêm các biến mới từ Frontend
+    // 🌟 1. Receive new variables from the Frontend.
     const { title, chapterNumber, characters, plotSummary, images } = req.body; 
 
     if (!title) {
-      return res.status(400).json({ message: "Tên chương không được để trống!" });
+      return res.status(400).json({ message: "Chapter name cannot be empty!" });
     }
 
-    // 🌟 2. Xử lý chuỗi characters thành Array
+    // 🌟 2. Process the characters string into an Array
     let characterArray: string[] | undefined = undefined;
     if (characters !== undefined) {
       if (typeof characters === 'string' && characters.trim().length > 0) {
@@ -339,7 +340,7 @@ router.put('/api/admin/chapter/:id', async (req: Request, res: Response): Promis
       }
     }
 
-    // 🌟 3. Cập nhật dữ liệu
+    // 🌟 3. Update the data
     const updatedChapter = await prisma.chapter.update({
       where: { id },
       data: { 
@@ -352,7 +353,7 @@ router.put('/api/admin/chapter/:id', async (req: Request, res: Response): Promis
     });
 
     // ==========================================
-    // 🌟 4. XỬ LÝ LẠI TỌA ĐỘ VECTOR NẾU PLOT SUMMARY BỊ THAY ĐỔI
+    // 🌟 4. PROCESS VECTOR COORDINATES IF PLOT SUMMARY IS CHANGED
     // ==========================================
     if (plotSummary !== undefined) {
       if (plotSummary.trim().length > 0) {
@@ -365,12 +366,12 @@ router.put('/api/admin/chapter/:id', async (req: Request, res: Response): Promis
             vectorStr,
             id
           );
-          console.log(`✨ Đã cập nhật lại Vector 3072 chiều cho Chapter ID: ${id}`);
+          console.log(`✨ Successfully updated Vector 3072 dimensions for Chapter ID: ${id}`);
         } catch (embedError) {
-          console.error("Lỗi nạp Vector Embedding khi Edit:", embedError);
+          console.error("Error loading Vector Embedding when editing:", embedError);
         }
       } else {
-        // Reset về NULL nếu admin xóa trắng tóm tắt
+        // Reset about NULL if admin clears the summary
         await prisma.$executeRawUnsafe(
           `UPDATE "Chapter" SET embedding = NULL WHERE id = $1`,
           id
@@ -385,12 +386,11 @@ router.put('/api/admin/chapter/:id', async (req: Request, res: Response): Promis
   }
 });
 
-// Xóa chương truyện (XÓA)
+// Delete chapter (Admin)
 router.delete('/api/admin/chapter/:id', async (req: Request, res: Response): Promise<any> => {
   try {
     const id = req.params.id as string;
 
-    // Đổi lại đúng là prisma.chapter.delete
     await prisma.chapter.delete({
       where: { id }
     });
@@ -398,110 +398,35 @@ router.delete('/api/admin/chapter/:id', async (req: Request, res: Response): Pro
     res.status(200).json({ message: "Chapter deleted successfully!" });
   } catch (error) {
     console.error("Error deleting chapter:", error);
-    res.status(500).json({ message: "Lỗi server khi xóa chương truyện." });
+    res.status(500).json({ message: "Server error while deleting chapter." });
   }
 });
 
 
-// ================= API PUBLIC (DÀNH CHO NGƯỜI DÙNG) =================
+// ================= API PUBLIC (For users) =================
 
-router.post('/api/manga', async (req: Request, res: Response): Promise<any> => {
-  /* ... Paste ruột API Upload Chapter mới kèm ảnh từ Frontend ... */
-  try {
-    const { mangaTitle, chapterTitle, images } = req.body;
-
-    if (!mangaTitle || !chapterTitle || !images || images.length === 0) {
-      return res.status(400).json({ message: "Thiếu thông tin hoặc chưa có ảnh!" });
-    }
-
-    // 1. Tìm truyện trong DB xem đã có chưa
-    let manga = await prisma.manga.findUnique({
-      where: { title: mangaTitle }
-    });
-
-    // 2. Nếu truyện chưa tồn tại, tự động tạo truyện mới
-    if (!manga) {
-      manga = await prisma.manga.create({
-        data: {
-          title: mangaTitle,
-          description: "Đang cập nhật...", // Thông tin phụ có thể sửa ở trang Admin sau
-        }
-      });
-    }
-
-    // 3. Tạo Chương mới và nhét toàn bộ link ảnh Cloudinary vào
-    const newChapter = await prisma.chapter.create({
-      data: {
-        title: chapterTitle,
-        images: images, // Prisma tự động hiểu và lưu mảng URL này
-        mangaId: manga.id
-      }
-    });
-
-    // ==========================================
-    // 🌟 5. TỰ ĐỘNG BẮN THÔNG BÁO CHO NGƯỜI THEO DÕI
-    // ==========================================
-    try {
-      // 🌟 Sửa mangaId thành manga.id
-      const usersInReadingList = await prisma.readingList.findMany({
-        where: { mangaId: manga.id } 
-      });
-
-      if (usersInReadingList.length > 0) {
-        // Tận dụng luôn biến manga đã có ở Bước 1 & 2, bỏ qua việc query DB tìm mangaInfo
-        const mangaTitleStr = manga.title || "Một bộ truyện bạn theo dõi";
-
-        const notificationsToInsert = usersInReadingList.map((item: any) => ({
-          userId: item.userId,
-          title: "Chương mới ra lò! 📚",
-          message: `${mangaTitleStr} vừa cập nhật: ${newChapter.title}`,
-          // 🌟 Sửa mangaId thành manga.id
-          linkUrl: `/manga/${manga.id}/chapter/${newChapter.id}`, 
-          isRead: false
-        }));
-
-        await prisma.notification.createMany({
-          data: notificationsToInsert
-        });
-        console.log(`✨ Đã gửi thông báo cho ${usersInReadingList.length} người dùng!`);
-      }
-    } catch (notiError) {
-      console.error("Lỗi khi gửi thông báo:", notiError);
-    }
-
-    res.status(201).json({ 
-      message: "Save chapter successfully!", 
-      chapter: newChapter 
-    });
-
-  } catch (error) {
-    console.error("Error saving chapter to database:", error);
-    res.status(500).json({ message: "Server error while saving data." });
-  }
-});
-
+// Get all manga (For homepage, Explore Manga, dropdown choose manga, etc.)
 router.get('/api/manga', async (req: Request, res: Response): Promise<any> => {
-  /* ... Paste ruột API Lấy danh sách toàn bộ Manga (Public) ... */
   try {
     const mangas = await prisma.manga.findMany({
-      orderBy: { createdAt: 'desc' }, // Mới nhất lên đầu
+      orderBy: { createdAt: 'desc' }, // Newest at the top
       include: { _count: { select: { chapters: true } } }
     });
     res.status(200).json(mangas);
   } catch (error) {
-    res.status(500).json({ message: "Lỗi server khi tải danh sách truyện." });
+    res.status(500).json({ message: "Error on server while loading manga list." });
   }
 });
 
+// Get details of a single Manga (For users reading)
 router.get('/api/manga/:id', async (req: Request, res: Response): Promise<any> => {
-  /* ... Paste ruột API Lấy chi tiết 1 Manga kèm danh sách Chapter ... */
   try {
     const id = req.params.id as string;
     const manga = await prisma.manga.findUnique({
       where: { id },
       include: {
         chapters: {
-          orderBy: { createdAt: 'desc' } // Chương mới nhất lên đầu để user dễ theo dõi
+          orderBy: { createdAt: 'desc' } // Newest chapter at the top for easy tracking
         }
       }
     });
@@ -513,17 +438,17 @@ router.get('/api/manga/:id', async (req: Request, res: Response): Promise<any> =
   }
 });
 
+// Get details of a single Chapter (For users reading)
 router.get('/api/chapter/:chapterId', async (req: Request, res: Response): Promise<any> => {
-  /* ... Paste ruột API Lấy chi tiết nội dung 1 Chapter (Bao gồm Next/Prev chapter) ... */
   try {
     const chapterId = req.params.chapterId as string;
     
-    // 1. GIỮ NGUYÊN LOGIC CŨ: Tìm chương truyện và lấy kèm thông tin Manga
+    // 1. Find chapters and get manga information along with them.
     const chapter = await prisma.chapter.findUnique({
       where: { id: chapterId },
       include: {
         manga: {
-          select: { title: true } // Chỉ lấy tên truyện cho nhẹ
+          select: { title: true } // Just get the title of the manga to make it sound simpler.
         }
       }
     });
@@ -531,24 +456,24 @@ router.get('/api/chapter/:chapterId', async (req: Request, res: Response): Promi
     if (!chapter) return res.status(404).json({ message: "This chapter could not be found!" });
     
     // ==========================================
-    // 2. PHẦN BỔ SUNG: Tìm ID của chương trước và chương sau
+    // 2. ADDITIONAL SECTION: Find the IDs of the previous and next chapters.
     // ==========================================
     
-    // Lấy toàn bộ danh sách chương của bộ truyện này, sắp xếp theo thời gian tạo
+    // Get the complete list of chapters for this series, sorted by creation date.
     const allChapters = await prisma.chapter.findMany({
       where: { mangaId: chapter.mangaId },
-      orderBy: { createdAt: 'asc' }, // Xếp từ cũ đến mới
-      select: { id: true } // Chỉ lấy đúng ID ra để tính toán cho nhẹ Database
+      orderBy: { createdAt: 'asc' }, // Form old to new
+      select: { id: true } // Just get the ID to make it sound simpler.
     });
 
-    // Tìm vị trí (index) của chương hiện tại trong mảng
+    // Find the position (index) of the current chapter in the array
     const currentIndex = allChapters.findIndex(c => c.id === chapterId);
 
-    // Lấy ID của chap trước và sau dựa trên index (nếu nằm ở rìa thì gán null)
+    // Get the IDs of the previous and next chapters based on the index (if they are at the edge, assign null).
    const prevChapterId = currentIndex > 0 ? allChapters[currentIndex - 1]?.id ?? null : null;
    const nextChapterId = currentIndex < allChapters.length - 1 ? allChapters[currentIndex + 1]?.id ?? null : null;
    
-    // 3. Trả về cục data y hệt lúc trước, nhưng nhét thêm 2 biến mới vào
+    // 3. It returns the exact same data as before, but adds two new variables.
     res.status(200).json({
       ...chapter,
       prevChapterId,
@@ -556,10 +481,11 @@ router.get('/api/chapter/:chapterId', async (req: Request, res: Response): Promi
     });
     
   } catch (error) {
-    res.status(500).json({ message: "Lỗi server khi tải nội dung chương truyện." });
+    res.status(500).json({ message: "Server error while loading chapter content." });
   }
 });
 
+// translate manga page (OCR + Translation)
 const pendingMangaTranslations = new Map<string, Promise<any[]>>();
 
 router.post('/api/manga/translate-page', async (req: Request, res: Response): Promise<any> => {
@@ -568,14 +494,14 @@ router.post('/api/manga/translate-page', async (req: Request, res: Response): Pr
 
     if (!imageUrl) {
       return res.status(400).json({
-        message: "Thiếu link ảnh để dịch!"
+        message: "Missing image link for translation!"
       });
     }
 
     const taskKey = `${imageUrl}_${targetLang.toLowerCase()}`;
 
     // ==========================================
-    // 1. KIỂM TRA CACHE
+    // 1. Checking CACHE
     // ==========================================
     const cachedData = await prisma.translationCache.findUnique({
       where: {
@@ -591,36 +517,36 @@ router.post('/api/manga/translate-page', async (req: Request, res: Response): Pr
       Array.isArray(cachedData.blocks) &&
       cachedData.blocks.length > 0
     ) {
-      console.log("⚡ [CACHE HIT] Lấy bản dịch từ Database!");
+      console.log("⚡ [CACHE HIT] Getting translation from Database!");
       return res.status(200).json({
         blocks: cachedData.blocks
       });
     }
 
     // ==========================================
-    // 2. KIỂM TRA TIẾN TRÌNH ĐANG CHẠY (REQUEST COALESCING)
+    // 2. Checking RUNNING PROCESS (REQUEST COALESCING)
     // ==========================================
     let translationPromise = pendingMangaTranslations.get(taskKey);
 
     if (!translationPromise) {
-      console.log("🐢 [CACHE MISS] Bắt đầu phân tích ảnh...");
+      console.log("🐢 [CACHE MISS] Start analysis image...");
 
       translationPromise = (async () => {
         try {
-          // 2.1. TẢI ẢNH VÀ CHUYỂN SANG BASE64
+          // 2.1. Load image and convert to BASE64
           const imageResponse = await fetch(imageUrl);
 
           if (!imageResponse.ok) {
             throw {
               status: 400,
-              message: "Không thể tải ảnh."
+              message: "Cannot load image."
             };
           }
 
           const arrayBuffer = await imageResponse.arrayBuffer();
           const base64Image = Buffer.from(arrayBuffer).toString("base64");
 
-          // 2.2. PROMPT DÀNH CHO MANGA OCR
+          // 2.2. PROMPT FOR MANGA OCR
           const prompt = `
             You are an expert manga translator, typesetter and OCR vision AI.
             Analyze this manga page image. Detect and translate ALL text elements without missing any, including:
@@ -657,13 +583,13 @@ router.post('/api/manga/translate-page', async (req: Request, res: Response): Pr
             If no readable text is found, return [].
           `;
 
-          // 2.3. HÀM GỌI MODEL VÀ VALIDATE KẾT QUẢ
+          // 2.3. FUNCTION TO CALL MODEL AND VALIDATE RESULTS
           const genAI = new GoogleGenerativeAI(
             process.env.GEMINI_API_KEY as string
           );
 
           const analyzeWithModel = async (modelName: string) => {
-            console.log(`🤖 Đang sử dụng model: ${modelName}`);
+            console.log(`🤖 Currently using model: ${modelName}`);
 
             const model = genAI.getGenerativeModel({
               model: modelName,
@@ -697,7 +623,7 @@ router.post('/api/manga/translate-page', async (req: Request, res: Response): Pr
               const parsed = JSON.parse(resultText);
               blocks = Array.isArray(parsed) ? parsed : [];
             } catch {
-              console.warn(`⚠️ ${modelName} trả về JSON không hợp lệ.`);
+              console.warn(`⚠️ ${modelName} returned invalid JSON.`);
               return [];
             }
 
@@ -743,7 +669,7 @@ router.post('/api/manga/translate-page', async (req: Request, res: Response): Pr
               });
 
             console.log(
-              `📊 ${modelName}: Tìm thấy ${validBlocks.length} block hợp lệ.`
+              `📊 ${modelName}: Found ${validBlocks.length} valid blocks.`
             );
 
             return validBlocks;
@@ -755,32 +681,32 @@ router.post('/api/manga/translate-page', async (req: Request, res: Response): Pr
           try {
             finalBlocks = await analyzeWithModel("gemini-3.5-flash-lite");
           } catch (error) {
-            // Không throw ở đây để code tự động rơi xuống bước 2.5 (fallback)
-            console.warn("⚠️ Gemini 3.5 Flash-Lite lỗi/quá tải, đang chuyển sang fallback...");
+            // Don't throw anything here so the code automatically falls back to step 2.5 (fallback).
+            console.warn("⚠️ Gemini 3.5 Flash-Lite error/overload, in progressing to fallback...");
           }
 
           // 2.5. FALLBACK: GEMINI 3.6 FLASH
           if (finalBlocks.length === 0) {
             console.warn(
-              "⚠️ Chuyển sang Gemini 3.6 Flash..."
+              "⚠️ Switching to Gemini 3.6 Flash..."
             );
 
             try {
               finalBlocks = await analyzeWithModel("gemini-3.6-flash");
             } catch (fallbackError) {
-              console.error("❌ Cả quá trình fallback gặp lỗi:", fallbackError);
+              console.error("❌ The entire fallback process encountered an error:", fallbackError);
 
               throw {
                 status: 503,
-                message: "AI không thể phân tích trang truyện lúc này.",
+                message: "The AI ​​cannot analyze the manga page at this time.",
                 blocks: []
               };
             }
           }
 
-          // 2.6. LƯU KẾT QUẢ CUỐI CÙNG VÀO CACHE
+          // 2.6. SAVE FINAL RESULT TO CACHE
           console.log(
-            `✅ Kết quả cuối cùng: ${finalBlocks.length} block hợp lệ.`
+            `✅ Final results: ${finalBlocks.length} valid blocks.`
           );
 
           await prisma.translationCache.upsert({
@@ -800,22 +726,22 @@ router.post('/api/manga/translate-page', async (req: Request, res: Response): Pr
             }
           });
 
-          console.log("💾 Đã lưu kết quả vào Database!");
+          console.log("💾 Final results saved to Database!");
 
           return finalBlocks;
         } finally {
-          // Giải phóng RAM an toàn, không sinh Promise thừa gây crash Node.js
+          // Safely free up RAM without generating unnecessary Promises that could crash Node.js.
           pendingMangaTranslations.delete(taskKey);
         }
       })();
 
       pendingMangaTranslations.set(taskKey, translationPromise);
     } else {
-      console.log(`⏳ [Manga OCR] Đang gộp yêu cầu vào tiến trình dịch sẵn có: ${taskKey}`);
+      console.log(`⏳ [Manga OCR] Currently grouping requests into existing translation process: ${taskKey}`);
     }
 
     // ==========================================
-    // 3. CÁC USER BẤM CÙNG LÚC CHỜ CHUNG 1 PROMISE
+    // 3. Users who click simultaneously will wait for the same promise.
     // ==========================================
     const finalBlocks = await translationPromise;
 
@@ -831,16 +757,16 @@ router.post('/api/manga/translate-page', async (req: Request, res: Response): Pr
       });
     }
 
-    console.error("Lỗi AI Dịch:", error);
+    console.error("AI error in translating manga:", error);
 
     return res.status(500).json({
-      message: "Lỗi server khi quét và dịch ảnh."
+      message: "Error on server while scanning and translating image."
     });
   }
 });
 
 
-// API: Dùng AI viết tóm tắt Manga
+// API: Using AI to write manga summaries.
 router.post('/api/admin/generate-manga-desc', async (req: Request, res: Response): Promise<any> => {
   try {
     const { title } = req.body;
@@ -869,8 +795,8 @@ router.post('/api/admin/generate-manga-desc', async (req: Request, res: Response
     res.status(200).json({ description });
 
   } catch (error) {
-    console.error("Lỗi AI viết tóm tắt Manga:", error);
-    res.status(500).json({ message: "Lỗi server khi nhờ AI viết tóm tắt." });
+    console.error("AI error in writing manga summaries:", error);
+    res.status(500).json({ message: "Error on server while using AI to write manga summaries." });
   }
 });
 

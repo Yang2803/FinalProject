@@ -23,7 +23,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 
 // ==========================================
-// CẤU TRÚC DỮ LIỆU CHỨA ẢNH PREVIEW
+// DATA STRUCTURE CONTAINING PREVIEW IMAGES
 // ==========================================
 interface PreviewItem {
   id: string;
@@ -32,7 +32,7 @@ interface PreviewItem {
 }
 
 // ==========================================
-// COMPONENT: Item kéo thả 
+// COMPONENT: Item Drag-and-Drop Preview
 // ==========================================
 function SortablePreviewItem(props: { item: PreviewItem; index: number; onRemove: (id: string) => void }) {
   const { item, index, onRemove } = props;
@@ -77,21 +77,21 @@ function SortablePreviewItem(props: { item: PreviewItem; index: number; onRemove
 }
 
 // ==========================================
-// COMPONENT CHÍNH: TRANG UPLOAD CHAPTER
+// MAIN COMPONENT: UPLOAD CHAPTER
 // ==========================================
 export default function UploadChapterPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const mangaId = resolvedParams.id;
   const router = useRouter();
 
-  // 🌟 1. BỔ SUNG CÁC STATE MỚI ĐỂ HỨNG DATA AUTO-FILL
+  // 🌟 State for DATA AUTO-FILL
   const [chapterNumber, setChapterNumber] = useState("");
   const [chapterTitle, setChapterTitle] = useState("");
   const [characters, setCharacters] = useState("");
   const [plotSummary, setPlotSummary] = useState("");
   
   const [isUploading, setIsUploading] = useState(false);
-  const [isAutoFilling, setIsAutoFilling] = useState(false); // State cho nút AI
+  const [isAutoFilling, setIsAutoFilling] = useState(false); // State for AI auto-fill button
   
   const [imageItems, setImageItems] = useState<PreviewItem[]>([]);
 
@@ -133,7 +133,7 @@ export default function UploadChapterPage({ params }: { params: Promise<{ id: st
     });
   };
 
-  // 🌟 2. HÀM GỌI API AUTO-FILL MANGA CHAPTER
+  // 🌟 2. Function call API AUTO-FILL MANGA CHAPTER
   const handleAutoFill = async () => {
     if (!chapterNumber) {
       alert("Please enter Chapter Number before using Auto-fill!");
@@ -190,7 +190,7 @@ export default function UploadChapterPage({ params }: { params: Promise<{ id: st
         })
       );
 
-      // 🌟 3. ĐẨY TOÀN BỘ DATA MỚI XUỐNG BACKEND
+      // 🌟 3. Send data to backend to save to Database
       const backendRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/admin/chapter`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -237,7 +237,7 @@ export default function UploadChapterPage({ params }: { params: Promise<{ id: st
           
           <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-xl space-y-6">
             
-            {/* 🌟 CHIA GRID 2 CỘT CHO NUMBER VÀ TITLE */}
+            {/* 🌟 Divide GRID 2 column for NUMBER and TITLE */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="md:col-span-1">
                 <label className="block text-xs font-bold text-gray-300 mb-2">Chap Number (*)</label>
@@ -279,7 +279,7 @@ export default function UploadChapterPage({ params }: { params: Promise<{ id: st
               </div>
             </div>
 
-            {/* 🌟 KHU VỰC CHARACTERS & PLOT */}
+            {/* 🌟 Information area for CHARACTERS & PLOT */}
             <div className="space-y-6 border-t border-gray-700 pt-6">
               <div>
                 <label className="block text-xs font-bold text-gray-300 mb-2">Characters (separated by commas)</label>

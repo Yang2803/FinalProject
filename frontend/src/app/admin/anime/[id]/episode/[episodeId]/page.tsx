@@ -9,17 +9,17 @@ export default function AdminEpisodeDetailsPage() {
   const animeId = params.id as string;
   const episodeId = params.episodeId as string;
 
-  // --- STATE QUẢN LÝ BIỂU MẪU ---
+  // --- STATE FORM MANAGEMENT ---
   const [episodeNumber, setEpisodeNumber] = useState<string>("1");
   const [title, setTitle] = useState<string>("");
   const [plotSummary, setPlotSummary] = useState<string>("");
-  const [characters, setCharacters] = useState<string>(""); // Lưu chuỗi phân tách bằng dấu phẩy
+  const [characters, setCharacters] = useState<string>(""); // Save the string as comma-separated.
   const [adaptedFrom, setAdaptedFrom] = useState<string>("");
   
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [isCrawlLoading, setIsCrawlLoading] = useState<boolean>(false);
 
-  // Load thông tin hiện tại của tập phim nếu có
+  // Load existing episode data (if have)
   useEffect(() => {
     const loadEpisodeData = async () => {
       try {
@@ -33,13 +33,13 @@ export default function AdminEpisodeDetailsPage() {
           setAdaptedFrom(data.adaptedFrom || "");
         }
       } catch (err) {
-        console.error("Lỗi load dữ liệu tập phim:", err);
+        console.error("Episode data loading error:", err);
       }
     };
     if (episodeId) loadEpisodeData();
   }, [episodeId]);
 
-  // 🔥 LOGIC MA THUẬT: GỌI BACKEND AUTO-FILL DATA BẰNG AI
+  //  Call bake function to auto-fill episode details using AI and external data sources.
   const handleAutoFill = async () => {
     if (!episodeNumber) {
       alert("Please enter the episode number before the data is automatically scanned!");
@@ -59,29 +59,29 @@ export default function AdminEpisodeDetailsPage() {
       if (res.ok && result.success) {
         const { plotSummary, characters, adaptedFrom } = result.data;
         
-        // Cập nhật giá trị trực tiếp vào các ô Input/Textarea trên Form
+        // Update values directly in the Form inputs
         setPlotSummary(plotSummary);
         setAdaptedFrom(adaptedFrom);
         setCharacters(characters ? characters.join(", ") : "");
         
-        alert(`✨ Đã tự động điền thông tin dựa trên dữ liệu trang: "${result.sourceTitle}"! Hãy kiểm tra và bấm Lưu.`);
+        alert(`✨ Automatically filled episode details based on data from: "${result.sourceTitle}"! Please review and click Save.`);
       } else {
-        alert(`❌ Lỗi: ${result.error || "Không thể tự động điền."}`);
+        alert(`❌ Error: ${result.error || "Unable to auto-fill."}`);
       }
     } catch (err) {
       console.error(err);
-      alert("❌ Gặp sự cố khi kết nối tới máy chủ.");
+      alert("❌ An error occurred while connecting to the server.");
     } finally {
       setIsCrawlLoading(false);
     }
   };
 
-  // LOGIC LƯU THAY ĐỔI VÀO DATABASE
+  // Save the updated episode details to the database.
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
-    // Chuyển chuỗi kí tự nhân vật ngược lại thành mảng để lưu vào Postgres
+    // Convert the characters string into an array, trimming whitespace and filtering out empty names.
     const characterArray = characters
       .split(",")
       .map(name => name.trim())
@@ -100,10 +100,10 @@ export default function AdminEpisodeDetailsPage() {
       });
 
       if (res.ok) {
-        alert("🎉 Cập nhật thông tin chi tiết tập phim thành công!");
+        alert("🎉 Episode details have been successfully updated.!");
         router.push(`/admin/anime/${animeId}`);
       } else {
-        alert("❌ Cập nhật thất bại.");
+        alert("❌ Update failed.");
       }
     } catch (err) {
       console.error(err);
@@ -121,7 +121,7 @@ export default function AdminEpisodeDetailsPage() {
             <p className="text-gray-400 text-sm mt-1">Configure the plot details, characters, and adapted chapters</p>
           </div>
           
-          {/* NÚT AUTO-FILL THẦN THÁNH */}
+          {/* AUTO-FILL button */}
           <button
             type="button"
             onClick={handleAutoFill}
@@ -150,7 +150,7 @@ export default function AdminEpisodeDetailsPage() {
                 value={episodeNumber}
                 onChange={(e) => setEpisodeNumber(e.target.value)}
                 className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-2.5 outline-none focus:border-blue-500 transition text-sm"
-                placeholder="Ví dụ: 1"
+                placeholder="e.g., 1"
               />
             </div>
             <div>
@@ -160,7 +160,7 @@ export default function AdminEpisodeDetailsPage() {
                 value={adaptedFrom}
                 onChange={(e) => setAdaptedFrom(e.target.value)}
                 className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-2.5 outline-none focus:border-blue-500 transition text-sm"
-                placeholder="Ví dụ: Chapters 1-2 hoặc Volume 1 Chapter 5"
+                placeholder="e.g., Chapters 1-2 or Volume 1 Chapter 5"
               />
             </div>
           </div>
@@ -183,7 +183,7 @@ export default function AdminEpisodeDetailsPage() {
               onChange={(e) => setPlotSummary(e.target.value)}
               rows={6}
               className="w-full bg-gray-950 border border-gray-800 rounded-xl p-4 outline-none focus:border-blue-500 transition text-sm leading-relaxed custom-scrollbar"
-              placeholder="Nhập phần tóm tắt nội dung cốt truyện chi tiết của tập phim tại đây..."
+              placeholder="Enter a detailed plot summary of the episode here..."
             />
           </div>
 

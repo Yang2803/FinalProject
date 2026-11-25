@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-// 1. Khai báo Interface mô tả cấu trúc của một bộ Anime
+// 1. An interface declaration describes the structure of an anime series.
 interface Anime {
   id: string;
   title: string;
@@ -17,7 +17,6 @@ interface Anime {
 export default function UserAnimeListPage() {
   const router = useRouter();
   
-  // 2. Thay <any[]> thành <Anime[]>
   const [animes, setAnimes] = useState<Anime[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -30,7 +29,7 @@ export default function UserAnimeListPage() {
           setAnimes(data);
         }
       } catch (error) {
-        console.error("Lỗi:", error);
+        console.error("Error:", error);
       } finally {
         setLoading(false);
       }
@@ -44,7 +43,7 @@ export default function UserAnimeListPage() {
   <div className="min-h-screen bg-[#0f0f13] text-white p-4 md:p-8">
     <div className="max-w-7xl mx-auto">
       
-      {/* 🌟 HEADER: Tiêu đề Gradient Text với gạch viền trang trí và tổng số lượng phim */}
+      {/* 🌟HEADER: Gradient Text title with decorative border and total number of films */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10 pb-6 border-b border-gray-800/60 relative">
         <div className="absolute bottom-0 left-0 w-36 h-px bg-gradient-to-r from-blue-500 to-purple-500"></div>
         <div>
@@ -63,7 +62,7 @@ export default function UserAnimeListPage() {
         </div>
       </div>
 
-      {/* 🌟 DANH SÁCH ANIME */}
+      {/* 🌟 ANIME LIST */}
       {animes.length === 0 ? (
         /* Empty State */
         <div className="relative overflow-hidden bg-gradient-to-b from-gray-800/40 to-[#0f0f13] rounded-3xl p-12 md:p-16 text-center border border-gray-800 shadow-2xl flex flex-col items-center justify-center min-h-[40vh]">
@@ -75,7 +74,7 @@ export default function UserAnimeListPage() {
           </p>
         </div>
       ) : (
-        /* Grid Anime: Tỷ lệ co giãn mượt từ 2 cột điện thoại đến 6 cột màn hình rộng */
+        /* Grid Anime: Smooth scaling from 2 columns on phones to 6 columns on widescreen monitors. */
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
           {animes.map((anime) => (
             <Link 
@@ -100,10 +99,10 @@ export default function UserAnimeListPage() {
                   </div>
                 )}
 
-                {/* Gradient che tối chân ảnh tạo độ nổi cho badge và tiêu đề */}
+                {/* Gradient darkens the base of the image, creating a sense of prominence for the badge and title. */}
                 <div className="absolute inset-0 bg-gradient-to-t from-[#1a1a24] via-black/20 to-transparent opacity-90"></div>
                 
-                {/* 🌟 Nút Play hiển thị mượt mà khi hover */}
+                {/* 🌟 The Play button displays when hovered over. */}
                 <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 bg-black/20 backdrop-blur-[2px]">
                   <div className="w-11 h-11 rounded-full bg-blue-600/90 text-white flex items-center justify-center shadow-[0_0_15px_rgba(37,99,235,0.6)] transform scale-75 group-hover:scale-100 transition-transform duration-300">
                     <svg className="w-5 h-5 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
@@ -112,7 +111,7 @@ export default function UserAnimeListPage() {
                   </div>
                 </div>
 
-                {/* Badge Số Tập */}
+                {/* Badge episodes quantity */}
                 <div className="absolute bottom-3 left-3 z-10 flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-md border border-gray-700/50 shadow-md">
                   <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse shadow-[0_0_5px_#60a5fa]"></span>
                   <span className="text-[10px] font-bold text-gray-200 uppercase tracking-wider">
@@ -121,7 +120,7 @@ export default function UserAnimeListPage() {
                 </div>
               </div>
 
-              {/* Thông tin tên Anime */}
+              {/* Anime title information */}
               <div className="p-4 pt-3 flex-1 flex flex-col justify-between">
                 <h3 className="font-bold text-sm text-gray-200 line-clamp-2 group-hover:text-blue-400 transition-colors duration-300 leading-snug">
                   {anime.title}

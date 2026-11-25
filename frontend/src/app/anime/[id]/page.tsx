@@ -3,7 +3,7 @@
 import { useState, useEffect, use } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import CommentSection from "@/components/CommentSection"; // Đảm bảo đường dẫn này khớp với project của bạn
+import CommentSection from "@/components/CommentSection"; 
 
 // 1. Cấu trúc Type
 interface Episode {
@@ -17,7 +17,7 @@ interface AnimeDetail {
   title: string;
   description: string | null;
   coverImage: string | null;
-  status: string; // Thêm status nếu DB của bạn có
+  status: string; 
   episodes: Episode[];
 }
 
@@ -29,23 +29,23 @@ export default function UserAnimeDetailPage({ params }: { params: Promise<{ id: 
   const [loading, setLoading] = useState(true);
   const { data: session } = useSession();
 
-  // --- STATE QUẢN LÝ RATING ---
+  // --- STATE manage RATING ---
   const [userRating, setUserRating] = useState<number>(0);
   const [avgRating, setAvgRating] = useState<number>(0);
   const [ratingCount, setRatingCount] = useState<number>(0);
 
-  // --- STATE QUẢN LÝ DANH SÁCH XEM (WATCHLIST) ---
+  // --- STATE manage WATCHLIST ---
   const [isInWatchList, setIsInWatchList] = useState<boolean>(false);
   const [isToggling, setIsToggling] = useState<boolean>(false);
 
-  // Gọi API lấy dữ liệu Phim, Rating và trạng thái Danh sách xem
+  // Calling the API to get anime data, Ratings, and Watchlist status.
   useEffect(() => {
     const fetchAnime = async () => {
       try {
         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/anime/${animeId}`);
         if (res.ok) setAnime(await res.json());
       } catch (error) {
-        console.error("Lỗi tải phim:", error);
+        console.error("Anime loading error:", error);
       } finally {
         setLoading(false);
       }
@@ -62,7 +62,7 @@ export default function UserAnimeDetailPage({ params }: { params: Promise<{ id: 
           if (data.userScore > 0) setUserRating(data.userScore);
         }
       } catch (error) {
-        console.error("Lỗi tải rating:", error);
+        console.error("Rating loading error:", error);
       }
     };
 
@@ -75,7 +75,7 @@ export default function UserAnimeDetailPage({ params }: { params: Promise<{ id: 
           setIsInWatchList(data.isInList);
         }
       } catch (error) {
-        console.error("Lỗi kiểm tra Watchlist:", error);
+        console.error("Watchlist status error:", error);
       }
     };
 
@@ -84,7 +84,7 @@ export default function UserAnimeDetailPage({ params }: { params: Promise<{ id: 
     if (session?.user?.id) checkWatchListStatus();
   }, [animeId, session?.user?.id]);
 
-  // Hàm xử lý Đánh giá Sao
+  // Function to handle rating submission
   const handleRate = async (score: number) => {
     if (!session) return alert("Please log in to leave a review!");
     setUserRating(score);
@@ -105,7 +105,7 @@ export default function UserAnimeDetailPage({ params }: { params: Promise<{ id: 
     }
   };
 
-  // Hàm xử lý Thêm/Xóa danh sách xem
+  // Function to handle adding/removing from watchlist
   const handleToggleWatchList = async () => {
     if (!session) return alert("Please log in to use this feature!");
     setIsToggling(true);
@@ -120,7 +120,7 @@ export default function UserAnimeDetailPage({ params }: { params: Promise<{ id: 
         setIsInWatchList(data.isInList);
       }
     } catch (error) {
-      alert("Lỗi kết nối khi cập nhật danh sách xem!");
+      alert("Connection error while updating watchlist!");
     } finally {
       setIsToggling(false);
     }
@@ -131,7 +131,7 @@ export default function UserAnimeDetailPage({ params }: { params: Promise<{ id: 
 
   return (
     <div className="min-h-screen bg-[#0f0f11] text-white">
-      {/* Banner Ảnh Bìa mờ phía sau */}
+      {/* Backing Image Banner (Blurred) */}
       <div className="relative w-full h-[40vh] md:h-[50vh] overflow-hidden">
         <div className="absolute inset-0 bg-black/70 z-10"></div>
         {anime.coverImage && (
@@ -142,10 +142,10 @@ export default function UserAnimeDetailPage({ params }: { params: Promise<{ id: 
       <div className="max-w-6xl mx-auto px-4 md:px-6 -mt-32 relative z-20 pb-12">
         <Link href="/anime" className="text-gray-400 hover:text-white mb-6 inline-block font-medium drop-shadow-md">&larr; Return to anime list</Link>
 
-        {/* KHU VỰC THÔNG TIN PHIM */}
+        {/* ANIME INFO AREA */}
         <div className="bg-gray-800 rounded-2xl p-6 md:p-8 flex flex-col md:flex-row gap-8 shadow-2xl mb-10 border border-gray-700">
           
-          {/* Cột trái: Ảnh chính */}
+          {/* Left Column: Main Image */}
           <div className="w-48 md:w-64 flex-shrink-0 mx-auto md:mx-0">
             {anime.coverImage ? (
               <img src={anime.coverImage} alt={anime.title} className="w-full rounded-xl shadow-2xl border-4 border-gray-900" />
@@ -156,11 +156,11 @@ export default function UserAnimeDetailPage({ params }: { params: Promise<{ id: 
             )}
           </div>
 
-          {/* Cột phải: Chi tiết */}
+          {/* Right Column: Details */}
           <div className="flex-1 flex flex-col">
             <h1 className="text-4xl md:text-5xl font-black text-blue-400 mb-4">{anime.title}</h1>
-            
-            {/* Hệ thống Rating 5 sao có Thống kê */}
+
+            {/* Rating System with Statistics */}
             <div className="flex flex-col gap-2 mb-6 bg-gray-900/60 p-4 rounded-xl border border-gray-700/50 w-fit">
               <div className="flex items-end gap-2">
                 <span className="text-3xl font-black text-yellow-400 leading-none">{avgRating > 0 ? avgRating : "-"}</span>
@@ -198,7 +198,7 @@ export default function UserAnimeDetailPage({ params }: { params: Promise<{ id: 
               </p>
             </div>
 
-            {/* Cụm nút bấm hành động */}
+            {/* Action Button Group */}
             {anime.episodes.length > 0 && (
               <div className="mt-6 flex flex-wrap gap-4">
                 <Link 
@@ -208,7 +208,7 @@ export default function UserAnimeDetailPage({ params }: { params: Promise<{ id: 
                   ▶ Watch Episode 1
                 </Link>
 
-                {/* Nút Thêm vào danh sách xem */}
+                {/* Add to Watchlist Button */}
                 <button
                   onClick={handleToggleWatchList}
                   disabled={isToggling}
@@ -231,7 +231,7 @@ export default function UserAnimeDetailPage({ params }: { params: Promise<{ id: 
           </div>
         </div>
 
-        {/* KHU VỰC DANH SÁCH TẬP PHIM */}
+        {/* EPISODE LIST AREA */}
         <div className="bg-gray-800 rounded-xl p-6 md:p-8 shadow-xl mb-10 border border-gray-700">
           <h2 className="text-2xl font-bold mb-6 border-b border-gray-700 pb-4 text-white">Episode List</h2>
           
@@ -255,7 +255,7 @@ export default function UserAnimeDetailPage({ params }: { params: Promise<{ id: 
           )}
         </div>
 
-        {/* KHU VỰC BÌNH LUẬN CHUNG DÀNH CHO ANIME */}
+        {/* COMMENT SECTION FOR ANIME */}
         <CommentSection targetType="anime" targetId={animeId} />
 
       </div>

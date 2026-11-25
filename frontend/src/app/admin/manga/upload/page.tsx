@@ -10,7 +10,7 @@ export default function UploadMangaPage() {
   const router = useRouter();
 
   const [title, setTitle] = useState("");
-  // 🌟 1. STATE MỚI: Quản lý Fandom Prefix
+  // 🌟 1. Fandom Prefix
   const [fandomPrefix, setFandomPrefix] = useState("");
   const [description, setDescription] = useState("");
   const [author, setAuthor] = useState("");
@@ -22,7 +22,7 @@ export default function UploadMangaPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Quản lý loading khi AI đang viết tóm tắt
+  // Manage loading while AI is writing a summary.
   const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
 
   useEffect(() => {
@@ -42,7 +42,7 @@ export default function UploadMangaPage() {
     }
   };
 
-  // Gọi API để AI tự động viết tóm tắt dựa trên Title
+  // Call the API to have AI automatically write a summary based on the title.
   const handleGenerateDescription = async () => {
     if (!title) {
       alert("Please enter the Manga Title before using AI!");
@@ -62,11 +62,11 @@ export default function UploadMangaPage() {
       if (res.ok) {
         setDescription(data.description);
       } else {
-        alert(data.message || "Không thể tạo tóm tắt.");
+        alert(data.message || "Unable to create a summary.");
       }
     } catch (error) {
-      console.error("Lỗi:", error);
-      alert("Lỗi kết nối tới Server AI.");
+      console.error("Error:", error);
+      alert("Error connecting to the AI server.");
     } finally {
       setIsGeneratingDesc(false);
     }
@@ -112,7 +112,7 @@ export default function UploadMangaPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title,
-          fandomPrefix, // 🌟 2. BỔ SUNG GỬI FANDOM PREFIX LÊN BACKEND
+          fandomPrefix, 
           description,
           author,
           coverImage: uploadedCoverUrl, 
@@ -125,7 +125,7 @@ export default function UploadMangaPage() {
 
       if (res.ok) {
         setMessage(data.message);
-        // 🌟 3. RESET LẠI STATE FANDOM PREFIX KHI UPLOAD THÀNH CÔNG
+        // 🌟 3. Reset the State Fandom Prefix after a successful upload.
         setTitle(""); setDescription(""); setAuthor(""); setFandomPrefix(""); setCoverFile(null);
         const fileInput = document.getElementById('cover-upload') as HTMLInputElement;
         if (fileInput) fileInput.value = '';
@@ -162,7 +162,7 @@ export default function UploadMangaPage() {
             <input type="text" required placeholder="e.g., Bungou Stray Dogs" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full px-4 py-2 bg-gray-700 rounded-md focus:ring focus:ring-blue-500 outline-none" />
           </div>
 
-          {/* 🌟 4. GIAO DIỆN NHẬP FANDOM PREFIX */}
+          {/* 🌟 4. Fandom Prefix Input */}
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">Fandom Prefix (Used for Auto-fill Data)</label>
             <div className="flex bg-gray-700 border border-gray-600 rounded-md overflow-hidden focus-within:ring focus-within:ring-blue-500 transition">

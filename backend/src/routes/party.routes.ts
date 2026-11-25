@@ -4,13 +4,13 @@ import { AccessToken } from 'livekit-server-sdk';
 
 const router = express.Router();
 
-// 🌟 HÀM PHỤ TRỢ: Tạo mã mời ngẫu nhiên 6 ký tự (VD: A7X9KQ)
+// 🌟 SUPPORT FUNCTION: Generate a random 6-character invitation code (e.g., A7X9KQ)
 const generateInviteCode = () => {
   return Math.random().toString(36).substring(2, 8).toUpperCase();
 };
 
 // ==========================================
-// 🏠 1. API: TẠO PHÒNG WATCH PARTY MỚI
+// 🏠 1. API: CREATE NEW WATCH PARTY ROOM
 // ==========================================
 router.post('/rooms', async (req: Request, res: Response): Promise<any> => {
   try {
@@ -20,7 +20,7 @@ router.post('/rooms', async (req: Request, res: Response): Promise<any> => {
       return res.status(400).json({ message: "Missing room name or occupant ID!" });
     }
 
-    // Tạo mã mời độc nhất
+    // Generate a unique invitation code
     let inviteCode = generateInviteCode();
     let isUnique = false;
     while (!isUnique) {
@@ -29,7 +29,7 @@ router.post('/rooms', async (req: Request, res: Response): Promise<any> => {
       else inviteCode = generateInviteCode();
     }
 
-    // Tạo phòng mới VÀ tự động thêm Trưởng phòng vào danh sách Member với trạng thái JOINED
+    // Create a new room AND automatically add the host to the Member list with the status JOINED.
     const newRoom = await prisma.partyRoom.create({
       data: {
         name,
@@ -60,7 +60,7 @@ router.post('/rooms', async (req: Request, res: Response): Promise<any> => {
 });
 
 // ==========================================
-// 🔍 2. API: LẤY THÔNG TIN PHÒNG (BẰNG MÃ MỜI)
+// 🔍 2. API: FETCH ROOM INFORMATION (BY INVITATION CODE)
 // ==========================================
 router.get('/rooms/:inviteCode', async (req: Request, res: Response): Promise<any> => {
   try {
@@ -77,7 +77,7 @@ router.get('/rooms/:inviteCode', async (req: Request, res: Response): Promise<an
             title: true, 
             videoUrl: true,
             episodeNumber: true,
-            dubbedLanguages: true, // Lấy mảng ngôn ngữ lồng tiếng có sẵn
+            dubbedLanguages: true, 
             subtitles: {
               select: {
                 id: true,
@@ -88,7 +88,7 @@ router.get('/rooms/:inviteCode', async (req: Request, res: Response): Promise<an
           } 
         },
         
-        // Chỉ lấy những thành viên ĐÃ ĐƯỢC DUYỆT (JOINED) để hiển thị danh sách trong phòng
+        // Only select members who HAVE BEEN APPROVED (JOINED) to display the list in the room.
         members: {
           include: { user: { select: { id: true, name: true, image: true} } }
         }
@@ -106,7 +106,7 @@ router.get('/rooms/:inviteCode', async (req: Request, res: Response): Promise<an
 });
 
 // ==========================================
-// 🚪 3. API: XIN VÀO PHÒNG (JOIN REQUEST)
+// 🚪 3. API: REQUEST TO JOIN ROOM
 // ==========================================
 router.post('/rooms/:inviteCode/join', async (req: Request, res: Response): Promise<any> => {
   try {
@@ -118,12 +118,12 @@ router.post('/rooms/:inviteCode/join', async (req: Request, res: Response): Prom
       return res.status(404).json({ message: "Room does not exist or is closed." });
     }
 
-    // 🌟 TRƯỞNG PHÒNG THÌ KHÔNG CẦN XIN PHÉP CHÍNH MÌNH
+    // 🌟 The host can enter the room directly without needing approval.
     if (room.hostId === userId) {
-      return res.status(200).json({ message: "Department Head can enter the room directly.", status: "JOINED", room });
+      return res.status(200).json({ message: "Host can enter the room directly.", status: "JOINED", room });
     }
 
-    // Kiểm tra xem user này đã có trong phòng chưa
+    // Check if this user is already in the room.
     const existingMember = await prisma.roomMember.findUnique({
       where: {
         roomId_userId: { roomId: room.id, userId: userId }
@@ -135,7 +135,7 @@ router.post('/rooms/:inviteCode/join', async (req: Request, res: Response): Prom
         return res.status(403).json({ message: "You have been banned from this room." });
       }
 
-      // 🌟 NẾU TỪNG BỊ TỪ CHỐI -> RESET LẠI THÀNH PENDING ĐỂ HỌ XIN LẠI
+      // 🌟 If the user was previously rejected, allow them to re-request to join.
       if (existingMember.status === "REJECTED") {
         const newStatus = room.isPrivate ? "PENDING" : "JOINED";
         await prisma.roomMember.update({
@@ -152,7 +152,7 @@ router.post('/rooms/:inviteCode/join', async (req: Request, res: Response): Prom
       return res.status(200).json({ message: "You are already in the room.", status: existingMember.status, room });
     }
 
-    // QUYẾT ĐỊNH TRẠNG THÁI DỰA TRÊN LOẠI PHÒNG
+    // DETERMINING ROOM STATUS BASED ON ROOM TYPE
     const memberStatus = room.isPrivate ? "PENDING" : "JOINED";
 
     await prisma.roomMember.create({
@@ -176,14 +176,14 @@ router.post('/rooms/:inviteCode/join', async (req: Request, res: Response): Prom
 });
 
 // ==========================================
-// 👑 4. API: TRƯỞNG PHÒNG DUYỆT / TỪ CHỐI THÀNH VIÊN
+// 👑 4. API: Host APPROVES OR REJECTS A MEMBER'S REQUEST TO JOIN THE ROOM
 // ==========================================
 router.put('/rooms/:roomId/approve', async (req: Request, res: Response): Promise<any> => {
   try {
     const roomId = req.params.roomId as string;
     const { hostId, targetUserId, action } = req.body; // action = "APPROVE" hoặc "REJECT"
 
-    // Kiểm tra quyền Trưởng phòng
+    // Check if the room exists and if the requester is the host of the room.
     const room = await prisma.partyRoom.findUnique({ where: { id: roomId } });
     if (!room || room.hostId !== hostId) {
       return res.status(403).json({ message: "You do not have permission to approve members for this room!" });
@@ -196,8 +196,7 @@ router.put('/rooms/:roomId/approve', async (req: Request, res: Response): Promis
       });
       res.status(200).json({ message: "Member approved successfully!" });
     } else {
-      // 🌟 ĐÃ SỬA TẠI ĐÂY: KHÔNG DÙNG DELETE NỮA. 
-      // Update trạng thái thành REJECTED để lưu lịch sử từ chối, chặn Frontend tự auto-join lại.
+      // Reject the member's request to join the room.
       await prisma.roomMember.update({
         where: { roomId_userId: { roomId, userId: targetUserId } },
         data: { status: "REJECTED" }
@@ -211,7 +210,7 @@ router.put('/rooms/:roomId/approve', async (req: Request, res: Response): Promis
 });
 
 // ==========================================
-// 🔄 5. API: TRƯỞNG PHÒNG ĐỔI PHIM / ĐỔI TẬP
+// 🔄 5. API: HOST CHANGES THE VIDEO (ANIME + EPISODE) IN THE ROOM
 // ==========================================
 router.put('/rooms/:roomId/change-video', async (req: Request, res: Response): Promise<any> => {
   try {
@@ -237,19 +236,17 @@ router.put('/rooms/:roomId/change-video', async (req: Request, res: Response): P
 });
 
 // ==========================================
-// 🗑️ 6. API: GIẢI TÁN PHÒNG CHIẾU
+// 🗑️ 6. API: DISBAND ROOM (ONLY HOST CAN DO THIS)
 // ==========================================
 router.delete('/rooms/:roomId', async (req: Request, res: Response): Promise<any> => {
   try {
     const roomId = String(req.params.roomId);
-
-    // 🌟 Dựa theo schema, model của bạn là RoomMember
-    // Xóa tất cả thành viên trong phòng trước để tránh kẹt khóa ngoại
+    // Remove all members from the room first to avoid getting stuck with a foreign key.
     await prisma.roomMember.deleteMany({ 
       where: { roomId: roomId } 
     });
 
-    // Sau đó mới xóa phòng
+    // Then delete the room itself.
     await prisma.partyRoom.delete({ 
       where: { id: roomId } 
     });
@@ -263,19 +260,17 @@ router.delete('/rooms/:roomId', async (req: Request, res: Response): Promise<any
 
 
 // ==========================================
-// 🔍 7. API: LẤY DANH SÁCH CÁC PHÒNG ĐANG HOẠT ĐỘNG
+// 🔍 7. API: FETCH LIST OF ACTIVE ROOMS
 // ==========================================
 router.get('/rooms', async (req: Request, res: Response): Promise<any> => {
   try {
     const rooms = await prisma.partyRoom.findMany({
       include: {
         host: { select: { id: true, name: true, image: true } },
-        members: { where: { status: 'JOINED' } }, // Chỉ đếm những người đã duyệt
+        members: { where: { status: 'JOINED' } }, // Only count those who have approved
         episode: { select: { title: true } },
         anime: { select: { title: true } }
       },
-      // 🌟 Khôi phục lại orderBy vì model của bạn ĐÃ CÓ cột createdAt
-      // Database tự sắp xếp sẽ nhanh và tối ưu hơn dùng JS rất nhiều!
       orderBy: { createdAt: 'desc' } 
     });
     
@@ -287,27 +282,27 @@ router.get('/rooms', async (req: Request, res: Response): Promise<any> => {
 });
 
 // ==========================================
-// 🎤 8. API: LẤY TOKEN VOICE CHAT LIVEKIT
+// 🎤 8. API: FETCH VOICE CHAT TOKEN FOR LIVEKIT
 // ==========================================
 router.get('/rooms/:roomId/voice-token', async (req: Request, res: Response): Promise<any> => {
   try {
     const roomId = req.params.roomId as string;
     const userName = (req.query.userName as string) || "No Name";
 
-    // 🌟 THÊM: Kiểm tra cấu hình .env để tránh sập Server
+    // 🌟 ADDITIONAL: Check .env configuration to avoid server crashes.
     if (!process.env.LIVEKIT_API_KEY || !process.env.LIVEKIT_API_SECRET) {
       return res.status(500).json({ message: "Server has not been configured with LiveKit!" });
     }
 
-    // 🌟 SỬA: Tạo định danh duy nhất chống trùng lặp
+    // 🌟 Create unique, non-duplicate identifiers.
     const uniqueIdentity = `user_${Math.random().toString(36).substring(2, 10)}`;
 
     const at = new AccessToken(
       process.env.LIVEKIT_API_KEY,
       process.env.LIVEKIT_API_SECRET,
       { 
-        identity: uniqueIdentity, // Mã định danh kỹ thuật (BẮT BUỘC DUY NHẤT)
-        name: userName            // Tên hiển thị thật sự trên giao diện
+        identity: uniqueIdentity, // Unique technical identifier (MANDATORY)
+        name: userName            // Actual display name on the interface
       } 
     );
 

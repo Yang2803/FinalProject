@@ -32,7 +32,7 @@ const handler = NextAuth({
           }
           return null;
         } catch (error) {
-          console.error("Lỗi kết nối đến Backend:", error);
+          console.error("Error connecting to Backend:", error);
           return null;
         }
       }
@@ -49,7 +49,7 @@ const handler = NextAuth({
             body: JSON.stringify({
               email: user.email || `google_${user.id}@smartanime.local`,
               name: user.name,
-              image: user.image, // 🌟 ĐỔI 'avatar' THÀNH 'image' ĐỂ KHỚP VỚI PRISMA
+              image: user.image, 
               provider: account.provider,
             }),
           });
@@ -59,12 +59,12 @@ const handler = NextAuth({
           if (res.ok && dbUser) {
             user.id = dbUser.id;
             user.role = dbUser.role;
-            if (dbUser.image) user.image = dbUser.image; // Đồng bộ ảnh từ DB lên lại session
+            if (dbUser.image) user.image = dbUser.image; // Synchronize images from the database back to the session.
             return true;
           }
           return false;
         } catch (error) {
-          console.error("Lỗi đồng bộ OAuth với Backend", error);
+          console.error("Error synchronizing OAuth with Backend", error);
           return false;
         }
       }
@@ -74,7 +74,7 @@ const handler = NextAuth({
       if (user) {
         token.id = user.id;
         token.role = user.role;
-        if (user.image) token.picture = user.image; // Nhét ảnh vào token
+        if (user.image) token.picture = user.image; 
       }
       return token;
     },
@@ -82,7 +82,7 @@ const handler = NextAuth({
       if (token && session.user) {
         session.user.id = token.id as string;
         session.user.role = token.role as string;
-        if (token.picture) session.user.image = token.picture as string; // Xuất ảnh ra session
+        if (token.picture) session.user.image = token.picture as string; //Export images to the session.
       }
       return session;
     }

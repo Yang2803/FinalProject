@@ -8,11 +8,10 @@ import Link from "next/link";
 import CommentSection from "@/components/CommentSection";
 import { SUPPORTED_LANGUAGES } from '@/components/constants/languages';
 
-// ⚠️ ĐIỀN ĐƯỜNG LINK R2 CỦA CẬU VÀO ĐÂY (KHÔNG CÓ DẤU / Ở CUỐI)
 const R2_BASE_URL = "https://pub-67a4b86a3ac64626ac476f9978ec23d2.r2.dev"; 
 
 // =====================================================================
-// 1. CÁC INTERFACE DỮ LIỆU
+// 1. INTERFACE Data for Episode, Subtitle, Chapter
 // =====================================================================
 interface Subtitle {
   id: string;
@@ -38,11 +37,11 @@ interface ChapterData {
 }
 
 // =====================================================================
-// 3. PAGE CHÍNH: XEM PHIM & SPLIT-SCREEN MANGA
+// 3. MAIN PAGE: Watch anime & SPLIT-SCREEN MANGA
 // =====================================================================
 function WatchEpisodeContent() {
   const params = useParams();
-  // 🌟 2. BẮT THAM SỐ THỜI GIAN (VD: ?t=600) TỪ URL
+  // 🌟 2. CAPTURE TIME PARAMETERS (e.g., ?t=600) FROM URL
   const searchParams = useSearchParams();
   const timeParam = searchParams.get("t");
 
@@ -51,27 +50,27 @@ function WatchEpisodeContent() {
   
   const { data: session } = useSession();
 
-  // --- STATE CỦA VIDEO ---
+  // --- STATE VIDEO ---
   const [animeTitle, setAnimeTitle] = useState("");
   const [episode, setEpisode] = useState<Episode | null>(null);
   const [allEpisodes, setAllEpisodes] = useState<Episode[]>([]); 
   const [loading, setLoading] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  // --- STATE LỒNG TIẾNG AI ---
+  // --- STATE DUBBING AI ---
   const [selectedDubLang, setSelectedDubLang] = useState<string>("");
   const audioDubRef = useRef<HTMLAudioElement | null>(null);
 
-  // --- STATE DỊCH SUBTITLE (ANIME) ---
+  // --- STATE SUBTITLE (ANIME) ---
   const [isTranslatingSub, setIsTranslatingSub] = useState(false);
   const [translateProgress, setTranslateProgress] = useState(0);
 
-  // --- STATE TẠO LỒNG TIẾNG (GENERATE DUB) ---
+  // --- STATE GENERATE DUB ---
   const [isGeneratingDub, setIsGeneratingDub] = useState(false);
   const [dubProgress, setDubProgress] = useState(0);
 
   // =====================================================================
-  // 🌟 3. CÁC STATE MỚI CHO TÍNH NĂNG ĐĂNG BÀI LÊN FORUM
+  // 🌟 STATE FOR FORUM POSTING (FROM WATCH PAGE)
   // =====================================================================
   const [isForumModalOpen, setIsForumModalOpen] = useState(false);
   const [postTitle, setPostTitle] = useState("");
@@ -82,14 +81,14 @@ function WatchEpisodeContent() {
   const [postIsSpoiler, setPostIsSpoiler] = useState(false);
   const [isPostingToForum, setIsPostingToForum] = useState(false);
 
-  // ➕ STATES THÊM MỚI CHO ẢNH, AI CHECK VÀ THẺ LINK ĐÍNH KÈM
+  // ➕ STATE FOR ATTACHING TIMESTAMP TO FORUM POST
   const [postMediaFile, setPostMediaFile] = useState<File | null>(null);
   const [postMediaPreview, setPostMediaPreview] = useState<string | null>(null);
   const [isAnalyzingForum, setIsAnalyzingForum] = useState(false);
   const postFileInputRef = useRef<HTMLInputElement>(null);
   const [attachedTimestamp, setAttachedTimestamp] = useState<{title: string, url: string} | null>(null);
 
-  // --- LOGIC: CHÈN TIMESTAMP THÀNH THẺ ĐÍNH KÈM ---
+  // 🌟 FUNCTION TO INSERT CURRENT VIDEO TIMESTAMP INTO FORUM POST
   const handleInsertTimestamp = () => {
     if (!videoRef.current || !episode) return;
     
@@ -102,13 +101,13 @@ function WatchEpisodeContent() {
     const videoUrl = `${baseUrl}/anime/${animeId}/watch/${episodeId}?t=${Math.floor(currentTime)}`;
     const titleText = `${animeTitle} - ${episode.title} (${timeString})`;
 
-    // 🌟 LƯU VÀO STATE RIÊNG ĐỂ HIỂN THỊ THẺ ĐẸP MẮT
+    // 🌟 UPDATE STATE TO ATTACH TIMESTAMP
     setAttachedTimestamp({ title: titleText, url: videoUrl });
     
     if (!postTitle) setPostTitle(`Discuss about scene ${timeString} in ${animeTitle}`);
   };
 
-  // --- LOGIC: CHỌN ẢNH CHO FORUM ---
+  // --- LOGIC: Choose image for FORUM ---
   const handlePostFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
@@ -119,7 +118,7 @@ function WatchEpisodeContent() {
 
   // --- LOGIC: AI CHECK CHO FORUM ---
   const handleForumAIAnalyze = async () => {
-    if (!postTitle || !postContent) return alert("Nhập nội dung để AI phân tích!");
+    if (!postTitle || !postContent) return alert("Input content for AI analysis.!");
     setIsAnalyzingForum(true);
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/analyze`, {
@@ -129,28 +128,26 @@ function WatchEpisodeContent() {
       const data = await res.json();
       setPostTags(Array.from(new Set([...postTags, ...data.tags])));
       setPostIsSpoiler(data.isSpoiler);
-    } catch (error) { alert("Lỗi AI"); } finally { setIsAnalyzingForum(false); }
+    } catch (error) { alert("Error with AI"); } finally { setIsAnalyzingForum(false); }
   };
 
-  // --- LOGIC: TỰ ĐỘNG TUA VIDEO NẾU CÓ THAM SỐ ?t= Ở URL ---
+  // --- LOGIC: AUTOMATICALLY fast-forward/ rewind VIDEO IF THE PARAMETER ?t= IS PRESENT IN THE URL ---
   useEffect(() => {
     if (timeParam && videoRef.current) {
       const timeToSeek = Number(timeParam);
       if (!isNaN(timeToSeek)) {
         const video = videoRef.current;
 
-        // Hàm thực hiện tua video
+        // fast-forward/ rewind video
         const seekToTime = () => {
           video.currentTime = timeToSeek;
-          // Tùy chọn: Nếu cậu muốn link bấm vào phát là video tự chạy luôn, hãy bỏ comment dòng dưới
-          // video.play().catch(e => console.log("Lỗi autoplay:", e)); 
         };
 
-        // KỊCH BẢN 1: Nếu trình duyệt tải siêu nhanh hoặc lấy từ Cache
+        // SCENARIO 1: If the browser loads extremely fast or retrieves from the cache
         if (video.readyState >= 1) { // 1 = HAVE_METADATA
           seekToTime();
         } 
-        // KỊCH BẢN 2: Nếu mạng chậm, video vẫn đang xoay tròn để tải
+        // SCENARIO 2: If the network is slow, the video will continue to spin while loading.
         else {
           video.addEventListener('loadedmetadata', seekToTime);
           return () => {
@@ -159,11 +156,11 @@ function WatchEpisodeContent() {
         }
       }
     }
-  }, [timeParam, episode]); // 🌟 Chạy lại logic này khi load xong episode
+  }, [timeParam, episode]); // 🌟 Re-run this logic after the episode has finished loading.
 
-  // --- LOGIC: SUBMIT BÀI ĐĂNG (CÓ UPLOAD ẢNH VÀ NỐI LINK GẦM) ---
+  // --- LOGIC: Submit upload post forum ---
   const handleSubmitForumPost = async () => {
-    // 🌟 Cập nhật điều kiện bắt lỗi: Phải có Content HOẶC File HOẶC Link đính kèm
+    //Updated error handling conditions: Must include Content OR File OR Link attached
     if (!postTitle.trim() || (!postContent.trim() && !postMediaFile && !attachedTimestamp)) {
       return alert("Please enter the title and content of your post!");
     }
@@ -173,11 +170,11 @@ function WatchEpisodeContent() {
     try {
       let finalMediaUrl = null;
 
-      // 1. Upload ảnh lên Cloudinary (nếu có)
+      // 1. Upload image to Cloudinary (if have)
       if (postMediaFile) {
         const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
         const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
-        if (!cloudName || !uploadPreset) { alert("Chưa cấu hình Cloudinary!"); setIsPostingToForum(false); return; }
+        if (!cloudName || !uploadPreset) { alert("Cloudinary not configured!"); setIsPostingToForum(false); return; }
         
         const formData = new FormData();
         formData.append("file", postMediaFile);
@@ -190,7 +187,7 @@ function WatchEpisodeContent() {
         finalMediaUrl = cloudData.secure_url;
       }
 
-      // 2. Gộp Thẻ đính kèm vào phần content gửi đi dưới dạng [Text](Link)
+      // 2.nclude the attached tags in the content you send as follows: [Text](Link)
       let finalContent = postContent;
       if (attachedTimestamp) {
         finalContent += `\n\n📺 Đang xem: [${attachedTimestamp.title}](${attachedTimestamp.url})`;
@@ -202,11 +199,11 @@ function WatchEpisodeContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           title: postTitle, 
-          content: finalContent, // 🌟 Gửi nội dung đã được gộp ngầm
+          content: finalContent, // 🌟 Sending implicitly merged content
           category: postCategory, 
           tags: postTags, 
           isSpoiler: postIsSpoiler, 
-          mediaUrl: finalMediaUrl, // 🌟 Truyền link ảnh
+          mediaUrl: finalMediaUrl, 
           authorId: session.user.id 
         })
       });
@@ -214,23 +211,23 @@ function WatchEpisodeContent() {
       if (res.ok) {
         alert("🎉 Your post to the forum has been successful! You can continue watching the movie.");
         setIsForumModalOpen(false);
-        // Reset toàn bộ
+        // Reset all form states after successful submission
         setPostTitle(""); setPostContent(""); setPostTags([]); setPostIsSpoiler(false);
         setPostMediaFile(null); setPostMediaPreview(null); setAttachedTimestamp(null);
       } else {
         const data = await res.json();
-        alert(data.error || "Lỗi khi đăng bài!");
+        alert(data.error || "Error occurred while posting!");
       }
     } catch (error) {
       console.error(error);
-      alert("Đã xảy ra lỗi kết nối đến máy chủ.");
+      alert("An error occurred while connecting to the server.");
     } finally {
       setIsPostingToForum(false);
     }
   };
   // =====================================================================
 
-  // Hàm gọi API yêu cầu Backend sinh file MP3 lồng tiếng
+  // The API call function requests the Backend to generate an MP3 file with voiceover.
   const handleGenerateDub = async (targetLang: string, subtitleUrl: string) => {
     if (!episode || !targetLang || !subtitleUrl) return;
     
@@ -306,7 +303,7 @@ function WatchEpisodeContent() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  // 1. LOAD THÔNG TIN ANIME VÀ TẬP PHIM
+  // 1. LOAD ANIME AND EPISODE INFORMATION
   useEffect(() => {
     const fetchVideoData = async () => {
       try {
@@ -319,7 +316,7 @@ function WatchEpisodeContent() {
           setEpisode(currentEp || null);
         }
       } catch (error) {
-        console.error("Lỗi:", error);
+        console.error("Error:", error);
       } finally {
         setLoading(false);
       }
@@ -327,7 +324,7 @@ function WatchEpisodeContent() {
     if (animeId && episodeId) fetchVideoData();
   }, [animeId, episodeId]);
 
-  // 2. LOAD THÔNG TIN CÁC CHƯƠNG MANGA LIÊN KẾT (NẾU CÓ)
+  // 2. LOAD INFORMATION ON RELATED MANGA CHAPTERS (IF ANY)
   useEffect(() => {
     const fetchLinkedChapters = async () => {
       if (!episode?.mappedChapterIds || episode.mappedChapterIds.length === 0) return;
@@ -339,13 +336,13 @@ function WatchEpisodeContent() {
         const chapters = await Promise.all(chapterPromises);
         setLinkedChapters(chapters);
       } catch (error) {
-        console.error("Lỗi tải chapter liên kết:", error);
+        console.error("Error loading linked chapters:", error);
       }
     };
     fetchLinkedChapters();
   }, [episode?.mappedChapterIds]);
 
-  // 3. LƯU LỊCH SỬ XEM
+  // 3. SAVE VIEWING HISTORY
   useEffect(() => {
     const saveHistory = async () => {
       if (!session?.user?.id || !animeId || !episodeId) return;
@@ -356,25 +353,25 @@ function WatchEpisodeContent() {
           body: JSON.stringify({ userId: session.user.id, animeId, episodeId })
         });
       } catch (error) {
-        console.error("Lỗi lưu lịch sử anime:", error);
+        console.error("Error saving anime history:", error);
       }
     };
     saveHistory();
   }, [session?.user?.id, animeId, episodeId]);
 
   
-  // Khai báo cờ chặn gọi API nhiều lần
+  // Declare flags to block multiple API calls.
   const hasLoggedView = useRef(false);
 
   // =====================================================================
-  // LOGIC GHI NHẬN LƯỢT XEM CHO BẢNG XẾP HẠNG
+  // LOGIC FOR RECORDING VIEWS FOR RANKINGS
   // =====================================================================
   useEffect(() => {
     const logAnimeView = async () => {
-      // Nếu không có ID hoặc cờ đã bật thành true -> Dừng ngay lập tức
+      // If no ID is found or the flag is set to true -> Stop immediately
       if (!animeId || !episodeId || hasLoggedView.current) return;
       
-      // Bật cờ lên ngay trước khi gọi API để chặn luồng Strict Mode thứ 2
+      // Set the flag right before calling the API to block the second Strict Mode thread.
       hasLoggedView.current = true; 
 
       try {
@@ -383,7 +380,7 @@ function WatchEpisodeContent() {
         });
       } catch (error) {
         console.error("Lỗi khi ghi nhận lượt xem:", error);
-        // Nếu API lỗi, trả cờ về false để cho phép gọi lại
+        // If the API fails, return the flag to false to allow the callback.
         hasLoggedView.current = false; 
       }
     };
@@ -392,7 +389,7 @@ function WatchEpisodeContent() {
   }, [animeId, episodeId]);
 
   // =====================================================================
-  // ➕ 4. LOGIC ĐỒNG BỘ LỒNG TIẾNG & AUDIO DUCKING (NÂNG CẤP CHẠY NGẦM)
+  // ➕ 4. SYNCHRONIZED VOICE-OVER & AUDIO DUCKING LOGIC (BUNKER RUNNING UPGRADE)
   // =====================================================================
   useEffect(() => {
     const videoElement = videoRef.current;
@@ -498,7 +495,7 @@ function WatchEpisodeContent() {
     };
   }, [selectedDubLang, episodeId, episode?.subtitles]);
 
-  // ➕ 5. ANTI-SEEK GLITCH: Tắt âm thanh lồng tiếng nếu Tua/Dừng phim
+  // ➕ 5. ANTI-SEEK GLITCH: Mute voiceover audio if fast forward/pause the movie.
   useEffect(() => {
     const videoElement = videoRef.current;
     if (!videoElement) return;
@@ -521,7 +518,7 @@ function WatchEpisodeContent() {
     };
   }, []);
 
-  // HÀM GỌI API DỊCH AI CHO PHỤ ĐỀ (VIDEO)
+  // Function call api to translate subtitle and return a new subtitle file.
   const handleAutoTranslateSub = async (targetLang: string) => {
     if (!episode || !targetLang) return;
     
@@ -577,7 +574,7 @@ function WatchEpisodeContent() {
   if (loading) return <div className="text-white text-center mt-20">Loading video...</div>;
   if (!episode) return <div className="text-white text-center mt-20">Episode not found!</div>;
 
-  // --- LOGIC: XỬ LÝ NHẬP VÀ XÓA TAGS CHO FORUM ---
+  // --- LOGIC: HANDLING TAGS FOR FORUMS (INCREASE AND DELETE) ---
   const handleKeyDownTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && postTagInput.trim() !== '') {
       e.preventDefault();
@@ -595,10 +592,10 @@ function WatchEpisodeContent() {
   return (
     <div className="min-h-screen bg-black text-white pb-12 relative">
       
-      {/* ➕ THẺ AUDIO CHẠY NGẦM ĐỂ PHÁT TIẾNG AI */}
+      {/* ➕ BACKGROUND AUDIO CARD FOR AI VOICE PLAYBACK */}
       <audio ref={audioDubRef} className="hidden" />
 
-      {/* THANH ĐIỀU HƯỚNG CÓ NÚT BẬT TẮT MANGA */}
+      {/* NAVIGATION BAR WITH MANGA ON/OFF BUTTON */}
       <div className="p-4 bg-gray-900/80 backdrop-blur-md sticky top-0 z-50 flex items-center gap-4">
         <Link href={`/anime/${animeId}`} className="text-gray-400 hover:text-white bg-gray-800 px-4 py-2 rounded-lg transition shrink-0">
           &larr; Return
@@ -608,11 +605,11 @@ function WatchEpisodeContent() {
           <p className="text-xs text-gray-300 truncate">{episode.title}</p>
         </div>
 
-        {/* 🌟 NÚT CHIA SẺ LÊN FORUM */}
+        {/* 🌟 BUtton ost to FORUM */}
         <button 
           onClick={() => {
             setIsForumModalOpen(true);
-            if (videoRef.current) videoRef.current.pause(); // Tạm dừng video để type
+            if (videoRef.current) videoRef.current.pause(); // Pause the video to type.
           }}
           className="px-4 py-2 rounded-lg font-bold text-sm transition shrink-0 bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-500/30 flex items-center gap-2"
         >
@@ -620,7 +617,7 @@ function WatchEpisodeContent() {
           Discuss Forum
         </button>
 
-        {/* NÚT THẦN THÁNH: BẬT/TẮT ĐỒNG BỘ MANGA */}
+        {/* tuuron/off manga*/}
         {linkedChapters.length > 0 && (
           <button 
             onClick={() => setShowSplitScreen(!showSplitScreen)}
@@ -633,10 +630,10 @@ function WatchEpisodeContent() {
         )}
       </div>
 
-      {/* KHU VỰC SPLIT-SCREEN */}
+      {/* SPLIT-SCREEN */}
       <div className={`mx-auto mt-4 px-4 flex flex-col lg:flex-row gap-6 transition-all duration-300 ${showSplitScreen ? 'max-w-[1600px]' : 'max-w-6xl'}`}>
         
-        {/* CỘT TRÁI: VIDEO PLAYER */}
+        {/* Left column: VIDEO PLAYER */}
         <div className={`flex flex-col transition-all duration-500 ${showSplitScreen ? 'w-full lg:w-[60%]' : 'w-full'}`}>
           <div className="relative w-full aspect-video bg-gray-900 rounded-xl overflow-hidden shadow-2xl border border-gray-800 group">
             <video 
@@ -652,7 +649,7 @@ function WatchEpisodeContent() {
               ))}
             </video>
 
-            {/* OVERLAY NÚT TUA */}
+            {/* OVERLAY fast forward button */}
             <div className="absolute inset-0 flex items-center justify-center gap-32 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
               <button onClick={() => skipTime(-10)} className="pointer-events-auto bg-black/60 hover:bg-blue-600 text-white p-4 rounded-full backdrop-blur-sm transition-transform hover:scale-110 flex flex-col items-center justify-center w-16 h-16 shadow-lg border border-gray-700">
                 <span className="text-xl font-black mb-1">↺</span>
@@ -665,14 +662,14 @@ function WatchEpisodeContent() {
             </div>
           </div>
           
-          {/* Box thông tin bên dưới Video */}
+          {/* Information box below video */}
           <div className="mt-6 bg-gray-900 p-6 rounded-xl border border-gray-800 flex flex-col md:flex-row md:items-start justify-between gap-4">
             <div>
               <h2 className="text-2xl font-bold">{episode.title}</h2>
               <p className="text-gray-400 text-sm mt-2">Date posted: {new Date(episode.createdAt).toLocaleDateString('vi-VN')}</p>
             </div>
 
-            {/* ➕ UI CHỌN LỒNG TIẾNG (Chỉ hiện khi DB báo có lồng tiếng) */}
+            {/* ➕ UI VOICE SELECTION (Only appears when the database indicates voice acting is available) */}
             {(episode.dubbedLanguages && episode.dubbedLanguages.length > 0) ? (
               <div className="bg-purple-900/30 border border-purple-500/50 p-3 rounded-lg flex items-center gap-3 shrink-0">
                 <span className="text-sm font-bold text-purple-400 flex items-center gap-1">
@@ -686,7 +683,7 @@ function WatchEpisodeContent() {
                 >
                   <option value="">Original Audio</option>
                   
-                  {/* DÙNG VÒNG LẶP MAP ĐỂ RENDER ĐỘNG MỌI NGÔN NGỮ CÓ TRONG DATABASE */}
+                  {/* USE A MAP LOOP TO DYNAMICLY RENDER ANY LANGUAGE IN THE DATABASE */}
                   {episode.dubbedLanguages.map((lang) => (
                     <option key={lang} value={lang}>
                       {lang} (AI Voice)
@@ -700,11 +697,11 @@ function WatchEpisodeContent() {
           </div>
 
          {/* ================================================================= */}
-          {/* KHU VỰC CÁC TÍNH NĂNG AI: DỊCH PHỤ ĐỀ & TẠO LỒNG TIẾNG            */}
+          {/*AI FEATURES AREA: SUBTITLE TRANSLATION & VOICE-OVER CREATION           */}
           {/* ================================================================= */}
           <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
             
-            {/* 1. BOX DỊCH PHỤ ĐỀ AI */}
+            {/* 1. BOX Trans sub AI */}
             <div className="bg-gray-800 p-3 rounded-lg flex flex-col xl:flex-row items-center justify-between gap-3 border border-gray-700">
               <span className="text-sm font-bold text-blue-400 shrink-0">✨ Auto-translate subtitle:</span>
               <div className="flex items-center gap-3 w-full xl:w-auto">
@@ -722,7 +719,7 @@ function WatchEpisodeContent() {
                   ))}
                 </select>
                 
-                {/* 🌟 UI HIỂN THỊ % DỊCH THUẬT */}
+                {/* 🌟UI displays translation % */}
                 {isTranslatingSub && (
                   <div className="flex flex-col items-end gap-1 shrink-0 min-w-[80px]">
                     <span className="text-[10px] text-blue-400 font-bold animate-pulse">
@@ -739,7 +736,7 @@ function WatchEpisodeContent() {
               </div>
             </div>
 
-            {/* 2. BOX TẠO LỒNG TIẾNG AI (Chỉ hiện khi đã có phụ đề) */}
+            {/* 2. AI VOICE-OVER GENERATOR BOX (Only appears when subtitles are available) */}
             {episode.subtitles && episode.subtitles.length > 0 && (
               <div className="bg-gray-800 p-3 rounded-lg flex flex-col xl:flex-row items-center justify-between gap-3 border border-gray-700">
                 <span className="text-sm font-bold text-pink-400 shrink-0 flex items-center gap-1">
@@ -771,7 +768,7 @@ function WatchEpisodeContent() {
                     }
                   </select>
                   
-                  {/* 🌟 UI HIỂN THỊ % LỒNG TIẾNG */}
+                  {/* 🌟 UI displays voiceover progress % */}
                   {isGeneratingDub && (
                     <div className="flex flex-col items-end gap-1 shrink-0 min-w-[80px]">
                       <span className="text-[10px] text-pink-400 font-bold animate-pulse flex items-center gap-1">
@@ -792,11 +789,11 @@ function WatchEpisodeContent() {
 
           </div>
         </div>
-        {/* ======================= KẾT THÚC CỘT TRÁI (VIDEO) ======================= */}
+        {/* ======================= End of left column (VIDEO) ======================= */}
 
         
 
-        {/* CỘT PHẢI: KHU VỰC MANGA ĐỒNG BỘ */}
+        {/* RIGHT COLUMN: SYNCHRONIZED MANGA AREA */}
         {showSplitScreen && (
           <div className="w-full lg:w-[40%] flex flex-col h-[70vh] lg:h-[calc(100vh-100px)] bg-gray-900 rounded-xl border border-gray-800 shadow-2xl overflow-hidden sticky top-[80px]">
             <div className="bg-gray-800 p-4 border-b border-gray-700 flex flex-wrap justify-between items-center gap-2">
@@ -840,7 +837,7 @@ function WatchEpisodeContent() {
       </div>
 
       <div className="max-w-6xl mx-auto px-4">
-        {/* DANH SÁCH CÁC TẬP PHIM */}
+        {/*_episode list */}
         <div className="mt-8 bg-gray-900 rounded-xl p-6 md:p-8 shadow-xl border border-gray-800">
           <h3 className="text-xl font-bold text-white mb-6 border-l-4 border-blue-500 pl-3">Select Episode</h3>
           {allEpisodes.length === 0 ? (
@@ -873,7 +870,7 @@ function WatchEpisodeContent() {
       </div>
 
       {/* ===================================================================== */}
-      {/* 🌟 4. POPUP MODAL ĐĂNG BÀI LÊN FORUM KÈM TIMESTAMP VÀ ẢNH */}
+      {/* 🌟 4. POPUP MODAL POST ON THE FORUM WITH TIMESTAMP AND IMAGE */}
       {/* ===================================================================== */}
       {isForumModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
@@ -900,7 +897,7 @@ function WatchEpisodeContent() {
                 className="w-full bg-transparent border border-gray-800 rounded-lg px-4 py-3 outline-none font-bold text-lg focus:border-blue-500 transition"
               />
               
-              {/* NÚT CHÈN TIMESTAMP TRỞ THÀNH THẺ ĐÍNH KÈM */}
+              {/* TIMESTAMP INSERT BUTTON BECOMES AN ATTACHMENT CARD */}
               {!attachedTimestamp ? (
                 <button 
                   onClick={handleInsertTimestamp}
@@ -926,7 +923,7 @@ function WatchEpisodeContent() {
                 className="w-full bg-transparent border border-gray-800 rounded-lg px-4 py-3 outline-none resize-none h-32 text-sm text-gray-200 focus:border-blue-500 transition custom-scrollbar leading-relaxed"
               />
 
-              {/* KHU VỰC HIỂN THỊ ẢNH XEM TRƯỚC */}
+              {/* PREVIEW AREA FOR UPLOADED MEDIA */}
               {postMediaPreview && (
                 <div className="relative rounded-xl overflow-hidden border border-gray-800 bg-gray-900 aspect-video flex items-center justify-center">
                   {postMediaFile?.type.startsWith('video/') ? (
@@ -938,7 +935,7 @@ function WatchEpisodeContent() {
                 </div>
               )}
 
-              {/* KHU VỰC TAGS VÀ SPOILER */}
+              {/* TAGS AND SPOILER AREA */}
               <div className="bg-gray-900/50 p-3 rounded-lg border border-gray-800">
                 <div className="flex flex-wrap gap-2 mb-2">
                   {postIsSpoiler && <span className="bg-red-900/50 text-red-400 text-xs px-2.5 py-1 rounded border border-red-500">⚠️ Spoiler</span>}
@@ -959,7 +956,7 @@ function WatchEpisodeContent() {
 
             <div className="p-5 border-t border-gray-800 flex justify-between items-center bg-gray-900/50 rounded-b-2xl">
               
-              {/* THANH CÔNG CỤ TRÁI (Chọn Category, Up ảnh, Nút AI) */}
+              {/* LEFT TOOLBAR (Select Category, Upload Image, AI Button)*/}
               <div className="flex items-center gap-3">
                 <select 
                   value={postCategory} onChange={e => setPostCategory(e.target.value as "GENERAL" | "ANIME" | "MANGA")}
@@ -980,7 +977,7 @@ function WatchEpisodeContent() {
                 </button>
               </div>
 
-              {/* THANH CÔNG CỤ PHẢI (Nút Đăng bài) */}
+              {/* RIGHT TOOLBAR (Post Button) */}
               <div className="flex items-center gap-3">
                 <label className="hidden sm:flex items-center gap-2 text-sm text-gray-400 cursor-pointer hover:text-gray-200 transition">
                   <input type="checkbox" checked={postIsSpoiler} onChange={(e) => setPostIsSpoiler(e.target.checked)} className="rounded bg-gray-800 border-gray-700 text-red-500 focus:ring-red-500 focus:ring-offset-gray-900" />

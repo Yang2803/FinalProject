@@ -15,7 +15,7 @@ interface AnimeDetail {
   title: string;
   description: string | null;
   coverImage: string | null;
-  fandomPrefix: string | null; // ➕ Thêm trường này vào Interface
+  fandomPrefix: string | null; 
   episodes: Episode[];
 }
 
@@ -27,7 +27,7 @@ export default function AdminAnimeDetailPage() {
   const [anime, setAnime] = useState<AnimeDetail | null>(null);
   const [loading, setLoading] = useState(true);
   
-  // States phục vụ tính năng chỉnh sửa thông tin
+  // Sate for editing anime information
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editFandomPrefix, setEditFandomPrefix] = useState(""); // ➕ State cho Fandom Prefix
@@ -35,10 +35,10 @@ export default function AdminAnimeDetailPage() {
   const [newCoverFile, setNewCoverFile] = useState<File | null>(null);
   const [saveLoading, setSaveLoading] = useState(false);
 
-  // 1. Khai báo một "công tắc" để kích hoạt tải lại dữ liệu
+  // 1. State to trigger re-fetching data after updates
   const [refreshKey, setRefreshKey] = useState(0);
 
-  // 2. Gom toàn bộ logic tải dữ liệu vào thẳng bên trong useEffect
+  // 2. Combine all the data loading logic directly into useEffect.
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -47,14 +47,14 @@ export default function AdminAnimeDetailPage() {
           const data = await res.json();
           setAnime(data);
           setEditTitle(data.title);
-          setEditFandomPrefix(data.fandomPrefix || ""); // ➕ Nạp data Fandom Prefix từ DB
+          setEditFandomPrefix(data.fandomPrefix || ""); 
           setEditDescription(data.description || "");
         } else {
-          alert("Không tìm thấy bộ phim này!");
+          alert("The anime is not found");
           router.push("/admin/anime");
         }
       } catch (error) {
-        console.error("Lỗi kết nối:", error);
+        console.error("Connection error:", error);
       } finally {
         setLoading(false);
       }
@@ -63,7 +63,7 @@ export default function AdminAnimeDetailPage() {
     loadData();
   }, [animeId, router, refreshKey]);
 
-  // 2. Hàm Xử lý Lưu thông tin sau khi Sửa
+  // 2. Function to handle updating anime information
   const handleUpdateAnime = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaveLoading(true);
@@ -71,7 +71,7 @@ export default function AdminAnimeDetailPage() {
     try {
       let finalCoverUrl = anime?.coverImage || "";
 
-      // Nếu admin chọn ảnh bìa mới, tiến hành đẩy lên Cloudinary trước
+      // If the admin chooses a new cover image, upload it to Cloudinary first.
       if (newCoverFile) {
         const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
         const animePreset = process.env.NEXT_PUBLIC_CLOUDINARY_ANIME_PRESET;
@@ -85,17 +85,17 @@ export default function AdminAnimeDetailPage() {
           body: formData
         });
         const cloudData = await cloudRes.json();
-        if (!cloudRes.ok) throw new Error("Lỗi tải ảnh bìa mới lên Cloudinary");
+        if (!cloudRes.ok) throw new Error("Error uploading new cover image to Cloudinary");
         finalCoverUrl = cloudData.secure_url;
       }
 
-      // Gửi dữ liệu cập nhật về Backend
+      // Send updated data to the backend.
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/admin/anime/${animeId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: editTitle,
-          fandomPrefix: editFandomPrefix, // ➕ Gửi Fandom Prefix lên Backend để lưu
+          fandomPrefix: editFandomPrefix, 
           description: editDescription,
           coverImage: finalCoverUrl
         })
@@ -109,7 +109,7 @@ export default function AdminAnimeDetailPage() {
       alert("Anime information update successful!");
       setIsEditing(false);
       setNewCoverFile(null);
-      setRefreshKey((prev) => prev + 1); // Tải lại dữ liệu mới cập nhật lên UI
+      setRefreshKey((prev) => prev + 1); // Reload the newly updated data onto the UI.
 
     } catch (error) {
       alert(error instanceof Error ? error.message : "An error occurred");
@@ -118,7 +118,7 @@ export default function AdminAnimeDetailPage() {
     }
   };
 
-  // Hàm xử lý Xóa Anime
+  // 3. Function to handle deleting the anime and all its episodes
   const handleDeleteAnime = async () => {
     if (!anime) return;
     const confirmDelete = confirm(`WARNING: Are you sure you want to delete "${anime.title}"?\nThis action will DELETE ALL episodes and subtitles within. This cannot be undone!`);
@@ -131,20 +131,20 @@ export default function AdminAnimeDetailPage() {
       });
 
       if (res.ok) {
-        alert("Đã xóa bộ phim thành công!");
+        alert("The anime has been deleted successfully!");
         router.push("/admin/anime");
       } else {
         const errorData = await res.json();
-        alert(`Lỗi: ${errorData.message}`);
+        alert(`Error: ${errorData.message}`);
         setLoading(false);
       }
     } catch (error) {
-      alert("Đã xảy ra lỗi khi kết nối với server!");
+      alert("An error occurred while connecting to the server!");
       setLoading(false);
     }
   };
 
-  // Hàm xử lý Xóa Tập Phim
+  // Function to handle deleting an episode
   const handleDeleteEpisode = async (epId: string, epTitle: string) => {
     const confirmDelete = confirm(`Are you sure you want to delete "${epTitle}"? This cannot be undone!`);
     if (!confirmDelete) return;
@@ -155,14 +155,14 @@ export default function AdminAnimeDetailPage() {
       });
 
       if (res.ok) {
-        alert("Đã xóa tập phim!");
+        alert("The episode has been deleted successfully!");
         setRefreshKey(prev => prev + 1);
       } else {
         const err = await res.json();
-        alert(`Lỗi: ${err.message}`);
+        alert(`Error: ${err.message}`);
       }
     } catch (error) {
-      alert("Lỗi kết nối server!");
+      alert("An error occurred while connecting to the server!");
     }
   };
 
@@ -180,14 +180,14 @@ export default function AdminAnimeDetailPage() {
     <div className="min-h-screen bg-[#0f0f11] text-white p-8">
       <div className="max-w-5xl mx-auto">
         
-        {/* NÚT BACK VỀ TRANG CHỦ ADMIN */}
+        {/* Back button to admin dashboard */}
         <div className="mb-6">
           <Link href="/admin/anime" className="text-sm text-gray-400 hover:text-purple-400 transition">&larr; Anime Inventory Management</Link>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           
-          {/* CỘT TRÁI: HIỂN THỊ / SỬA ẢNH BÌA */}
+          {/* LEFT COLUMN: DISPLAY / EDIT COVER image */}
           <div className="space-y-4">
             <div className="bg-gray-800 p-4 rounded-2xl border border-gray-700">
               <div className="aspect-[2/3] relative w-full bg-gray-900 rounded-xl overflow-hidden mb-4">
@@ -206,12 +206,12 @@ export default function AdminAnimeDetailPage() {
             </div>
           </div>
 
-          {/* CỘT PHẢI: CHI TIẾT PHIM HOẶC FORM CHỈNH SỬA */}
+          {/* RIGHT COLUMN: ANIME DETAILS OR EDIT FORM */}
           <div className="md:col-span-2 space-y-6">
             
             <div className="bg-gray-800 p-6 rounded-2xl border border-gray-700 shadow-xl">
               {!isEditing ? (
-                /* CHẾ ĐỘ XEM CHI TIẾT */
+                /* VIEW MODE */
                 <div>
                   <div className="flex justify-between items-start mb-4">
                     <h1 className="text-3xl font-black text-blue-400">{anime.title}</h1>
@@ -231,7 +231,7 @@ export default function AdminAnimeDetailPage() {
                     </div>
                   </div>
                   
-                  {/* Hiển thị Fandom Prefix nếu có */}
+                  {/* Display Fandom Prefix if it exists */}
                   {anime.fandomPrefix && (
                     <div className="mb-4 inline-flex items-center bg-gray-900 border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-gray-400">
                       <span className="font-bold text-gray-300 mr-2">Fandom Wiki:</span> 
@@ -244,7 +244,7 @@ export default function AdminAnimeDetailPage() {
                   </p>
                 </div>
               ) : (
-                /* CHẾ ĐỘ CHỈNH SỬA (FORM) */
+                /* EDIT MODE (FORM) */
                 <form onSubmit={handleUpdateAnime} className="space-y-4">
                   <h2 className="text-xl font-bold text-yellow-400">Edit Anime Information</h2>
                   
@@ -259,7 +259,7 @@ export default function AdminAnimeDetailPage() {
                     />
                   </div>
 
-                  {/* 🌟 FORM NHẬP FANDOM PREFIX */}
+                  {/* 🌟 FORM For enter FANDOM PREFIX */}
                   <div>
                     <label className="block text-xs text-gray-400 font-bold mb-1">Fandom Prefix (Used for Auto-fill Data)</label>
                     <div className="flex bg-gray-900 border border-gray-700 rounded-lg overflow-hidden focus-within:border-blue-500 transition">
@@ -270,7 +270,7 @@ export default function AdminAnimeDetailPage() {
                         type="text" 
                         value={editFandomPrefix}
                         onChange={(e) => setEditFandomPrefix(e.target.value.toLowerCase().replace(/\s+/g, '-'))}
-                        placeholder="Ví dụ: jujutsu-kaisen, naruto..."
+                        placeholder="Example: jujutsu-kaisen, naruto..."
                         className="w-full bg-transparent p-2.5 text-sm outline-none text-white"
                       />
                       <span className="bg-gray-800 text-gray-500 text-sm px-3 py-2.5 border-l border-gray-700 select-none hidden sm:block">
@@ -325,7 +325,7 @@ export default function AdminAnimeDetailPage() {
               )}
             </div>
 
-            {/* DANH SÁCH CÁC TẬP PHIM ĐÃ ĐĂNG */}
+            {/* List of released episodes */}
             <div className="bg-gray-800 p-6 rounded-2xl border border-gray-700 shadow-xl">
               <h2 className="text-xl font-black text-purple-400 mb-4 border-b border-gray-700 pb-2">
                 List of episodes that have been released ({anime.episodes.length})

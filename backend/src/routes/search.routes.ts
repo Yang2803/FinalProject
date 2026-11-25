@@ -11,7 +11,7 @@ router.get('/api/search', async (req: Request, res: Response) => {
       return res.status(200).json({ animes: [], mangas: [] });
     }
 
-    // Tìm kiếm đồng thời trong cả 2 bảng bằng Promise.all để tối ưu tốc độ
+    // Simultaneous searching in both tables using Promise.all optimizes speed.
     const [animes, mangas] = await Promise.all([
       prisma.anime.findMany({
         where: {
@@ -29,7 +29,7 @@ router.get('/api/search', async (req: Request, res: Response) => {
 
     res.status(200).json({ animes, mangas });
   } catch (error) {
-    res.status(500).json({ message: "Lỗi tìm kiếm" });
+    res.status(500).json({ message: "Search error" });
   }
 });
 

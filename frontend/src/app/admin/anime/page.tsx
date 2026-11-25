@@ -21,7 +21,7 @@ export default function AdminAnimeListPage() {
   const [animes, setAnimes] = useState<Anime[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // 1. Bảo vệ trang: Yêu cầu đăng nhập và có quyền ADMIN
+  // 1. Protect the site: Requires login and ADMIN privileges.
   useEffect(() => {
     if (status === "loading") return;
     if (!session || session.user.role !== "ADMIN") {
@@ -29,7 +29,7 @@ export default function AdminAnimeListPage() {
     }
   }, [session, status, router]);
 
-  // 2. Fetch danh sách Anime
+  // 2. Fetch Anime list
   useEffect(() => {
     const fetchAnimes = async () => {
       try {
@@ -39,7 +39,7 @@ export default function AdminAnimeListPage() {
           setAnimes(data);
         }
       } catch (error) {
-        console.error("Lỗi tải danh sách:", error);
+        console.error("Error fetching anime list:", error);
       } finally {
         setLoading(false);
       }
@@ -50,9 +50,9 @@ export default function AdminAnimeListPage() {
     }
   }, [session]);
 
-  // 3. Hàm xử lý xóa Anime
+  // 3. Delete Anime function
   const handleDelete = async (id: string, title: string) => {
-    const confirmDelete = confirm(`CẢNH BÁO: Bạn có chắc chắn muốn xóa bộ phim "${title}"?\nHành động này sẽ XÓA TOÀN BỘ các tập phim và phụ đề bên trong. Không thể hoàn tác!`);
+    const confirmDelete = confirm(`WARNING: Are you sure you want to delete the anime "${title}"?\nThis action will DELETE ALL episodes and subtitles within. This cannot be undone!`);
     if (!confirmDelete) return;
 
     try {
@@ -61,15 +61,15 @@ export default function AdminAnimeListPage() {
       });
 
       if (res.ok) {
-        // Xóa khỏi UI ngay lập tức
+        // Remove from UI immediately
         setAnimes(animes.filter(anime => anime.id !== id));
-        alert("Đã xóa bộ phim thành công!");
+        alert("Successfully deleted the anime!");
       } else {
         const errorData = await res.json();
-        alert(`Lỗi: ${errorData.message}`);
+        alert(`Error: ${errorData.message}`);
       }
     } catch (error) {
-      alert("Đã xảy ra lỗi khi kết nối với server!");
+      alert("An undefined error occurred!");
     }
   };
 
@@ -87,7 +87,7 @@ export default function AdminAnimeListPage() {
     <div className="min-h-screen bg-[#0f0f11] text-white p-8">
       <div className="max-w-7xl mx-auto">
         
-        {/* THANH ĐIỀU HƯỚNG & TIÊU ĐỀ */}
+        {/* NAVIGATION BAR & TITLE */}
         <div className="flex flex-col md:flex-row justify-between items-center mb-8 bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-700">
           <div>
             <h1 className="text-3xl font-black text-blue-400 mb-2">Anime Inventory Management</h1>
@@ -109,7 +109,7 @@ export default function AdminAnimeListPage() {
           </div>
         </div>
 
-        {/* DANH SÁCH LƯỚI ANIME */}
+        {/* ANIME GRID LIST */}
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
             {animes.map((anime) => (
               <div 
@@ -117,7 +117,7 @@ export default function AdminAnimeListPage() {
                 onClick={() => router.push(`/admin/anime/${anime.id}`)}
                 className="bg-gray-800 rounded-xl overflow-hidden border border-gray-700 shadow-xl group hover:border-blue-500/50 transition-all cursor-pointer"
               >
-                {/* Khu vực ảnh bìa */}
+                {/* Cover area */}
                 <div className="relative aspect-[2/3] w-full bg-gray-900">
                   {anime.coverImage ? (
                     <img src={anime.coverImage} alt={anime.title} className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" />
@@ -125,15 +125,14 @@ export default function AdminAnimeListPage() {
                     <div className="w-full h-full flex items-center justify-center text-gray-600 text-sm">Trống</div>
                   )}
                   
-                  {/* Badge số lượng tập */}
+                  {/* Badge episode quantity */}
                   <div className="absolute top-2 left-2 bg-black/80 backdrop-blur text-blue-400 font-bold text-xs px-2 py-1 rounded">
                     {anime._count.episodes} Episodes
                   </div>
                   
-                  {/* ĐÃ XÓA PHẦN OVERLAY HOVER Ở ĐÂY */}
                 </div>
                 
-                {/* Tên phim */}
+                {/* Anime title */}
                 <div className="p-4">
                   <h3 className="font-bold text-gray-200 truncate" title={anime.title}>
                     {anime.title}

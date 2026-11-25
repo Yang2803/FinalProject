@@ -15,12 +15,12 @@ export default function UploadEpisodePage() {
   const params = useParams();
   const animeId = params.id as string; 
   
-  // State quản lý form cơ bản
-  const [animeTitle, setAnimeTitle] = useState("Đang tải dữ liệu phim...");
+  // State manages basic forms.
+  const [animeTitle, setAnimeTitle] = useState("Loading anime data...");
   const [episodeTitle, setEpisodeTitle] = useState("");
   const [episodeNumber, setEpisodeNumber] = useState<number | "">(""); 
   
-  // 🌟 1. STATE MỚI CHO 3 TRƯỜNG DỮ LIỆU CÀO TỪ FANDOM
+  // 🌟 1. NEW STATE FOR 3 DATA FIELDS SCRAPED FROM FANDOM
   const [adaptedFrom, setAdaptedFrom] = useState("");
   const [characters, setCharacters] = useState("");
   const [plotSummary, setPlotSummary] = useState("");
@@ -38,7 +38,7 @@ export default function UploadEpisodePage() {
   const [allMangas, setAllMangas] = useState<{id: string, title: string}[]>([]);
   const [availableChapters, setAvailableChapters] = useState<{id: string, title: string}[]>([]);
 
-  // Lấy tên Anime
+  // Get Anime Title
   useEffect(() => {
     fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/admin/anime/${animeId}`)
       .then(res => res.json())
@@ -53,7 +53,7 @@ export default function UploadEpisodePage() {
       .catch(() => setAnimeTitle("Server connection error"));
   }, [animeId]);
 
-  // Lấy danh sách Manga
+  // Get Manga List
   useEffect(() => {
     fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/manga`) 
       .then(res => res.json())
@@ -61,10 +61,10 @@ export default function UploadEpisodePage() {
          const mangaList = Array.isArray(data) ? data : (data.mangas || []);
          setAllMangas(mangaList);
       })
-      .catch(err => console.error("Lỗi tải danh sách Manga:", err));
+      .catch(err => console.error("Error loading Manga list:", err));
   }, []);
 
-  // Lấy Chapters
+  // Get Chapters
   useEffect(() => {
     const fetchChapters = async () => {
       if (!mangaId) {
@@ -76,7 +76,7 @@ export default function UploadEpisodePage() {
         const data = await res.json();
         setAvailableChapters(Array.isArray(data) ? data : []);
       } catch (err) {
-        console.error("Lỗi tải chapters:", err);
+        console.error("Error loading chapters:", err);
       }
     };
     fetchChapters();
@@ -133,7 +133,7 @@ export default function UploadEpisodePage() {
     }
   };
 
-  // 🌟 HÀM MỚI: XỬ LÝ NÚT AUTO-FILL (Đã đồng bộ 100% logic với trang Edit)
+  // 🌟 HANDLING THE AUTO-FILL BUTTON
   const handleAutoFill = async () => {
     if (!episodeNumber) {
       alert("Please enter the episode number before the data is automatically scanned!");
@@ -142,21 +142,21 @@ export default function UploadEpisodePage() {
 
     setIsAutoFilling(true);
     try {
-      // 1. Sửa lại đúng đường dẫn API
+      // 1. Correct the API path.
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/admin/episode/auto-fill`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // 2. Gửi đúng biến animeId (Lấy từ params) thay vì animeTitle
+        // 2. Send the correct animeId variable (fetched from params)
         body: JSON.stringify({ animeId, episodeNumber: Number(episodeNumber) })
       });
 
       const result = await res.json();
 
-      // 3. Xử lý dữ liệu trả về theo đúng cấu trúc { success, data }
+      // 3. Process the returned data according to the correct structure { success, data }
       if (res.ok && result.success) {
         const { plotSummary, characters, adaptedFrom } = result.data;
         
-        // Cập nhật State
+        // Update State
         setPlotSummary(plotSummary || "");
         setAdaptedFrom(adaptedFrom || "");
         setCharacters(characters ? (Array.isArray(characters) ? characters.join(", ") : characters) : "");
@@ -200,7 +200,7 @@ export default function UploadEpisodePage() {
     setUploadProgress(0); 
 
     try {
-      // --- PHẦN A: UPLOAD VIDEO ---
+      // --- Part A: UPLOAD VIDEO ---
       const safeVideoType = videoFile.type || "application/octet-stream";
       const urlRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/admin/get-upload-url`, {
         method: "POST",
@@ -214,7 +214,7 @@ export default function UploadEpisodePage() {
       await uploadFileWithProgress(urlData.uploadUrl, videoBlob);
       const finalVideoUrl = urlData.publicUrl;
 
-      // --- PHẦN B: UPLOAD SUBTITLES ---
+      // --- Part B: UPLOAD SUBTITLES ---
       const uploadedSubtitles = await Promise.all(
         subtitleInputs
           .filter((sub) => sub.file !== null)
@@ -239,7 +239,7 @@ export default function UploadEpisodePage() {
           })
       );
 
-      // --- PHẦN C: LƯU VÀO DATABASE ---
+      // --- Part C: SAVE TO DATABASE ---
       const backendRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/admin/episode`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -250,7 +250,6 @@ export default function UploadEpisodePage() {
           videoUrl: finalVideoUrl,
           subtitles: uploadedSubtitles,
           mappedChapterIds: mappedIds,
-          // 🌟 3. BỔ SUNG GỬI 3 TRƯỜNG DỮ LIỆU LÊN DATABASE
           adaptedFrom,
           characters,
           plotSummary
@@ -287,7 +286,7 @@ export default function UploadEpisodePage() {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           
-          {/* KHU VỰC THÔNG TIN CƠ BẢN & NÚT AUTO-FILL */}
+          {/* Basic information area and auto fill button */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div className="col-span-1">
               <label className="block text-sm font-semibold text-gray-300 mb-2">Ep Number (*)</label>
@@ -302,7 +301,7 @@ export default function UploadEpisodePage() {
             <div className="col-span-1 md:col-span-3">
               <label className="flex justify-between items-center text-sm font-semibold text-gray-300 mb-2">
                 <span>Episode Title (*)</span>
-                {/* 🌟 NÚT AUTO-FILL */}
+                {/* 🌟 AUTO-FILL BUTTON */}
                 <button
                   type="button"
                   onClick={handleAutoFill}
@@ -320,7 +319,7 @@ export default function UploadEpisodePage() {
             </div>
           </div>
 
-          {/* 🌟 4. GIAO DIỆN 3 TRƯỜNG DỮ LIỆU CÀO VỀ */}
+          {/* 🌟 4. 3 field crawl data interface */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-gray-900/50 p-4 rounded-xl border border-gray-700">
             <div className="col-span-1 md:col-span-2">
               <label className="block text-sm font-semibold text-gray-400 mb-2">Adapted From (Manga Chapter)</label>
@@ -362,7 +361,7 @@ export default function UploadEpisodePage() {
             />
           </div>
 
-          {/* KHU VỰC LIÊN KẾT MANGA */}
+          {/* MANGA linking area */}
           <div className="border border-indigo-900/50 bg-indigo-900/10 p-5 rounded-xl space-y-4">
              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
@@ -395,7 +394,7 @@ export default function UploadEpisodePage() {
                 </button>
              </div>
              
-             {/* Danh sách các nút Chapter */}
+             {/* Chapter list */}
              <div className="mt-4 border-t border-indigo-900/50 pt-4">
                 <label className="block text-sm text-indigo-300 mb-3 font-medium">
                   The corresponding chapters: <span className="text-xs text-gray-400 italic">(Click to select manually or use the Auto Map button above)</span>
@@ -464,7 +463,7 @@ export default function UploadEpisodePage() {
           </div>
 
           {/* ========================================== */}
-          {/* KHU VỰC NÚT SUBMIT & THANH TIẾN ĐỘ UPLOAD */}
+          {/* SUBMIT BUTTON & UPLOAD PROGRESS BAR */}
           {/* ========================================== */}
           <div className="mt-8 pt-4">
             {loading && uploadProgress > 0 ? (

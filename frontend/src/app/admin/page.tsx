@@ -9,15 +9,15 @@ export default function AdminDashboardPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
 
-  // 1. Bảo vệ trang: Yêu cầu đăng nhập và có quyền ADMIN
+  // 1. Protect the site: Requires login and ADMIN privileges.
   useEffect(() => {
     if (status === "loading") return;
     if (!session || session.user.role !== "ADMIN") {
-      router.push("/"); // Đuổi người dùng thường về trang chủ
+      router.push("/"); // Redirect regular users to the home page
     }
   }, [session, status, router]);
 
-  // Hiển thị vòng xoay trong lúc kiểm tra quyền
+  // Display a spinner while checking permissions
   if (status === "loading") {
     return (
       <div className="flex h-screen items-center justify-center bg-[#0f0f11]">
@@ -26,14 +26,14 @@ export default function AdminDashboardPage() {
     );
   }
 
-  // Nếu không phải Admin thì không render gì cả (tránh chớp nhoáng giao diện)
+  // Unles an admin, don't render anything (to avoid interface glitches).
   if (!session || session.user.role !== "ADMIN") return null;
 
   return (
     <div className="min-h-screen bg-[#0f0f11] text-white p-8 flex flex-col items-center justify-center">
       
       <div className="w-full max-w-4xl">
-        {/* LỜI CHÀO & NÚT BACK VỀ PROFILE */}
+        {/* GREETING & BACK TO PROFILE BUTTON */}
         <div className="flex justify-between items-center mb-10">
           <div>
             <h1 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">
@@ -51,7 +51,7 @@ export default function AdminDashboardPage() {
           </Link>
         </div>
 
-        {/* LƯỚI ĐIỀU HƯỚNG */}
+        {/* NAVIGATION GRID */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           
           {/* CARD ANIME */}
