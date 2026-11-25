@@ -26,7 +26,7 @@ export default function PublicMangaList() {
           setMangas(data);
         }
       } catch (error) {
-        console.error("Lỗi fetch:", error);
+        console.error("Error fetch:", error);
       } finally {
         setLoading(false);
       }
@@ -38,7 +38,7 @@ export default function PublicMangaList() {
   <div className="min-h-screen bg-[#0f0f13] text-white p-4 md:p-8">
     <div className="max-w-7xl mx-auto">
       
-      {/* 🌟 HEADER: Gradient Text tông Emerald / Green với gạch trang trí & badge đếm số lượng truyện */}
+      {/* 🌟 HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10 pb-6 border-b border-gray-800/60 relative">
         <div className="absolute bottom-0 left-0 w-36 h-px bg-gradient-to-r from-emerald-500 to-teal-400"></div>
         <div>
@@ -57,7 +57,7 @@ export default function PublicMangaList() {
         </div>
       </div>
 
-      {/* 🌟 KHU VỰC HIỂN THỊ DANH SÁCH */}
+      {/* 🌟 List area */}
       {loading ? (
         /* Loading Skeleton / Spinner State */
         <div className="flex flex-col items-center justify-center min-h-[40vh] gap-4">
@@ -75,7 +75,7 @@ export default function PublicMangaList() {
           </p>
         </div>
       ) : (
-        /* Grid Manga: Responsive mượt mà từ 2 cột điện thoại đến 6 cột màn hình PC */
+        /* Grid Manga */
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
           {mangas.map((manga) => (
             <Link 
@@ -83,7 +83,7 @@ export default function PublicMangaList() {
               href={`/manga/${manga.id}`}
               className="group relative flex flex-col rounded-2xl overflow-hidden bg-[#1a1a24] border border-gray-800/80 hover:border-emerald-500/50 transition-all duration-500 hover:-translate-y-2 shadow-lg hover:shadow-emerald-500/20"
             >
-              {/* Khung Poster */}
+              {/* Poster */}
               <div className="relative aspect-[2/3] w-full bg-gray-900 overflow-hidden shrink-0">
                 {manga.coverImage ? (
                   <img 
@@ -100,10 +100,9 @@ export default function PublicMangaList() {
                   </div>
                 )}
 
-                {/* Gradient tối dần tạo chiều sâu chân ảnh */}
                 <div className="absolute inset-0 bg-gradient-to-t from-[#1a1a24] via-black/20 to-transparent opacity-90"></div>
                 
-                {/* 🌟 Nút "Read" hiển thị mượt mà khi hover */}
+                {/* 🌟 read button dislay when hover */}
                 <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 bg-black/20 backdrop-blur-[2px]">
                   <div className="w-11 h-11 rounded-full bg-emerald-600/90 text-white flex items-center justify-center shadow-[0_0_15px_rgba(16,185,129,0.6)] transform scale-75 group-hover:scale-100 transition-transform duration-300">
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -112,7 +111,7 @@ export default function PublicMangaList() {
                   </div>
                 </div>
 
-                {/* Nhãn Số Chapters (Badge kính mờ ở góc dưới trái) */}
+                {/* Chapter quantity */}
                 <div className="absolute bottom-3 left-3 z-10 flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-md border border-gray-700/50 shadow-md">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_5px_#34d399]"></span>
                   <span className="text-[10px] font-bold text-gray-200 uppercase tracking-wider">
@@ -121,7 +120,7 @@ export default function PublicMangaList() {
                 </div>
               </div>
 
-              {/* Thông tin tên Manga */}
+              {/* Manga title information */}
               <div className="p-4 pt-3 flex-1 flex flex-col justify-between">
                 <h3 className="font-bold text-sm text-gray-200 line-clamp-2 group-hover:text-emerald-400 transition-colors duration-300 leading-snug">
                   {manga.title}

@@ -34,7 +34,7 @@ export default function CommunityDetailPage() {
   const [loading, setLoading] = useState(true);
   const [isProcessingJoin, setIsProcessingJoin] = useState(false);
 
-  // States Modal Đăng bài 
+  // States Modal upload post
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPost, setEditingPost] = useState<ForumPostItem | null>(null);
   const [title, setTitle] = useState(""); const [content, setContent] = useState("");
@@ -50,7 +50,7 @@ export default function CommunityDetailPage() {
   const [replyingToCommentId, setReplyingToCommentId] = useState<string | null>(null);
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null); const [editCommentContent, setEditCommentContent] = useState("");
 
-  // 🌟 KHU VỰC DÀNH CHO ADMIN
+  // 🌟 States for ADMIN
   const [isEditCommunityModalOpen, setIsEditCommunityModalOpen] = useState(false);
   const [isMembersModalOpen, setIsMembersModalOpen] = useState(false);
   const [editComName, setEditComName] = useState("");
@@ -79,7 +79,7 @@ export default function CommunityDetailPage() {
     return () => { isMounted = false; };
   }, [communityId, router]);
 
-  // BIẾN KIỂM TRA QUYỀN
+  // Check if the current user is a member or admin of the community
   const isMember = community?.members.some(m => m.id === session?.user?.id) || false;
   const isAdmin = session?.user?.id === community?.creatorId;
 
@@ -100,11 +100,11 @@ export default function CommunityDetailPage() {
           return { ...prev, members: newMembers, _count: { members: data.joined ? prev._count.members + 1 : prev._count.members - 1 } };
         });
       }
-    } catch (error) { alert("Lỗi!"); } finally { setIsProcessingJoin(false); }
+    } catch (error) { alert("Error!"); } finally { setIsProcessingJoin(false); }
   };
 
   // ==========================================
-  // 👑 3. LOGIC ADMIN (SỬA CỘNG ĐỒNG)
+  // 👑 3. LOGIC ADMIN (Edit community, manage members, etc.)
   // ==========================================
   const openEditCommunity = () => {
     if (!community) return;
@@ -115,7 +115,7 @@ export default function CommunityDetailPage() {
   };
 
   const handleUpdateCommunity = async () => {
-    if (!editComName.trim() || !editComDesc.trim()) return alert("Nhập đủ Tên và Mô tả!");
+    if (!editComName.trim() || !editComDesc.trim()) return alert("Please fill in both Name and Description!");
     setIsUpdatingCommunity(true);
     try {
       let finalCoverUrl = community?.coverImage;
@@ -125,7 +125,7 @@ export default function CommunityDetailPage() {
         const formData = new FormData(); formData.append("file", editComCover); formData.append("upload_preset", uploadPreset!);
         const cloudRes = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, { method: "POST", body: formData });
         const cloudData = await cloudRes.json();
-        if (!cloudRes.ok) throw new Error("Lỗi upload ảnh");
+        if (!cloudRes.ok) throw new Error("Error uploading image");
         finalCoverUrl = cloudData.secure_url;
       }
 
@@ -138,20 +138,20 @@ export default function CommunityDetailPage() {
         const updated = await res.json();
         setCommunity(updated);
         setIsEditCommunityModalOpen(false);
-        alert("Đã cập nhật thông tin Cộng đồng!");
+        alert("Successfully updated community information!");
       } else {
-        const data = await res.json(); alert(data.error || "Lỗi cập nhật!");
+        const data = await res.json(); alert(data.error || "Error updating community!");
       }
-    } catch (error) { alert("Đã xảy ra lỗi."); } finally { setIsUpdatingCommunity(false); }
+    } catch (error) { alert("An error occurred."); } finally { setIsUpdatingCommunity(false); }
   };
 
-  // ... (Giữ nguyên các Logic Bài Viết & Bình Luận như cũ - handleFileChange, handleSubmitPost, etc.) ...
+  // handleFileChange, handleSubmitPost, etc ...
   const resetForm = () => { setIsModalOpen(false); setEditingPost(null); setTitle(""); setContent(""); setTags([]); setMediaFile(null); setMediaPreview(null); setIsSpoiler(false); setCategory("GENERAL"); };
   const handleEditClick = (post: ForumPostItem) => { setEditingPost(post); setTitle(post.title); setContent(post.content); setCategory(post.category); setTags(post.tags || []); setIsSpoiler(post.isSpoiler); setMediaPreview(post.mediaUrl || null); setIsModalOpen(true); };
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => { if (e.target.files && e.target.files[0]) { const file = e.target.files[0]; setMediaFile(file); setMediaPreview(URL.createObjectURL(file)); } };
   const handleKeyDownTag = (e: React.KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter' && tagInput.trim() !== '') { e.preventDefault(); const newTag = tagInput.trim().replace(/^#/, ''); if (!tags.includes(newTag)) setTags([...tags, newTag]); setTagInput(""); } };
   const removeTag = (tagToRemove: string) => setTags(tags.filter(t => t !== tagToRemove));
-  const handleAIAnalyze = async () => { if (!title || !content) return alert("Nhập nội dung!"); setIsAnalyzing(true); try { const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/analyze`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title, content }) }); const data = await res.json(); setTags(Array.from(new Set([...tags, ...data.tags]))); setIsSpoiler(data.isSpoiler); } catch (error) { alert("Lỗi AI"); } finally { setIsAnalyzing(false); } };
+  const handleAIAnalyze = async () => { if (!title || !content) return alert("Please enter the required information!"); setIsAnalyzing(true); try { const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/analyze`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title, content }) }); const data = await res.json(); setTags(Array.from(new Set([...tags, ...data.tags]))); setIsSpoiler(data.isSpoiler); } catch (error) { alert("Error with AI analysis"); } finally { setIsAnalyzing(false); } };
   
   const handleSubmitPost = async () => {
     if (!title || !content) return alert("Please enter all the required information!");
@@ -162,7 +162,7 @@ export default function CommunityDetailPage() {
       let finalMediaUrl = editingPost ? editingPost.mediaUrl : null;
       if (mediaFile) {
         const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME; const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
-        if (!cloudName || !uploadPreset) { alert("Chưa cấu hình Cloudinary!"); setIsPosting(false); return; }
+        if (!cloudName || !uploadPreset) { alert("Cloudinary is not configured!"); setIsPosting(false); return; }
         const formData = new FormData(); formData.append("file", mediaFile); formData.append("upload_preset", uploadPreset);
         const cloudRes = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/${mediaFile.type.startsWith('video/') ? 'video' : 'image'}/upload`, { method: "POST", body: formData });
         const cloudData = await cloudRes.json();
@@ -175,11 +175,11 @@ export default function CommunityDetailPage() {
         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/posts`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title, content, category, tags, isSpoiler, mediaUrl: finalMediaUrl, authorId: session.user.id, communityId }) });
         if (res.ok) { const data = await res.json(); if (data.post) { const newPost = { ...data.post, author: { name: session.user.name, image: session.user.image } }; setCommunity(prev => prev ? { ...prev, posts: [newPost, ...prev.posts] } : prev); } resetForm(); }
       }
-    } catch (error) { alert("Lỗi kết nối."); } finally { setIsPosting(false); }
+    } catch (error) { alert("Error connecting."); } finally { setIsPosting(false); }
   };
-  const handleDeletePost = async (postId: string) => { if (!confirm("Delete this post?")) return; try { const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/posts/${postId}`, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ authorId: session?.user?.id }) }); if (res.ok) { setCommunity(prev => prev ? { ...prev, posts: prev.posts.filter(p => p.id !== postId) } : prev); } } catch (error) { alert("Error delete post!"); } };
+  const handleDeletePost = async (postId: string) => { if (!confirm("Delete this post?")) return; try { const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/posts/${postId}`, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ authorId: session?.user?.id }) }); if (res.ok) { setCommunity(prev => prev ? { ...prev, posts: prev.posts.filter(p => p.id !== postId) } : prev); } } catch (error) { alert("Error deleting post!"); } };
   const handleVote = async (postId: string, type: 'UP' | 'DOWN') => { 
-    if (!session?.user?.id) return alert("Đăng nhập để vote!"); 
+    if (!session?.user?.id) return alert("Log in to vote!"); 
     try { 
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/posts/${postId}/vote`, { 
         method: "POST", 
@@ -198,7 +198,7 @@ export default function CommunityDetailPage() {
         } : prev); 
       } 
     } catch (error) { 
-      console.error("Lỗi vote", error); 
+      console.error("Error voting", error); 
     } 
   };
   const toggleComments = async (postId: string) => { if (activeCommentPostId === postId) { setActiveCommentPostId(null); } else { setActiveCommentPostId(postId); const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/posts/${postId}/comments`); if (res.ok) setComments(await res.json()); } };
@@ -221,7 +221,7 @@ export default function CommunityDetailPage() {
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg> return to Communities
       </Link>
 
-      {/* HEADER CỘNG ĐỒNG */}
+      {/* HEADER Community */}
       <div className="bg-[#1a1d24] rounded-2xl border border-gray-800 overflow-hidden mb-8 shadow-xl">
         <div className="h-48 md:h-64 bg-gray-800 relative group">
           {community.coverImage ? <img src={community.coverImage} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-gradient-to-r from-blue-900 to-indigo-900"></div>}
@@ -244,7 +244,7 @@ export default function CommunityDetailPage() {
               </div>
             </div>
             
-            {/* 🌟 NÚT TƯƠNG TÁC (TÙY THEO QUYỀN) */}
+            {/* 🌟 Interaction Buttons (Based on Permissions) */}
             <div className="flex items-center gap-3">
               {isAdmin ? (
                 <>
@@ -265,7 +265,7 @@ export default function CommunityDetailPage() {
         </div>
       </div>
 
-      {/* FEED BÀI VIẾT (Giữ nguyên cấu trúc đã có) */}
+      {/* FEED in community */}
       <div>
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-white border-b-2 border-blue-500 pb-2 inline-block">Posts in community</h2>
@@ -331,12 +331,12 @@ export default function CommunityDetailPage() {
                 </div>
 
 
-                {/* THANH TƯƠNG TÁC */}
+                {/* Interaction Bar */}
                 <div className="flex items-center justify-between mt-5 pt-4 border-t border-gray-800/50 text-gray-400">
                   <div className="flex items-center gap-4">
-                    {/* Cụm Vote tách biệt Up/Down */}
+                    {/* Vote Up/Down */}
                     <div className="flex items-center bg-gray-800/50 rounded-full border border-gray-700/60 p-1 shadow-sm hover:border-gray-600 transition-all">
-                      {/* Nút Upvote kèm số lượt */}
+                      {/* Upvote button */}
                       <button 
                         onClick={() => handleVote(post.id, 'UP')} 
                         className="flex items-center gap-1.5 px-2.5 py-1 rounded-full hover:bg-emerald-500/10 hover:text-emerald-400 text-gray-400 transition-all active:scale-95 group/up"
@@ -350,10 +350,10 @@ export default function CommunityDetailPage() {
                         </span>
                       </button>
 
-                      {/* Vạch ngăn cách */}
+                      {/* dividing line */}
                       <div className="w-[1px] h-3.5 bg-gray-700/70 mx-0.5"></div>
 
-                      {/* Nút Downvote kèm số lượt */}
+                      {/* votedown button */}
                       <button 
                         onClick={() => handleVote(post.id, 'DOWN')} 
                         className="flex items-center gap-1.5 px-2.5 py-1 rounded-full hover:bg-rose-500/10 hover:text-rose-400 text-gray-400 transition-all active:scale-95 group/down"
@@ -377,7 +377,7 @@ export default function CommunityDetailPage() {
                   )}
                 </div>
 
-                {/* KHU VỰC BÌNH LUẬN ĐA CẤP */}
+                {/* COMMENT SECTION */}
                 {activeCommentPostId === post.id && (
                   <div className="mt-4 pt-4 border-t border-gray-800">
                     <div className="flex gap-3 mb-6">
@@ -446,9 +446,8 @@ export default function CommunityDetailPage() {
         </div>
       </div>
 
-      {/* POPUP MODAL ĐĂNG BÀI */}
+      {/* POPUP MODAL Upload post */}
       {isModalOpen && (
-        /* ... Giữ nguyên Modal đăng bài cũ ... */
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
           <div className="bg-[#1a1d24] w-full max-w-2xl rounded-2xl border border-gray-800 shadow-2xl flex flex-col max-h-[90vh]">
             <div className="flex justify-between items-center p-5 border-b border-gray-800">
@@ -505,7 +504,7 @@ export default function CommunityDetailPage() {
         </div>
       )}
 
-      {/* 🌟 1. POPUP SỬA THÔNG TIN CỘNG ĐỒNG (Chỉ Admin) */}
+      {/* 🌟 1. POPUP Edit community info (admin only) */}
       {isEditCommunityModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
           <div className="bg-[#1a1d24] w-full max-w-lg rounded-2xl border border-gray-800 shadow-2xl flex flex-col">
@@ -543,7 +542,7 @@ export default function CommunityDetailPage() {
         </div>
       )}
 
-      {/* 🌟 2. POPUP DANH SÁCH THÀNH VIÊN (Chỉ Admin) */}
+      {/* 🌟 2. POPUP member list (Admin only) */}
       {isMembersModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
           <div className="bg-[#1a1d24] w-full max-w-md rounded-2xl border border-gray-800 shadow-2xl flex flex-col max-h-[80vh]">
@@ -561,7 +560,7 @@ export default function CommunityDetailPage() {
                     <div>
                       <h4 className="font-bold text-gray-200 text-sm flex items-center gap-2">
                         {member.name}
-                        {member.id === community.creatorId && <span className="text-[10px] bg-yellow-500/20 text-yellow-500 px-1.5 py-0.5 rounded border border-yellow-500/50">Quản trị viên</span>}
+                        {member.id === community.creatorId && <span className="text-[10px] bg-yellow-500/20 text-yellow-500 px-1.5 py-0.5 rounded border border-yellow-500/50">Admin</span>}
                       </h4>
                     </div>
                   </div>

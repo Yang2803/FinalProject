@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 
-// 🌟 1. KHAI BÁO KIỂU DỮ LIỆU ĐỒNG BỘ VỚI SCHEMA PRISMA
+// 🌟 1. DECLARING DATA TYPES TO SYNCHRONIZE WITH SCHEMA PRISMA
 interface SidebarStats {
   topCommunities: { 
     id: string; 
@@ -23,7 +23,7 @@ interface SidebarStats {
   }[];
 }
 
-// Hàm gán màu avatar ngẫu nhiên theo tên
+// Function to assign a random avatar color based on name
 const getAvatarColor = (name?: string) => {
   const colors = [
     'bg-red-500', 'bg-green-500', 'bg-blue-500', 'bg-yellow-500', 
@@ -42,7 +42,7 @@ export default function ForumLayout({ children }: { children: React.ReactNode })
   const [stats, setStats] = useState<SidebarStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   
-  // Tab chuyển đổi trong Bảng vàng thành viên
+  // Conversion tab in the Member Ranking Board
   const [activeUserTab, setActiveUserTab] = useState<'posters' | 'commenters' | 'voters'>('posters');
 
   const [isMobileWidgetsOpen, setIsMobileWidgetsOpen] = useState(false);
@@ -58,7 +58,7 @@ export default function ForumLayout({ children }: { children: React.ReactNode })
         if (tagsRes.ok) setTrendingTags(await tagsRes.json());
         if (statsRes.ok) setStats(await statsRes.json());
       } catch (error) {
-        console.error("Lỗi khi tải dữ liệu Sidebar:", error);
+        console.error("Error loading Sidebar data:", error);
       } finally {
         setIsLoading(false);
       }
@@ -71,7 +71,7 @@ export default function ForumLayout({ children }: { children: React.ReactNode })
 
  const renderWidgetsContent = () => (
     <>
-      {/* Nút Khám phá Cộng đồng */}
+      {/* Explore community button */}
       <Link
         href="/forum/communities"
         onClick={() => setIsMobileWidgetsOpen(false)}
@@ -114,7 +114,7 @@ export default function ForumLayout({ children }: { children: React.ReactNode })
         </div>
       </div>
 
-      {/* 2. WIDGET: TOP CỘNG ĐỒNG SÔI NỔI */}
+      {/* 2. WIDGET: TOP Community */}
       <div className="bg-gradient-to-br from-[#1a1d24] to-[#121418] rounded-3xl border border-gray-800/80 p-5 shadow-2xl relative overflow-hidden group">
         <div className="absolute -top-10 -right-10 w-32 h-32 bg-emerald-500/10 blur-3xl rounded-full pointer-events-none group-hover:bg-emerald-500/20 transition-all"></div>
 
@@ -167,7 +167,7 @@ export default function ForumLayout({ children }: { children: React.ReactNode })
         </div>
       </div>
 
-      {/* 3. WIDGET: BẢNG VÀNG THÀNH VIÊN TÍCH CỰC */}
+      {/* 3. WIDGET: TOP CONTRIBUTORS BOARD */}
       <div className="bg-gradient-to-br from-[#1a1d24] to-[#121418] rounded-3xl border border-gray-800/80 p-5 shadow-2xl relative overflow-hidden group">
         <div className="absolute -top-10 -right-10 w-32 h-32 bg-purple-500/10 blur-3xl rounded-full pointer-events-none group-hover:bg-purple-500/20 transition-all"></div>
 
@@ -212,7 +212,7 @@ export default function ForumLayout({ children }: { children: React.ReactNode })
           </button>
         </div>
 
-        {/* Danh sách thành viên */}
+        {/* List of top members */}
         <div className="space-y-3 relative z-10">
           {isLoading ? (
             <span className="text-gray-500 text-xs italic">Updating...</span>
@@ -276,7 +276,7 @@ export default function ForumLayout({ children }: { children: React.ReactNode })
         </div>
       </div>
 
-      {/* 4. WIDGET: BÀI VIẾT ĐANG HOT */}
+      {/* 4. WIDGET: HOT POSTS */}
       <div className="bg-gradient-to-br from-[#1a1d24] to-[#121418] rounded-3xl border border-gray-800/80 p-5 shadow-2xl relative overflow-hidden group">
         <div className="absolute -top-10 -right-10 w-32 h-32 bg-pink-500/10 blur-3xl rounded-full pointer-events-none group-hover:bg-pink-500/20 transition-all"></div>
 
@@ -325,10 +325,10 @@ export default function ForumLayout({ children }: { children: React.ReactNode })
   return (
     <div className="flex justify-center min-h-full bg-[#0a0b0f] text-white relative">
       {/* ======================================================== */}
-      {/* 🌟 CỘT GIỮA: FEED CHÍNH */}
+      {/* 🌟 MIDDLE COLUMN: MAIN FEED */}
       {/* ======================================================== */}
       <main className="w-full max-w-3xl border-x-0 md:border-x border-gray-800/60 bg-[#12141a]/80 min-w-0">
-        {/* THANH TRUY CẬP NHANH CHO MOBILE & TABLET (Ẩn trên màn hình lớn lg) */}
+        {/* QUICK ACCESS BAR FOR MOBILE & TABLET (Hidden on large screen) */}
         <div className="lg:hidden px-3.5 pt-3.5 sm:px-6 sm:pt-5 flex items-center gap-2.5">
           <Link
             href="/forum/communities"
@@ -350,24 +350,23 @@ export default function ForumLayout({ children }: { children: React.ReactNode })
       </main>
 
       {/* ======================================================== */}
-      {/* 🌟 CỘT PHẢI: WIDGETS CỘNG ĐỒNG TRÊN DESKTOP (lg trở lên) */}
+      {/* 🌟 RIGHT COLUMN: COMMUNITY WIDGETS ON DESKTOP (lg and above) */}
       {/* ======================================================== */}
       <aside className="hidden lg:block w-[340px] p-6 space-y-6 sticky top-0 h-[calc(100dvh-64px)] overflow-y-auto custom-sidebar-scroll shrink-0">
         {renderWidgetsContent()}
       </aside>
 
       {/* ======================================================== */}
-      {/* 🌟 DRAWER WIDGETS CỘNG ĐỒNG TRÊN MOBILE (< lg) */}
+      {/* 🌟 DRAWER WIDGETS COMMUNITY ON MOBILE (< lg) */}
       {/* ======================================================== */}
       {isMobileWidgetsOpen && (
         <div className="lg:hidden fixed inset-0 z-50 flex justify-end">
-          {/* Lớp nền mờ */}
           <div
             className="fixed inset-0 bg-black/75 backdrop-blur-sm transition-opacity"
             onClick={() => setIsMobileWidgetsOpen(false)}
           />
 
-          {/* Ngăn kéo trượt từ bên phải sang */}
+          {/* Sidebar for mobile devices */}
           <aside className="relative w-80 max-w-[85vw] h-full bg-[#0d0f14] border-l border-gray-800 p-4 pb-20 space-y-5 overflow-y-auto z-10 shadow-2xl">
             <div className="flex items-center justify-between border-b border-gray-800 pb-3">
               <h2 className="font-black text-base text-white flex items-center gap-2">

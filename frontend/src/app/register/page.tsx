@@ -18,7 +18,7 @@ export default function RegisterPage() {
     setSuccess("");
 
     try {
-      // Bắn API thẳng qua Express Backend để tạo tài khoản
+      // Direct API access through Express Backend to create accounts.
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSession } from "next-auth/react"; // 🌟 Import thêm useSession để check đăng nhập
 
 // ==========================================
-// ĐỊNH NGHĨA INTERFACES
+// define  INTERFACES
 // ==========================================
 interface Author {
   id?: string;
@@ -42,35 +42,35 @@ interface ForumCommentItem {
 }
 
 export default function ForumPostDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { data: session } = useSession(); // 🌟 Lấy thông tin user hiện tại
+  const { data: session } = useSession(); // 🌟 Get current user information
   
-  // Giải nén ID từ URL
+  // Extract the ID from the URL.
   const resolvedParams = use(params);
   const postId = resolvedParams.id;
 
-  // States cho bài viết
+  // States for the post and loading status
   const [post, setPost] = useState<ForumPost | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // 🌟 States cho bình luận (Bê từ forum/page.tsx sang)
+  // 🌟 States for comments and comment actions
   const [comments, setComments] = useState<ForumCommentItem[]>([]);
   const [newComment, setNewComment] = useState("");
   const [replyingToCommentId, setReplyingToCommentId] = useState<string | null>(null);
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editCommentContent, setEditCommentContent] = useState("");
 
-  // Gọi API lấy dữ liệu bài viết VÀ bình luận
+  // Call the API to fetch post details and comments when the component mounts or when postId changes
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Lấy chi tiết bài viết
+        // 🌟 Fetch the post details
         const postRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/posts/${postId}`);
         if (postRes.ok) {
           const postData = await postRes.json();
           setPost(postData);
         }
 
-        // 🌟 Lấy luôn danh sách bình luận của bài viết này
+        // 🌟 Fetch the comments for the post
         const cmtRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/posts/${postId}/comments`);
         if (cmtRes.ok) {
           const cmtData = await cmtRes.json();
@@ -78,7 +78,7 @@ export default function ForumPostDetailPage({ params }: { params: Promise<{ id: 
         }
 
       } catch (error) {
-        console.error("Lỗi khi tải dữ liệu:", error);
+        console.error("Error loading data:", error);
       } finally {
         setLoading(false);
       }
@@ -116,10 +116,10 @@ export default function ForumPostDetailPage({ params }: { params: Promise<{ id: 
 };
 
   // ==========================================
-  // 🌟 CÁC HÀM XỬ LÝ BÌNH LUẬN
+  // 🌟 Functions for handling comments (post, edit, delete, vote)
   // ==========================================
   
-  // GỬI BÌNH LUẬN (HOẶC REPLY)
+  // Send comment (either a new comment or a reply)
   const handlePostComment = async (parentId: string | null = null) => {
     if (!newComment.trim()) return;
     if (!session?.user?.id) return alert("Please log in to comment!");
@@ -138,7 +138,7 @@ export default function ForumPostDetailPage({ params }: { params: Promise<{ id: 
     } catch (error) { alert("Error posting comment"); }
   };
 
-  // SỬA BÌNH LUẬN
+  // Edit comment
   const submitEditComment = async (commentId: string) => {
     if (!editCommentContent.trim()) return;
     try {
@@ -154,7 +154,7 @@ export default function ForumPostDetailPage({ params }: { params: Promise<{ id: 
     } catch (error) { alert("Error updating comment"); }
   };
 
-  // XÓA BÌNH LUẬN
+  // Delete comment
   const handleDeleteComment = async (commentId: string) => {
     if (!confirm("Are you sure you want to delete this comment?")) return;
     try {
@@ -168,7 +168,7 @@ export default function ForumPostDetailPage({ params }: { params: Promise<{ id: 
     } catch (error) { alert("Delete error"); }
   };
 
-  // VOTE BÌNH LUẬN
+  // VOTE comment
   const handleVoteComment = async (commentId: string, type: 'UP' | 'DOWN') => {
     if (!session?.user?.id) return alert("Please log in to vote!");
     try {
@@ -183,7 +183,7 @@ export default function ForumPostDetailPage({ params }: { params: Promise<{ id: 
     } catch (error) { console.error("Error voting comment", error); }
   };
 
-  // Hàm dịch thuật Link
+  // Function to format content with links
   const renderFormattedContent = (text: string) => {
     const linkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
     const parts = [];
@@ -239,13 +239,13 @@ export default function ForumPostDetailPage({ params }: { params: Promise<{ id: 
     <div className="min-h-screen bg-[#0f0f11] text-white pb-20">
       <div className="max-w-4xl mx-auto px-4 pt-8">
         
-        {/* Nút quay lại */}
+        {/* Back button */}
         <Link href="/forum" className="inline-flex items-center gap-2 text-gray-400 hover:text-blue-400 transition mb-6 font-bold text-sm">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
           Back to Forum
         </Link>
 
-        {/* NỘI DUNG BÀI VIẾT */}
+        {/* Post Content */}
         <div className="bg-[#1a1d24] rounded-2xl border border-gray-800 p-6 md:p-8 shadow-xl mb-8">
           
           <div className="flex items-center justify-between mb-6">
@@ -306,7 +306,7 @@ export default function ForumPostDetailPage({ params }: { params: Promise<{ id: 
 
 
         {/* ======================================================== */}
-        {/* 🌟 THANH TƯƠNG TÁC (VOTE CHO BÀI VIẾT CHI TIẾT) */}
+        {/* 🌟 Post Interaction Bar (Voting for the Post) */}
         {/* ======================================================== */}
         <div className="flex items-center justify-between mt-6 pt-5 border-t border-gray-800/60 mb-8">
           <div className="flex items-center bg-gray-800/50 rounded-full border border-gray-700/60 p-1 shadow-sm hover:border-gray-600 transition-all">
@@ -324,10 +324,10 @@ export default function ForumPostDetailPage({ params }: { params: Promise<{ id: 
               </span>
             </button>
 
-            {/* Vạch ngăn cách */}
+            {/* dividing line */}
             <div className="w-[1px] h-3.5 bg-gray-700/70 mx-0.5"></div>
 
-            {/* Nút Downvote */}
+            {/* Downvote button */}
             <button 
               onClick={() => handleVote('DOWN')} 
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full hover:bg-rose-500/10 hover:text-rose-400 text-gray-400 transition-all active:scale-95 group/down"
@@ -342,7 +342,7 @@ export default function ForumPostDetailPage({ params }: { params: Promise<{ id: 
             </button>
           </div>
 
-          {/* Tổng số bình luận */}
+          {/* Total number of comments */}
           <div className="text-xs font-bold text-gray-400 flex items-center gap-1.5">
             <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
@@ -352,7 +352,7 @@ export default function ForumPostDetailPage({ params }: { params: Promise<{ id: 
         </div>
 
         {/* ======================================================= */}
-        {/* 🌟 KHU VỰC BÌNH LUẬN ĐÃ ĐỒNG BỘ UI TỪ TRANG CHỦ FORUM */}
+        {/* 🌟 Comment area */}
         {/* ======================================================= */}
         <div className="bg-[#1a1d24] rounded-2xl border border-gray-800 p-6 md:p-8 shadow-xl">
           <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
@@ -360,7 +360,7 @@ export default function ForumPostDetailPage({ params }: { params: Promise<{ id: 
             Comments ({comments.length})
           </h2>
 
-          {/* Ô nhập Comment gốc */}
+          {/* Comment input field */}
           <div className="flex gap-3 mb-8">
             <input 
               type="text" placeholder="Expressing your thoughts..." value={newComment} 
@@ -372,7 +372,7 @@ export default function ForumPostDetailPage({ params }: { params: Promise<{ id: 
             </button>
           </div>
           
-          {/* Danh sách Comment */}
+          {/* Comment list */}
           <div className="space-y-5">
             {comments.filter(c => !c.parentId).map(cmt => {
               

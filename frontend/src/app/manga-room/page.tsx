@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
 // =====================================================================
-// INTERFACES (Đảm bảo Type-safety tuyệt đối, không dùng any)
+// INTERFACES 
 // =====================================================================
 interface MangaRoomMember {
   id: string;
@@ -38,13 +38,13 @@ export default function MangaCoReadingLobby() {
   const [roomName, setRoomName] = useState("");
   const [isPrivate, setIsPrivate] = useState(false);
 
-  // State quản lý danh sách phòng Co-reading
+  // State for active manga rooms
   const [activeRooms, setActiveRooms] = useState<ActiveMangaRoom[]>([]);
   const [isLoadingRooms, setIsLoadingRooms] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
 
   // ==========================================
-  // LẤY DANH SÁCH PHÒNG TỪ BACKEND
+  // Get list of active manga rooms from the backend 
   // ==========================================
   useEffect(() => {
     let isMounted = true;
@@ -57,7 +57,7 @@ export default function MangaCoReadingLobby() {
           if (isMounted) setActiveRooms(data);
         }
       } catch (error) {
-        console.error("Lỗi tải danh sách phòng đọc:", error);
+        console.error("Error loading the list of reading rooms.:", error);
       } finally {
         if (isMounted) setIsLoadingRooms(false);
       }
@@ -76,7 +76,7 @@ export default function MangaCoReadingLobby() {
   };
 
   // ==========================================
-  // TẠO PHÒNG MỚI (CHƯA CẦN CHỌN TRUYỆN TRƯỚC)
+  // CREATE NEW ROOM (NO NEED TO SELECT MANGA FIRST)
   // ==========================================
   const handleCreateRoom = async () => {
     if (!session?.user?.id) return alert("Please log in to create a room!");
@@ -101,18 +101,18 @@ export default function MangaCoReadingLobby() {
         const data = await res.json();
         router.push(`/manga-room/${data.room.inviteCode || data.room.id}`);
       } else {
-        alert("Có lỗi xảy ra khi tạo phòng đọc.");
+        alert("An error occurred while creating the reading room.");
       }
     } catch (error) {
       console.error(error);
-      alert("Lỗi kết nối đến Server.");
+      alert("Error connecting to the server.");
     } finally {
       setIsCreating(false);
     }
   };
 
   // ==========================================
-  // THAM GIA BẰNG INVITE CODE
+  // Join by invite code (from input or from the room list)
   // ==========================================
   const handleJoinRoom = (e?: React.FormEvent, code?: string) => {
     e?.preventDefault();
@@ -123,7 +123,6 @@ export default function MangaCoReadingLobby() {
 
   return (
     <div className="min-h-screen bg-[#0f0f11] text-white p-4 sm:p-8 md:p-12 relative overflow-hidden select-none">
-      {/* Hiệu ứng ánh sáng nền (Ambient Background Glow) */}
       <div className="absolute -top-32 left-1/4 w-96 h-96 bg-emerald-600/15 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute top-40 right-1/4 w-96 h-96 bg-cyan-600/15 rounded-full blur-[120px] pointer-events-none" />
 
@@ -145,7 +144,7 @@ export default function MangaCoReadingLobby() {
               Reading Together
             </h1>
 
-            {/* Các huy hiệu tính năng của phòng đọc */}
+            {/* Features of the reading room */}
             <div className="pt-2 flex flex-wrap items-center justify-center gap-2 text-xs font-semibold text-gray-300">
               <span className="px-3 py-1.5 rounded-xl bg-gray-900/80 border border-white/[0.06] flex items-center gap-1.5">
                 📖 Synchronized page turning
@@ -164,11 +163,11 @@ export default function MangaCoReadingLobby() {
         </div>
 
         {/* ===================================================================== */}
-        {/* 🌟 2. GRID 2 THẺ: TẠO PHÒNG MỚI & VÀO PHÒNG BẰNG MÃ */}
+        {/* 🌟 2. GRID 2: Create new room, join by invite code */}
         {/* ===================================================================== */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
           
-          {/* CARD 1: TẠO PHÒNG ĐỌC MỚI */}
+          {/* CARD 1:create new room */}
           <div className="group bg-[#151821]/90 backdrop-blur-xl p-7 md:p-8 rounded-3xl border border-emerald-500/20 hover:border-emerald-500/40 shadow-2xl relative overflow-hidden flex flex-col justify-between transition-all duration-300">
             <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-500" />
             <div className="absolute -right-16 -top-16 w-40 h-40 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none group-hover:bg-emerald-500/20 transition" />
@@ -207,7 +206,7 @@ export default function MangaCoReadingLobby() {
                   />
                 </div>
 
-                {/* Hộp chọn Phòng Kín (Private) hiện đại */}
+                {/* Private Room Toggle */}
                 <label
                   htmlFor="private-manga-mode"
                   className={`flex items-center justify-between gap-4 p-4 rounded-2xl border cursor-pointer transition-all ${
@@ -305,7 +304,7 @@ export default function MangaCoReadingLobby() {
         </div>
 
         {/* ===================================================================== */}
-        {/* 🌟 3. DANH SÁCH CÁC PHÒNG ĐANG MỞ (LIVE ROOMS) */}
+        {/* 🌟 3. LIST OF ACTIVE READING ROOMS */}
         {/* ===================================================================== */}
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/[0.07]">
@@ -371,7 +370,6 @@ export default function MangaCoReadingLobby() {
                   key={r.id}
                   className="bg-[#151821]/90 hover:bg-[#191d28] border border-white/[0.07] hover:border-emerald-500/50 rounded-2xl p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-emerald-950/30 group flex flex-col justify-between relative overflow-hidden"
                 >
-                  {/* Thanh sáng mảnh trên đỉnh thẻ */}
                   <div
                     className={`absolute top-0 left-0 w-full h-1 ${
                       r.isPrivate ? "bg-amber-500/70" : "bg-emerald-500"
@@ -379,7 +377,7 @@ export default function MangaCoReadingLobby() {
                   />
 
                   <div>
-                    {/* Hàng trên: Trạng thái Public/Private & Mã phòng */}
+                    {/* Public/Private status & Room code */}
                     <div className="flex items-center justify-between gap-2 mb-3">
                       {r.isPrivate ? (
                         <span className="bg-amber-500/10 text-amber-400 text-[11px] font-extrabold px-2.5 py-1 rounded-full border border-amber-500/25 flex items-center gap-1">
@@ -397,12 +395,12 @@ export default function MangaCoReadingLobby() {
                       </span>
                     </div>
 
-                    {/* Tên phòng */}
+                    {/* Room Name */}
                     <h3 className="font-extrabold text-lg text-white group-hover:text-emerald-400 transition line-clamp-1 mb-4">
                       {r.name}
                     </h3>
 
-                    {/* Thông tin Trưởng phòng */}
+                    {/* Host Information */}
                     <div className="flex items-center gap-3 mb-4 pb-4 border-b border-white/[0.06]">
                       <div className="relative shrink-0">
                         {r.host?.image ? (
@@ -431,7 +429,7 @@ export default function MangaCoReadingLobby() {
                       </div>
                     </div>
 
-                    {/* Khung bộ truyện đang đọc */}
+                    {/* Currently Reading Section */}
                     <div className="bg-gray-900/75 rounded-xl p-3.5 mb-5 border border-white/[0.05]">
                       <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-400/80 mb-1 flex items-center gap-1.5">
                         <span>📖 Currently Reading:</span>
@@ -444,7 +442,7 @@ export default function MangaCoReadingLobby() {
                     </div>
                   </div>
 
-                  {/* Hàng cuối: Số người & Nút tham gia */}
+                  {/* Bottom Row: Reader Count & Join Button */}
                   <div className="flex items-center justify-between pt-1 mt-auto">
                     <span className="text-xs font-bold text-gray-400 bg-gray-900/80 px-3 py-1.5 rounded-lg border border-white/[0.05] flex items-center gap-1.5">
                       <span>👥</span>

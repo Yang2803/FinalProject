@@ -19,11 +19,11 @@ interface CommunityItem {
 export default function CommunitiesPage() {
   const { data: session } = useSession();
   
-  // States quản lý danh sách
+  // States managing the list of communities and loading state
   const [communities, setCommunities] = useState<CommunityItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // States quản lý Form tạo mới
+  // States managing the form for creating a new community
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -31,15 +31,15 @@ export default function CommunitiesPage() {
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
 
-  // State cho thanh tìm kiếm
+  // State for search query input
   const [searchQuery, setSearchQuery] = useState("");
 
-  // 🌟 THÊM STATE CHO TÍNH NĂNG LỌC NHÓM ĐÃ THAM GIA
+  // 🌟 State for filtering communities to show only those the user has joined
   const [showJoinedOnly, setShowJoinedOnly] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 1. TẢI DANH SÁCH COMMUNITY
+  // 1. FETCH COMMUNITY LIST
   useEffect(() => {
     let isMounted = true;
     const fetchCommunities = async () => {
@@ -52,7 +52,7 @@ export default function CommunitiesPage() {
           if (isMounted) setCommunities(data);
         }
       } catch (error) {
-        console.error("Lỗi khi tải danh sách cộng đồng:", error);
+        console.error("Error loading community list:", error);
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -62,7 +62,7 @@ export default function CommunitiesPage() {
     return () => { isMounted = false; };
   }, []);
 
-  // 2. XỬ LÝ CHỌN ẢNH BÌA
+  // 2. Handle file input change for cover image
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
@@ -79,7 +79,7 @@ export default function CommunitiesPage() {
     setCoverPreview(null);
   };
 
-  // 3. XỬ LÝ TẠO CỘNG ĐỒNG (UPLOAD ẢNH & POST DATA)
+  // 3. Handle creating a new community (upload image & post data)
   const handleCreateCommunity = async () => {
     if (!name.trim() || !description.trim()) return alert("Please enter the full Title and Description!");
     if (!session?.user?.id) return alert("Please log in!");
@@ -89,7 +89,7 @@ export default function CommunitiesPage() {
     try {
       let finalCoverUrl = null;
 
-      // Upload ảnh lên Cloudinary nếu có
+      // Upload cover image to Cloudinary if provided
       if (coverFile) {
         const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
         const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
@@ -110,11 +110,11 @@ export default function CommunitiesPage() {
         });
         
         const cloudData = await cloudRes.json();
-        if (!cloudRes.ok) throw new Error("Lỗi upload ảnh bìa");
+        if (!cloudRes.ok) throw new Error("Error uploading cover image");
         finalCoverUrl = cloudData.secure_url;
       }
 
-      // Gọi API tạo Community
+      // Call api to create the community with the provided data
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/communities`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -130,43 +130,43 @@ export default function CommunitiesPage() {
         const newCommunity = await res.json();
         alert("Tạo cộng đồng thành công!");
         
-        // Thêm vào danh sách hiện tại với số count mặc định
+        // Add to the current list with the default count.
         const newCommunityWithCount: CommunityItem = {
           ...newCommunity,
-          _count: { members: 1, posts: 0 } // Người tạo tự động là 1 member
+          _count: { members: 1, posts: 0 } // The creator is automatically a member
         };
         
         setCommunities([newCommunityWithCount, ...communities]);
         resetForm();
       } else {
         const data = await res.json();
-        alert(data.error || "Lỗi khi tạo cộng đồng");
+        alert(data.error || "Error creating community");
       }
     } catch (error) {
       console.error(error);
-      alert("Đã xảy ra lỗi kết nối.");
+      alert("An error occurred while connecting.");
     } finally {
       setIsCreating(false);
     }
   };
 
-  // 🌟 NÂNG CẤP THUẬT TOÁN LỌC KÉP: Lọc theo Từ khóa + Lọc theo Trạng thái tham gia
+  // 🌟 filter communities based on search query and joined status
   const filteredCommunities = communities.filter(c => {
-    // 1. Kiểm tra khớp từ khóa tìm kiếm
+    // 1. Check if the community name or description matches the search query
     const matchesSearch = c.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           c.description.toLowerCase().includes(searchQuery.toLowerCase());
     
-    // 2. Kiểm tra user đã tham gia chưa (nếu nút lọc đang bật)
+    // 2. Check if the user has joined the community
     const isJoined = c.members?.some(m => m.id === session?.user?.id);
     const matchesJoined = showJoinedOnly ? isJoined : true;
 
-    // Trả về true nếu thỏa mãn cả 2 điều kiện
+    // 3. Return true only if both conditions are satisfied
     return matchesSearch && matchesJoined;
   });
 
   return (
   <div className="max-w-6xl mx-auto px-4 py-8">
-    {/* Nút quay lại Forum với hiệu ứng hover mượt mà */}
+    {/* back to forum button */}
     <Link 
       href="/forum" 
       className="inline-flex items-center gap-2 text-gray-400 hover:text-cyan-400 transition-all mb-8 font-bold text-sm bg-gray-900/40 hover:bg-gray-800/80 px-4 py-2 rounded-full border border-gray-800 hover:border-cyan-500/30 backdrop-blur-md shadow-sm w-fit"
@@ -177,7 +177,7 @@ export default function CommunitiesPage() {
       Back to Forum
     </Link>
 
-    {/* HEADER TÌM KIẾM & NÚT TẠO */}
+    {/* HEADER search and create button */}
     <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10 pb-8 border-b border-gray-800/80 relative">
       <div className="absolute -bottom-[1px] left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-cyan-500/40 to-transparent pointer-events-none"></div>
 
@@ -198,9 +198,9 @@ export default function CommunitiesPage() {
       </button>
     </div>
 
-    {/* THANH TÌM KIẾM & NÚT LỌC */}
+    {/* SEARCH BAR & FILTER BUTTON */}
     <div className="mb-10 flex flex-col sm:flex-row gap-4">
-      {/* Ô Tìm kiếm */}
+      {/* SEARCH INPUT */}
       <div className="relative flex-1 group">
         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-500 group-focus-within:text-cyan-400 transition-colors">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -216,7 +216,7 @@ export default function CommunitiesPage() {
         />
       </div>
 
-      {/* Nút Lọc Nhóm Đã Tham Gia */}
+      {/* FILTER BUTTON */}
       {session?.user && (
         <button
           onClick={() => setShowJoinedOnly(!showJoinedOnly)}
@@ -234,7 +234,7 @@ export default function CommunitiesPage() {
       )}
     </div>
 
-    {/* LƯỚI DANH SÁCH COMMUNITY */}
+    {/* Grid list COMMUNITY */}
     {loading ? (
       <div className="flex flex-col items-center justify-center py-24 space-y-4">
         <div className="w-12 h-12 border-4 border-cyan-500/20 border-t-cyan-400 rounded-full animate-spin shadow-[0_0_20px_rgba(34,211,238,0.4)]"></div>
@@ -244,15 +244,15 @@ export default function CommunitiesPage() {
       <div className="text-center py-24 bg-[#12141a]/60 rounded-3xl border border-gray-800/80 backdrop-blur-sm p-8">
         <span className="text-6xl mb-4 block">🪐</span>
         {searchQuery ? (
-          <p className="text-gray-400 text-base mb-2 font-medium">Không tìm thấy cộng đồng nào phù hợp với <span className="text-cyan-400 font-bold">{searchQuery}</span></p>
+          <p className="text-gray-400 text-base mb-2 font-medium">No communities found matching <span className="text-cyan-400 font-bold">{searchQuery}</span></p>
         ) : (
           <>
-            <p className="text-gray-400 text-base mb-4 font-medium">Chưa có cộng đồng nào được khởi tạo.</p>
+            <p className="text-gray-400 text-base mb-4 font-medium">No communities have been created yet.</p>
             <button 
               onClick={() => setIsModalOpen(true)} 
               className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400 hover:drop-shadow-[0_0_8px_rgba(56,189,248,0.8)] font-black text-sm uppercase tracking-wider transition-all"
             >
-              Khai mở cộng đồng đầu tiên ngay →
+              Create first community→
             </button>
           </>
         )}
@@ -263,10 +263,9 @@ export default function CommunitiesPage() {
           <Link href={`/forum/communities/${community.id}`} key={community.id} className="group h-full">
             <div className="relative bg-[#13151a]/80 backdrop-blur-sm rounded-3xl border border-gray-800/80 overflow-hidden hover:border-cyan-500/40 hover:shadow-[0_12px_35px_-10px_rgba(34,211,238,0.2)] hover:-translate-y-1.5 transition-all duration-500 flex flex-col h-full z-0">
               
-              {/* Vệt sáng chìm góc card */}
               <div className="absolute -top-12 -right-12 w-28 h-28 bg-cyan-500/10 blur-[40px] rounded-full pointer-events-none group-hover:bg-cyan-500/20 transition-all duration-700"></div>
 
-              {/* Ảnh bìa */}
+              {/* Cover img */}
               <div className="h-36 bg-gray-900 relative overflow-hidden shrink-0">
                 {community.coverImage ? (
                   <img 
@@ -279,11 +278,11 @@ export default function CommunitiesPage() {
                     <span className="text-3xl opacity-30">✨</span>
                   </div>
                 )}
-                {/* Lớp gradient phủ tối từ chân ảnh */}
+                {/* Gradient layer covering the bottom of the image */}
                 <div className="absolute inset-0 bg-gradient-to-t from-[#13151a] via-[#13151a]/30 to-transparent"></div>
               </div>
 
-              {/* Thông tin cộng đồng */}
+              {/* Community info */}
               <div className="p-6 flex-1 flex flex-col -mt-4 relative z-10">
                 <h3 className="text-base font-extrabold text-gray-100 mb-2 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-blue-400 group-hover:to-cyan-300 transition-all duration-300 line-clamp-1">
                   c/{community.name}
@@ -291,8 +290,8 @@ export default function CommunitiesPage() {
                 <p className="text-xs md:text-sm text-gray-400 mb-6 line-clamp-2 flex-1 leading-relaxed font-normal">
                   {community.description}
                 </p>
-                
-                {/* Thống kê dưới đáy Card */}
+
+                {/* Statistics at the bottom of the card */}
                 <div className="flex items-center justify-between text-xs font-bold text-gray-400 mt-auto pt-4 border-t border-gray-800/60">
                   <div className="flex items-center gap-1.5 bg-gray-900/60 px-3 py-1.5 rounded-lg border border-gray-800">
                     <svg className="w-3.5 h-3.5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -316,12 +315,11 @@ export default function CommunitiesPage() {
       </div>
     )}
 
-    {/* POPUP TẠO CỘNG ĐỒNG (MODAL) */}
+    {/* POPUP create community */}
     {isModalOpen && (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
         <div className="bg-[#13151a] w-full max-w-lg rounded-3xl border border-gray-700/50 shadow-[0_0_50px_rgba(0,0,0,0.8)] flex flex-col relative overflow-hidden">
           
-          {/* Vạch sáng trên đỉnh Modal */}
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-cyan-400"></div>
 
           <div className="flex justify-between items-center p-6 border-b border-gray-800/80">

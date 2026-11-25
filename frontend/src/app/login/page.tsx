@@ -15,7 +15,7 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
 
-    // Gọi NextAuth để xử lý đăng nhập
+    // Call next-auth to sign in with credentials (email/password)
     const res = await signIn("credentials", {
       email,
       password,
@@ -23,9 +23,9 @@ export default function LoginPage() {
     });
 
     if (res?.error) {
-      setError("Email hoặc mật khẩu không chính xác!");
+      setError("Email or password is incorrect!");
     } else {
-      router.push("/"); // Đăng nhập thành công, chuyển về trang chủ
+      router.push("/"); // Sign in successful, redirect to home page
       router.refresh();
     }
   };
@@ -36,7 +36,7 @@ export default function LoginPage() {
         <h2 className="text-3xl font-bold text-center">Sign In</h2>
         {error && <p className="text-red-500 text-center">{error}</p>}
         
-        {/* Form đăng nhập bằng Email/Password */}
+        {/* Form sign in with Email/Password */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium">Email</label>
@@ -71,7 +71,7 @@ export default function LoginPage() {
           <div className="flex-grow border-t border-gray-600"></div>
         </div>
 
-        {/* Nút đăng nhập Google */}
+        {/* Sign in with gg button */}
         <div className="flex flex-col space-y-3">
           <button
             onClick={() => signIn("google", { callbackUrl: "/" })}

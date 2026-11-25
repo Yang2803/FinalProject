@@ -21,7 +21,7 @@ export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Bảo vệ trang
+  // Protect the page: redirect to login if not authenticated
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login");
   }, [status, router]);
@@ -30,20 +30,20 @@ export default function NotificationsPage() {
     const fetchAndMarkAsRead = async () => {
       if (!session?.user?.id) return;
       try {
-        // 1. Tải danh sách thông báo
+        // 1. Fetch notifications for the user
         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/notifications/${session.user.id}`);
         if (res.ok) {
           const data = await res.json();
           setNotifications(data.notifications);
         }
 
-        // 2. Đánh dấu tất cả là đã đọc
+        // 2. Mark all as read
         await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/notifications/${session.user.id}/read`, {
           method: "PUT"
         });
 
       } catch (error) {
-        console.error("Lỗi tải thông báo:", error);
+        console.error("Error fetching notifications:", error);
       } finally {
         setLoading(false);
       }

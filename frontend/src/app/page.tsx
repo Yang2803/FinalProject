@@ -71,7 +71,7 @@ interface LiveMangaRoom {
   _count?: { members: number };
 }
 
-// Danh sách Thể loại & Chủ đề chuẩn bị sẵn cho UI
+// List of Categories and Themes prepared for UI
 const GENRE_PILLS = [
   { id: "ALL", label: "✨ All", prompt: "" },
   {
@@ -111,7 +111,7 @@ const GENRE_PILLS = [
   },
 ];
 
-// Component TabButton ở ngoài tránh lỗi re-render
+// Component TabButton
 const TabButton = ({
   active,
   onClick,
@@ -136,19 +136,19 @@ const TabButton = ({
 export default function Home() {
   const { data: session } = useSession();
 
-  // States cho phim/truyện mới
+  // States for recently updated Manga & Anime
   const [recentMangas, setRecentMangas] = useState<Manga[]>([]);
   const [recentAnimes, setRecentAnimes] = useState<Anime[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // States cho Hero Spotlight Slider
+  // States for Hero Spotlight Slider
   const [currentSlide, setCurrentSlide] = useState(0);
 
-  // State cho thanh Thể loại & Lọc nhanh
+  // State for filtering by Genre and Quick Search
   const [selectedGenre, setSelectedGenre] = useState("ALL");
   const [quickFilterKeyword, setQuickFilterKeyword] = useState("");
 
-  // 🌟 State cho mục Xem & Đọc Tiếp (Continue Watching/Reading)
+  // 🌟 State for Continue Watching/Reading List (max 6 items)
   const [continueList, setContinueList] = useState<ContinueItem[]>([]);
 
   // 🌟 State cho mục Phòng Xem & Đọc Chung Đang Mở (Tối đa 4 phòng mỗi loại)

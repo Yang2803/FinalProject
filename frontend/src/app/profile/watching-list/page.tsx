@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-// Tái sử dụng Interface Anime
+// Interafce for Anime and WatchListItem
 interface Anime {
   id: string;
   title: string;
@@ -89,7 +89,7 @@ export default function ProfileWatchingListPage() {
   <div className="min-h-screen bg-[#0f0f13] text-white p-4 md:p-8">
     <div className="max-w-7xl mx-auto">
       
-      {/* 🌟 HEADER: Đồng bộ 100% với Reading List (Nút Back tròn, viền gradient và badge đếm Titles) */}
+      {/* 🌟 HEADER */}
       <div className="flex items-center justify-between mb-10 pb-6 border-b border-gray-800/60 relative">
         <div className="absolute bottom-0 left-0 w-32 h-px bg-gradient-to-r from-blue-500 to-purple-500"></div>
         <div className="flex items-center gap-5">
@@ -110,9 +110,9 @@ export default function ProfileWatchingListPage() {
         </div>
       </div>
 
-      {/* 🌟 KHU VỰC DANH SÁCH PHIM */}
+      {/* 🌟 Anime list area */}
       {watchList.length === 0 ? (
-        /* 🌟 EMPTY STATE: Khối Glassmorphism giống hệt Reading List */
+        /* 🌟 EMPTY STATE */
         <div className="relative overflow-hidden bg-gradient-to-b from-gray-800/40 to-[#0f0f13] rounded-3xl p-12 md:p-16 text-center border border-gray-800 shadow-2xl flex flex-col items-center justify-center min-h-[40vh]">
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-blue-500/10 blur-[100px] rounded-full pointer-events-none"></div>
           
@@ -123,7 +123,6 @@ export default function ProfileWatchingListPage() {
               You have not added any anime to your watching list yet. Explore our collection and find your next favorite series!
             </p>
             
-            {/* Nút bấm gradient với hiệu ứng viền chạy */}
             <Link href="/anime" className="relative group overflow-hidden rounded-xl p-[1px]">
               <span className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl opacity-70 group-hover:opacity-100 transition-opacity duration-300"></span>
               <div className="relative bg-gray-900 px-8 py-3.5 rounded-xl transition-all duration-300 group-hover:bg-opacity-0">
@@ -135,10 +134,10 @@ export default function ProfileWatchingListPage() {
           </div>
         </div>
       ) : (
-        /* 🌟 GRID PHIM: Đồng bộ tỷ lệ 6 cột và thiết kế Card tối giản */
+        /* 🌟 GRID anime */
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
           {watchList.map((item) => (
-            /* Tách button ra khỏi thẻ Link để tránh lỗi HTML lồng nhau và click nhầm */
+
             <div key={item.id} className="group relative block rounded-2xl overflow-hidden bg-[#1a1a24] border border-gray-800/80 hover:border-gray-600 transition-all duration-500 hover:-translate-y-2 shadow-lg hover:shadow-blue-500/20">
               
               <Link href={`/anime/${item.anime.id}`} className="block h-full cursor-pointer">
@@ -156,10 +155,8 @@ export default function ProfileWatchingListPage() {
                     </div>
                   )}
                   
-                  {/* Lớp gradient bóng mờ từ dưới lên để chữ và nhãn nổi bật hơn */}
                   <div className="absolute inset-0 bg-gradient-to-t from-[#1a1a24] via-[#1a1a24]/20 to-transparent opacity-90"></div>
                   
-                  {/* Nhãn số tập (Đưa xuống góc trái dưới cùng với chấm tròn phát sáng giống hệt Reading List) */}
                   <div className="absolute bottom-3 left-3 z-10 flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-md border border-gray-700/50">
                     <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse shadow-[0_0_5px_#60a5fa]"></span>
                     <span className="text-[10px] font-bold text-gray-200 uppercase tracking-wider">
@@ -175,7 +172,7 @@ export default function ProfileWatchingListPage() {
                 </div>
               </Link>
 
-              {/* 🌟 NÚT XÓA CHUYÊN NGHIỆP: Nằm góc trên phải, hiệu ứng trượt mượt mà */}
+              {/* 🌟 Delete button */}
               <button 
                 onClick={(e) => {
                   e.preventDefault();

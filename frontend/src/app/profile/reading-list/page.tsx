@@ -19,14 +19,14 @@ export default function ReadingListPage() {
   const [mangas, setMangas] = useState<Manga[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // 1. Bảo vệ trang: Chuyển hướng nếu chưa đăng nhập
+  // 1. Protect the page: redirect to login if not authenticated
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login");
     }
   }, [status, router]);
 
-  // 2. Gọi API lấy dữ liệu Reading List
+  // 2. Call api to fetch reading list for the user
   useEffect(() => {
     const fetchReadingList = async () => {
       if (!session?.user?.id) return;
@@ -37,7 +37,7 @@ export default function ReadingListPage() {
           setMangas(data);
         }
       } catch (error) {
-        console.error("Lỗi tải danh sách đọc:", error);
+        console.error("Error fetching reading list:", error);
       } finally {
         setLoading(false);
       }
@@ -48,14 +48,14 @@ export default function ReadingListPage() {
     }
   }, [session?.user?.id]);
 
-  // 3. Hàm xử lý: Xóa nhanh truyện khỏi danh sách
+  // 3. Function to handle: Remove manga from the list
   const handleRemove = async (mangaId: string, e: React.MouseEvent) => {
-    e.preventDefault(); // Quan trọng: Chặn sự kiện click thẻ <Link> lan tỏa
+    e.preventDefault(); // Important: Prevent the <Link> click event from bubbling up
     const confirmDelete = confirm("Are you sure you want to remove this manga from reading list?");
     if (!confirmDelete) return;
 
     try {
-      // Tận dụng luôn API Toggle đã viết từ trước để xóa
+      // Call API to remove manga from reading list
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/reading-list/toggle`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -63,7 +63,7 @@ export default function ReadingListPage() {
       });
 
       if (res.ok) {
-        // Xóa truyện khỏi giao diện ngay lập tức mà không cần F5
+        // Delete successful, update the local state to remove the manga from the list
         setMangas(mangas.filter(manga => manga.id !== mangaId));
       }
     } catch (error) {
@@ -85,7 +85,6 @@ export default function ReadingListPage() {
   <div className="min-h-screen bg-[#0f0f13] text-white p-4 md:p-8">
     <div className="max-w-7xl mx-auto">
       
-      {/* 🌟 HEADER: Thêm hiệu ứng viền gradient, đếm số lượng truyện và nút Back dạng icon tròn hiện đại */}
       <div className="flex items-center justify-between mb-10 pb-6 border-b border-gray-800/60 relative">
         <div className="absolute bottom-0 left-0 w-32 h-px bg-gradient-to-r from-blue-500 to-purple-500"></div>
         <div className="flex items-center gap-5">
@@ -106,9 +105,8 @@ export default function ReadingListPage() {
         </div>
       </div>
 
-      {/* 🌟 KHU VỰC DANH SÁCH */}
+      {/* 🌟 List area */}
       {mangas.length === 0 ? (
-        /* 🌟 EMPTY STATE: Thiết kế lại thành một khối Glassmorphism với hiệu ứng glow phát sáng nhẹ ở nền */
         <div className="relative overflow-hidden bg-gradient-to-b from-gray-800/40 to-[#0f0f13] rounded-3xl p-12 md:p-16 text-center border border-gray-800 shadow-2xl flex flex-col items-center justify-center min-h-[40vh]">
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-blue-500/10 blur-[100px] rounded-full pointer-events-none"></div>
           
@@ -119,7 +117,6 @@ export default function ReadingListPage() {
               You have added any manga to your reading list yet. Explore our collection and find your next favorite story!
             </p>
             
-            {/* Nút bấm gradient với hiệu ứng viền chạy */}
             <Link href="/manga" className="relative group overflow-hidden rounded-xl p-[1px]">
               <span className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl opacity-70 group-hover:opacity-100 transition-opacity duration-300"></span>
               <div className="relative bg-gray-900 px-8 py-3.5 rounded-xl transition-all duration-300 group-hover:bg-opacity-0">
@@ -131,10 +128,9 @@ export default function ReadingListPage() {
           </div>
         </div>
       ) : (
-        /* 🌟 GRID TRUYỆN: Chỉnh lại tỷ lệ grid để responsive đẹp hơn */
+        /* 🌟 GRID Manga */
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
           {mangas.map((manga) => (
-            /* 🌟 Tách button ra khỏi thẻ Link để tránh lỗi HTML lồng nhau và click nhầm */
             <div key={manga.id} className="group relative block rounded-2xl overflow-hidden bg-[#1a1a24] border border-gray-800/80 hover:border-gray-600 transition-all duration-500 hover:-translate-y-2 shadow-lg hover:shadow-blue-500/20">
               
               <Link href={`/manga/${manga.id}`} className="block h-full cursor-pointer">
@@ -152,10 +148,8 @@ export default function ReadingListPage() {
                     </div>
                   )}
                   
-                  {/* Lớp gradient bóng mờ từ dưới lên để chữ và nhãn nổi bật hơn */}
                   <div className="absolute inset-0 bg-gradient-to-t from-[#1a1a24] via-[#1a1a24]/20 to-transparent opacity-90"></div>
                   
-                  {/* Nhãn trạng thái (Đưa xuống góc trái dưới cùng với icon trạng thái) */}
                   <div className="absolute bottom-3 left-3 z-10 flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-md border border-gray-700/50">
                     <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse shadow-[0_0_5px_#4ade80]"></span>
                     <span className="text-[10px] font-bold text-gray-200 uppercase tracking-wider">{manga.status}</span>
@@ -169,10 +163,10 @@ export default function ReadingListPage() {
                 </div>
               </Link>
 
-              {/* 🌟 NÚT XÓA CHUYÊN NGHIỆP: Nằm góc trên phải, hiệu ứng trượt mượt mà, dùng SVG icon thay vì chữ X */}
+              {/* 🌟 Delete button */}
               <button 
                 onClick={(e) => {
-                  e.preventDefault(); // Ngăn sự kiện click lan xuống thẻ Link ở trên
+                  e.preventDefault(); 
                   handleRemove(manga.id, e);
                 }}
                 className="absolute top-3 right-3 z-20 bg-red-500/80 backdrop-blur-md hover:bg-red-500 text-white w-8 h-8 rounded-full flex justify-center items-center opacity-0 translate-y-2 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 shadow-lg border border-red-400/30 hover:scale-110 focus:outline-none"

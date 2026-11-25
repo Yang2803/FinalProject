@@ -5,7 +5,6 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-// 🌟 ĐÃ SỬA LỖI ANY Ở ĐÂY: Khai báo rõ ràng cấu trúc của members
 interface ActiveRoom {
   id: string;
   name: string;
@@ -26,18 +25,18 @@ export default function WatchPartyLobby() {
   const [roomName, setRoomName] = useState("");
   const [isPrivate, setIsPrivate] = useState(false);
 
-  // 🌟 STATE QUẢN LÝ DANH SÁCH PHÒNG
+  // 🌟 STATE for active rooms list
   const [activeRooms, setActiveRooms] = useState<ActiveRoom[]>([]);
   const [isLoadingRooms, setIsLoadingRooms] = useState(true);
   
-  // 🌟 THÊM 1 STATE "CHÌA KHÓA" ĐỂ KÍCH HOẠT TẢI LẠI TRANG
+  // 🌟 state for refreshing the list of rooms (to trigger useEffect)
   const [refreshKey, setRefreshKey] = useState(0);
 
   // ==========================================
-  // HÀM LẤY DANH SÁCH PHÒNG TỪ SERVER (VIẾT GỌN VÀO TRONG EFFECT)
+  // function to fetch active rooms from the server
   // ==========================================
   useEffect(() => {
-    let isMounted = true; // Cờ an toàn để tránh set state khi component đã unmount
+    let isMounted = true; 
 
     const loadRooms = async () => {
       try {
@@ -47,7 +46,7 @@ export default function WatchPartyLobby() {
           if (isMounted) setActiveRooms(data);
         }
       } catch (error) {
-        console.error("Lỗi tải danh sách phòng:", error);
+        console.error("Room list loading error:", error);
       } finally {
         if (isMounted) setIsLoadingRooms(false);
       }
@@ -56,20 +55,20 @@ export default function WatchPartyLobby() {
     loadRooms();
 
     return () => {
-      isMounted = false; // Dọn dẹp cờ khi thoát trang
+      isMounted = false; 
     };
-  }, [refreshKey]); // 🌟 Effect này sẽ tự động chạy lại mỗi khi refreshKey thay đổi
+  }, [refreshKey]); // 🌟 Effect will re-run when refreshKey changes, allowing manual refresh of the room list
 
   // ==========================================
   // HÀM XỬ LÝ NÚT LÀM MỚI
   // ==========================================
   const handleRefreshRooms = () => {
     setIsLoadingRooms(true);
-    setRefreshKey(prev => prev + 1); // 🌟 Tăng key lên 1 -> Kích hoạt useEffect bên trên chạy lại
+    setRefreshKey(prev => prev + 1); // 🌟 If key +1, the useEffect will re-run and fetch the latest list of rooms
   };
 
   // ==========================================
-  // HÀM TẠO PHÒNG MỚI
+  // function to create a new room
   // ==========================================
   const handleCreateRoom = async () => {
     if (!session?.user?.id) return alert("Please log in to create a room!");
@@ -104,7 +103,7 @@ export default function WatchPartyLobby() {
   };
 
   // ==========================================
-  // HÀM VÀO PHÒNG BẰNG MÃ
+  // function to join a room by invite code
   // ==========================================
   const handleJoinRoom = (e?: React.FormEvent, code?: string) => {
     e?.preventDefault();
@@ -137,7 +136,7 @@ export default function WatchPartyLobby() {
               Watching Together
             </h1>
 
-            {/* Các huy hiệu tính năng của phòng xem phim */}
+            {/* Main feature */}
             <div className="pt-2 flex flex-wrap items-center justify-center gap-2 text-xs font-semibold text-gray-300">
               <span className="px-3 py-1.5 rounded-xl bg-gray-900/80 border border-white/[0.06] flex items-center gap-1.5">
                 🎬 Synchronized Play
@@ -156,11 +155,11 @@ export default function WatchPartyLobby() {
         </div>
 
         {/* ===================================================================== */}
-        {/* 🌟 2. GRID 2 THẺ: TẠO PHÒNG MỚI & VÀO PHÒNG BẰNG MÃ */}
+        {/* 🌟 2. GRID 2: Create new room & join room by invite code */}
         {/* ===================================================================== */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
           
-          {/* CARD 1: TẠO PHÒNG CHIẾU MỚI */}
+          {/* CARD 1: create new room */}
           <div className="group bg-[#151821]/90 backdrop-blur-xl p-7 md:p-8 rounded-3xl border border-blue-500/20 hover:border-blue-500/40 shadow-2xl relative overflow-hidden flex flex-col justify-between transition-all duration-300">
             <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-500 via-indigo-400 to-purple-500" />
             <div className="absolute -right-16 -top-16 w-40 h-40 bg-blue-500/10 rounded-full blur-2xl pointer-events-none group-hover:bg-blue-500/20 transition" />
@@ -199,7 +198,7 @@ export default function WatchPartyLobby() {
                   />
                 </div>
 
-                {/* Hộp chọn Phòng Kín (Private) cố định chữ */}
+                {/* Private Room Toggle */}
                 <label
                   htmlFor="private-mode"
                   className={`flex items-center justify-between gap-4 p-4 rounded-2xl border cursor-pointer transition-all ${
@@ -239,7 +238,7 @@ export default function WatchPartyLobby() {
             </button>
           </div>
 
-          {/* CARD 2: THAM GIA BẰNG MÃ MỜI */}
+          {/* CARD 2: Join by invite code */}
           <div className="group bg-[#151821]/90 backdrop-blur-xl p-7 md:p-8 rounded-3xl border border-purple-500/20 hover:border-purple-500/40 shadow-2xl relative overflow-hidden flex flex-col justify-between transition-all duration-300">
             <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-purple-500 via-fuchsia-400 to-pink-500" />
             <div className="absolute -right-16 -top-16 w-40 h-40 bg-purple-500/10 rounded-full blur-2xl pointer-events-none group-hover:bg-purple-500/20 transition" />
@@ -297,7 +296,7 @@ export default function WatchPartyLobby() {
         </div>
 
         {/* ===================================================================== */}
-        {/* 🌟 3. DANH SÁCH PHÒNG ĐANG HOẠT ĐỘNG (LIVE ROOMS) */}
+        {/* 🌟 3. Active rooms list */}
         {/* ===================================================================== */}
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/[0.07]">
@@ -363,7 +362,6 @@ export default function WatchPartyLobby() {
                   key={r.id}
                   className="bg-[#151821]/90 hover:bg-[#191d28] border border-white/[0.07] hover:border-blue-500/50 rounded-2xl p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-blue-950/30 group flex flex-col justify-between relative overflow-hidden"
                 >
-                  {/* Thanh sáng mảnh trên đỉnh thẻ */}
                   <div
                     className={`absolute top-0 left-0 w-full h-1 ${
                       r.isPrivate ? "bg-amber-500/70" : "bg-blue-500"
@@ -371,7 +369,7 @@ export default function WatchPartyLobby() {
                   />
 
                   <div>
-                    {/* Hàng trên: Trạng thái Public/Private & Mã phòng */}
+                    {/* Top row: Public/Private status & Room code */}
                     <div className="flex items-center justify-between gap-2 mb-3">
                       {r.isPrivate ? (
                         <span className="bg-amber-500/10 text-amber-400 text-[11px] font-extrabold px-2.5 py-1 rounded-full border border-amber-500/25 flex items-center gap-1">
@@ -389,12 +387,12 @@ export default function WatchPartyLobby() {
                       </span>
                     </div>
 
-                    {/* Tên phòng */}
+                    {/* Room Name */}
                     <h3 className="font-extrabold text-lg text-white group-hover:text-blue-400 transition line-clamp-1 mb-4">
                       {r.name}
                     </h3>
 
-                    {/* Thông tin Trưởng phòng */}
+                    {/* Host Information */}
                     <div className="flex items-center gap-3 mb-4 pb-4 border-b border-white/[0.06]">
                       <div className="relative shrink-0">
                         {r.host?.image ? (
@@ -423,7 +421,7 @@ export default function WatchPartyLobby() {
                       </div>
                     </div>
 
-                    {/* Khung bộ phim đang chiếu */}
+                    {/* The frame of the anime currently playing */}
                     <div className="bg-gray-900/75 rounded-xl p-3.5 mb-5 border border-white/[0.05]">
                       <p className="text-[11px] font-bold uppercase tracking-wider text-blue-400/80 mb-1 flex items-center gap-1.5">
                         <span>🎬 Currently Playing:</span>
@@ -436,7 +434,7 @@ export default function WatchPartyLobby() {
                     </div>
                   </div>
 
-                  {/* Hàng cuối: Số người & Nút tham gia */}
+                  {/* Bottom row: Number of participants & Join button */}
                   <div className="flex items-center justify-between pt-1 mt-auto">
                     <span className="text-xs font-bold text-gray-400 bg-gray-900/80 px-3 py-1.5 rounded-lg border border-white/[0.05] flex items-center gap-1.5">
                       <span>👥</span>

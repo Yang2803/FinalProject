@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import CommentSection from "@/components/CommentSection";
 import { SUPPORTED_LANGUAGES } from "@/components/constants/languages";
-// 🌟 1. THÊM LẠI useRef VÀO ĐÂY VÌ FORM ĐĂNG BÀI CẦN DÙNG NÓ
 import { useState, useEffect, use, useRef } from "react"; 
 import { useRouter } from "next/navigation";
 import { 
@@ -39,7 +38,7 @@ interface TextBlock {
 }
 
 // =====================================================================
-// COMPONENT CON: ẢNH MANGA HỖ TRỢ DỊCH THUẬT BẰNG GEMINI VISION
+// COMPONENT FOR TRANSLATABLE IMAGE
 // =====================================================================
 function TranslateableImage({ 
   imgUrl, 
@@ -76,7 +75,7 @@ function TranslateableImage({
       if (res.ok) {
         const data = await res.json();
         if (data.blocks.length === 0) {
-          alert("AI không tìm thấy chữ nào hợp lệ trên trang này!");
+          alert("The AI ​​found no valid characters on this page!");
         }
         setBlocks(data.blocks);
         setShowTranslation(true); 
@@ -119,16 +118,10 @@ function TranslateableImage({
 
         const realHeightRatio = block.heightPercent * 1.45;
         const isVertical = realHeightRatio >= block.widthPercent;
-
-        // 🌟 1. THU GỌN KHUNG (INSET) ĐỂ KHÔNG ĐÈ LÊN VIỀN ĐEN & NHÂN VẬT XUNG QUANH
-        // Nếu là bubble, bóp nhẹ chiều ngang (86%) và chiều dọc (90%) để nằm gọn trong lòng bóng thoại gốc
-        // 🌟 2. BÓP NGANG - KÉO DỌC ĐỂ KHỚP FORM BÓNG THOẠI MANGA
         let scaleW = 1.0;
         let scaleH = 1.0;
 
         if (blockType === "bubble") {
-          // Bóng thoại Manga luôn có dáng bầu dục đứng:
-          // Giữ chiều ngang gọn gàng (0.94) để không bè ra ngoài, kéo dài chiều dọc (1.32) để che kín chữ ở đỉnh & đáy
           scaleW = isVertical ? 0.92 : 0.98;
           scaleH = isVertical ? 1.32 : 1.22;
         } else {
@@ -141,19 +134,15 @@ function TranslateableImage({
         const adjustedLeft = block.leftPercent - (adjustedWidth - block.widthPercent) / 2;
         const adjustedTop = block.topPercent - (adjustedHeight - block.heightPercent) / 2;
 
-        // 🌟 2. TẠO DÁNG HÌNH ELIP / OVAL CHUẨN MANGA ĐỂ KHÔNG CHE 4 GÓC TRANH
-        // 🌟 3. TẠO DÁNG OVAL ĐỨNG MỀM MẠI
+
         let borderRadius = "16px";
         let background = "#ffffff";
         let textColor = "#0f0f13";
         let boxPadding = "6% 8%";
-        // Đổ bóng trắng tập trung theo chiều dọc (0px ngang, 6px dọc) để che nốt phần chữ thừa ở trên/dưới
         let boxShadow = "0 0 8px 5px #ffffff";
 
         if (blockType === "bubble") {
-          // Tạo hình con nhộng / oval dọc thay vì hình chữ nhật ngang
           borderRadius = "42% / 28%";
-          // Ép padding 2 bên hông (10%) để dòng chữ tự gom thành cột dọc ở giữa
           boxPadding = "8% 10%";
         } else if (blockType === "box") {
           borderRadius = "4px";
@@ -167,7 +156,7 @@ function TranslateableImage({
           boxPadding = "4px 6px";
           boxShadow = "0 2px 6px rgba(0,0,0,0.4)";
         }
-        // 🌟 3. CỠ CHỮ THEO CHẾ ĐỘ ĐỌC
+        // 🌟 3. Font size based on reader mode and text length
         const textLen = block.translatedText.length;
         const fontSize = isHorizontal
           ? textLen > 90
@@ -212,7 +201,6 @@ function TranslateableImage({
                   wordBreak: "normal",
                   whiteSpace: "normal",
                   overflowWrap: "break-word",
-                  // 🌟 Giúp các dòng chữ tự cân bằng độ dài thành cột dọc đẹp mắt
                   textWrap: "balance",
                   maxWidth: "88%",
                   display: "-webkit-box",
@@ -233,7 +221,7 @@ function TranslateableImage({
       
 
 // =====================================================================
-// COMPONENT CHÍNH
+// Main component for Manga Reader Page
 // =====================================================================
 export default function MangaReaderPage({ params }: { params: Promise<{ id: string; chapterId: string }> }) {
   const lastLoggedChapter = useRef<string | null>(null);
@@ -245,14 +233,14 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
   const [chapter, setChapter] = useState<ChapterData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // 🌟 CẤU HÌNH THEME & CHẾ ĐỘ ĐỌC (TỰ ĐỘNG LƯU VÀO LOCALSTORAGE)
+  // 🌟 THEME CONFIGURATION & READING MODE (AUTOMATICALLY SAVES TO LOCALSTORAGE)
   const [settings, setSettings] = useState<ReaderSettings>(() => {
     if (typeof window !== "undefined") {
       try {
         const saved = localStorage.getItem("manga_reader_settings");
         if (saved) return JSON.parse(saved);
       } catch (e) {
-        console.error("Lỗi đọc cài đặt manga reader:", e);
+        console.error("Error reading manga reader settings:", e);
       }
     }
     return {
@@ -269,7 +257,7 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
   const { data: session } = useSession();
 
   // =====================================================================
-  // 🌟 CÁC STATE CHO TÍNH NĂNG ĐĂNG BÀI LÊN FORUM
+  // 🌟 State for Forum Modal and Post Creation
   // =====================================================================
   const [isForumModalOpen, setIsForumModalOpen] = useState(false);
   const [postTitle, setPostTitle] = useState("");
@@ -296,7 +284,7 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
     });
   };
 
-  // --- LOGIC FORUM: CHÈN LIÊN KẾT TRUYỆN THÀNH THẺ ĐÍNH KÈM ---
+  // --- LOGIC FORUM: INSERT STORY LINKS AS ATTACHED CARDS ---
   const handleInsertMangaLink = () => {
     if (!chapter) return;
     
@@ -312,7 +300,7 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
     if (!postTitle) setPostTitle(`Discuss about ${chapter.manga.title} - ${chapter.title}`);
   };
 
-  // --- LOGIC FORUM: CHỌN ẢNH ---
+  // --- LOGIC FORUM: Choose img ---
   const handlePostFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
@@ -333,10 +321,10 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
       const data = await res.json();
       setPostTags(Array.from(new Set([...postTags, ...data.tags])));
       setPostIsSpoiler(data.isSpoiler);
-    } catch (error) { alert("Lỗi AI"); } finally { setIsAnalyzingForum(false); }
+    } catch (error) { alert("Error AI"); } finally { setIsAnalyzingForum(false); }
   };
 
-  // --- LOGIC FORUM: XỬ LÝ TAGS ---
+  // --- LOGIC FORUM:Handle TAGS ---
   const handleKeyDownTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && postTagInput.trim() !== '') {
       e.preventDefault();
@@ -347,7 +335,7 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
   };
   const removeTag = (tagToRemove: string) => setPostTags(postTags.filter(t => t !== tagToRemove));
 
-  // --- LOGIC FORUM: SUBMIT BÀI ĐĂNG ---
+  // --- LOGIC FORUM: SUBMIT upload post ---
   const handleSubmitForumPost = async () => {
     if (!postTitle.trim() || (!postContent.trim() && !postMediaFile && !attachedLink)) {
       return alert("Please enter the title and content for your post!");
@@ -360,20 +348,20 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
       if (postMediaFile) {
         const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
         const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
-        if (!cloudName || !uploadPreset) { alert("Chưa cấu hình Cloudinary!"); setIsPostingToForum(false); return; }
+        if (!cloudName || !uploadPreset) { alert("Cloudinary is not yet configured!"); setIsPostingToForum(false); return; }
         
         const formData = new FormData(); formData.append("file", postMediaFile); formData.append("upload_preset", uploadPreset);
         const resourceType = postMediaFile.type.startsWith('video/') ? 'video' : 'image';
         
         const cloudRes = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`, { method: "POST", body: formData });
         const cloudData = await cloudRes.json();
-        if (!cloudRes.ok) throw new Error("Lỗi upload ảnh");
+        if (!cloudRes.ok) throw new Error("Error uploading image");
         finalMediaUrl = cloudData.secure_url;
       }
 
       let finalContent = postContent;
       if (attachedLink) {
-        finalContent += `\n\n📖 Đang đọc: [${attachedLink.title}](${attachedLink.url})`;
+        finalContent += `\n\n📖 Reading: [${attachedLink.title}](${attachedLink.url})`;
       }
 
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/posts`, {
@@ -397,7 +385,7 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
   };
 
   // =====================================================================
-  // FETCH DỮ LIỆU CHƯƠNG & LỊCH SỬ
+  // FETCH DATA CHAPTER & RECORD HISTORY
   // =====================================================================
   useEffect(() => {
     const fetchChapter = async () => {
@@ -408,7 +396,7 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
           setChapter(data);
         }
       } catch (error) {
-        console.error("Lỗi tải chương:", error);
+        console.error("Error fetching chapter:", error);
       } finally {
         setLoading(false);
       }
@@ -426,14 +414,14 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
             body: JSON.stringify({ userId: session.user.id, mangaId, chapterId })
           });
         } catch (error) {
-          console.error("Lỗi ghi nhận lịch sử", error);
+          console.error("Error recording history:", error);
         }
       }
     };
     recordHistory();
   }, [session?.user?.id, mangaId, chapterId]);
 
-  // LOG LƯỢT XEM
+  // LOG VIEWS
   useEffect(() => {
     const logMangaView = async () => {
       if (!mangaId || !chapterId || lastLoggedChapter.current === chapterId) return;
@@ -444,7 +432,7 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
           method: 'POST',
         });
       } catch (error) {
-        console.error("Lỗi khi ghi nhận lượt đọc:", error);
+        console.error("Error logging manga view:", error);
         lastLoggedChapter.current = null;
       }
     };
@@ -452,7 +440,7 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
     logMangaView();
   }, [mangaId, chapterId]);
 
-  // 🌟 ĐỊNH NGHĨA LẠI 2 HÀM CHUYỂN TRANG
+  // Define functions to handle next and previous page navigation
   const handleNextPage = () => {
     if (chapter && currentPage < chapter.images.length) {
       setCurrentPage((prev) => prev + 1);
@@ -466,7 +454,7 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
   };
 
   // =====================================================================
-  // BẮT PHÍM MŨI TÊN (HỖ TRỢ MANGA RTL / LTR)
+  // ADD NAVIGATION FOR PAGED MODE (RTL/LTR)
   // =====================================================================
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -492,7 +480,7 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
   }, [settings.mode, currentPage, chapter]);
 
   // =====================================================================
-  // BẮT PHÍM MŨI TÊN (HỖ TRỢ MANGA RTL / LTR)
+  // ADD NAVIGATION FOR PAGED MODE (RTL/LTR)
   // =====================================================================
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -531,9 +519,9 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
   if (!chapter) {
     return (
       <div className="min-h-screen bg-[#0f0f11] flex flex-col items-center justify-center text-white gap-4">
-        <p className="text-gray-400">Không tìm thấy nội dung chương truyện.</p>
+        <p className="text-gray-400">Chapter content not found.</p>
         <Link href={`/manga/${mangaId}`} className="text-blue-400 hover:underline">
-          &larr; Quay lại danh sách chương
+          &larr; Back to Chapter List
         </Link>
       </div>
     );
@@ -548,7 +536,7 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
       className="min-h-screen transition-colors duration-300 relative select-none"
     >
       {/* ===================================================================== */}
-      {/* 🌟 THANH ĐIỀU HƯỚNG BÊN TRÊN (STICKY NAVBAR) */}
+      {/* 🌟 Head navbar */}
       {/* ===================================================================== */}
       <div 
         className="sticky top-0 z-40 backdrop-blur-md border-b p-4 shadow-lg flex flex-wrap md:flex-nowrap justify-between items-center gap-4 transition-colors duration-300"
@@ -557,7 +545,7 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
           borderColor: settings.bgTheme === 'light' || settings.bgTheme === 'sepia' ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)'
         }}
       >
-        {/* Nút quay lại & Tiêu đề */}
+        {/* Back button */}
         <div className="flex items-center gap-4">
           <Link 
             href={`/manga/${mangaId}`} 
@@ -577,7 +565,7 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
         </div>
 
         <div className="flex items-center gap-3 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 hide-scrollbar">
-          {/* NÚT THẢO LUẬN FORUM */}
+          {/* Discuss Button */}
           <button 
             onClick={() => setIsForumModalOpen(true)}
             className="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-sm font-bold transition shadow-lg shadow-blue-500/20 flex items-center gap-1.5 shrink-0"
@@ -586,7 +574,7 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
             <span className="hidden sm:inline">Discuss</span>
           </button>
 
-          {/* Menu Chọn ngôn ngữ dịch AI */}
+          {/* Menu for choosing language for translate */}
           <div 
             className="flex items-center gap-2 p-1 rounded-lg shrink-0 border"
             style={{ backgroundColor: currentTheme.cardBg, borderColor: 'rgba(128,128,128,0.2)' }}
@@ -606,7 +594,7 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
             </select>
           </div>
 
-          {/* 🌟 NÚT MỞ CÀI ĐẶT ĐỌC (Kiểu đọc & Màu nền) */}
+          {/* 🌟 Reading mode setting button */}
           <button
             onClick={() => setIsSettingsModalOpen(true)}
             className="px-3 py-1.5 rounded-lg text-sm font-bold transition flex items-center gap-1.5 shrink-0 border shadow-sm active:scale-95"
@@ -622,10 +610,10 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
       </div>
 
       {/* ===================================================================== */}
-      {/* 🌟 KHU VỰC HIỂN THỊ NỘI DUNG TRUYỆN */}
+      {/* 🌟 AREA FOR DISPLAYING manga CONTENT */}
       {/* ===================================================================== */}
       <div className="w-full flex justify-center">
-        {/* CHẾ ĐỘ 1: CUỘN DỌC TRUYỀN THỐNG (VERTICAL) */}
+        {/* Vertical */}
         {settings.mode === "VERTICAL" && (
           <div className={`flex flex-col items-center w-full px-2 md:px-0 pt-4 ${
             settings.maxWidth === 'fit' ? 'max-w-3xl' : settings.maxWidth === 'medium' ? 'max-w-5xl' : 'w-full'
@@ -639,7 +627,7 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
               />
             ))}
             
-            {/* Thanh điều hướng ở cuối chương */}
+            {/* Navbar at the end of chapter */}
             <div 
               className="my-12 w-full px-4 flex flex-col md:flex-row justify-between items-center gap-4 p-6 rounded-2xl border transition-colors"
               style={{ backgroundColor: currentTheme.cardBg, borderColor: 'rgba(128,128,128,0.2)' }}
@@ -679,19 +667,19 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
           </div>
         )}
 
-        {/* CHẾ ĐỘ 2 & 3: LẬT TRANG ĐƠN (MANGA RTL / LTR) */}
+        {/* PAGED MODE: SINGLE PAGE FLIPPING (MANGA RTL / LTR) */}
         {isPaged && (
           <div className="relative w-full h-[calc(100vh-80px)] flex flex-col justify-center items-center select-none overflow-hidden py-4">
             
-            {/* Huy hiệu số trang */}
+            {/* Page number badge */}
             <div 
               className="absolute top-4 right-4 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold z-30 border"
               style={{ backgroundColor: `${currentTheme.cardBg}cc`, borderColor: 'rgba(128,128,128,0.2)' }}
             >
-              Trang {currentPage < chapter.images.length ? currentPage + 1 : chapter.images.length} / {chapter.images.length}
+              Page {currentPage < chapter.images.length ? currentPage + 1 : chapter.images.length} / {chapter.images.length}
             </div>
 
-            {/* Vùng bấm ẩn để lùi / tiến trang */}
+            {/* Hidden area to click to go back/forward page */}
             <div 
               className="absolute top-0 left-0 w-1/4 h-full z-10 cursor-w-resize" 
               onClick={() => {
@@ -715,7 +703,7 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
               title={settings.mode === "PAGED_RTL" ? "Trang trước" : "Trang sau"} 
             />
 
-            {/* HIỂN THỊ ẢNH HOẶC MENU KẾT THÚC CHƯƠNG */}
+            {/* AREA FOR DISPLAYING IMAGE OR END CHAPTER MENU */}
             {currentPage < chapter.images.length ? (
               <TranslateableImage 
                 key={chapter.images[currentPage]}
@@ -758,7 +746,7 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
               </div>
             )}
 
-            {/* Thanh nút bấm điều hướng trang */}
+            {/* Navbar for page navigation */}
             <div className="absolute bottom-6 flex gap-4 z-30 pointer-events-auto">
               <button 
                 onClick={settings.mode === "PAGED_RTL" ? handleNextPage : handlePrevPage}
@@ -782,7 +770,7 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
       </div>
 
       {/* ===================================================================== */}
-      {/* KHU VỰC BÌNH LUẬN (CHỈ HIỆN KHI CUỘN DỌC) */}
+      {/* AREA FOR DISPLAYING COMMENTS (VISIBLE ONLY WHEN SCROLLING) */}
       {/* ===================================================================== */}
       {settings.mode === "VERTICAL" && (
         <div className="w-full flex justify-center mt-12 pb-20">
@@ -793,7 +781,7 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
       )}
 
       {/* ===================================================================== */}
-      {/* 🌟 MODAL TÙY CHỈNH READER (KIỂU ĐỌC & BẢNG MÀU) */}
+      {/* 🌟 CUSTOM MODAL READER (READING STYLE & COLOR PALETTE) */}
       {/* ===================================================================== */}
       {isSettingsModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
@@ -806,7 +794,7 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
               <button onClick={() => setIsSettingsModalOpen(false)} className="opacity-60 hover:opacity-100">✕</button>
             </div>
 
-            {/* 1. Chọn chế độ cuộn / lật trang */}
+            {/* 1. Select scroll/page flip mode */}
             <div className="mb-5">
               <label className="block text-xs font-bold uppercase tracking-wider mb-2 opacity-70">
                 Reading Mode
@@ -821,21 +809,21 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
                 <button 
                   onClick={() => updateSettings({ mode: 'PAGED_RTL' })}
                   className={`p-2 rounded-xl text-xs font-bold border transition ${settings.mode === 'PAGED_RTL' ? 'border-blue-500 bg-blue-600/20 text-blue-400 font-black' : 'border-gray-500/20 opacity-70'}`}
-                  title="Chuẩn truyện tranh Nhật (Phải sang Trái)"
+                  title="Manga (Right to Left)"
                 >
                   Manga (RTL)
                 </button>
                 <button 
                   onClick={() => updateSettings({ mode: 'PAGED_LTR' })}
                   className={`p-2 rounded-xl text-xs font-bold border transition ${settings.mode === 'PAGED_LTR' ? 'border-blue-500 bg-blue-600/20 text-blue-400 font-black' : 'border-gray-500/20 opacity-70'}`}
-                  title="Chuẩn phương Tây (Trái sang Phải)"
+                  title="Western (Left to Right)"
                 >
                   Western (LTR)
                 </button>
               </div>
             </div>
 
-            {/* 2. Chọn màu nền */}
+            {/* 2. Choose bg color */}
             <div className="mb-5">
               <label className="block text-xs font-bold uppercase tracking-wider mb-2 opacity-70">
                 Background Color
@@ -855,7 +843,7 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
               </div>
             </div>
 
-            {/* 3. Độ rộng khung đọc (cho chế độ Cuộn dọc) */}
+            {/* 3. Maximum Width (for Vertical Scrolling Mode) */}
             {settings.mode === 'VERTICAL' && (
               <div className="mb-6">
                 <label className="block text-xs font-bold uppercase tracking-wider mb-2 opacity-70">
@@ -886,7 +874,7 @@ export default function MangaReaderPage({ params }: { params: Promise<{ id: stri
       )}
 
       {/* ===================================================================== */}
-      {/* 🌟 POPUP MODAL ĐĂNG BÀI LÊN FORUM KÈM LIÊN KẾT TRUYỆN */}
+      {/* 🌟 POPUP MODAL post to forum*/}
       {/* ===================================================================== */}
       {isForumModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">

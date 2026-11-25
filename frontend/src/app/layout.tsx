@@ -31,19 +31,19 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-950 text-gray-100`}
       >
         <Providers>
-          {/* Container tổng: Dùng h-dvh để tương thích hoàn hảo với trình duyệt điện thoại */}
+          {/* Main container: Use h-dvh for perfect compatibility with mobile browsers. */}
           <div className="flex h-dvh bg-gray-950 text-gray-100 overflow-hidden">
             
-            {/* CỘT TRÁI: Sidebar trên Desktop & Bottom Nav/Drawer trên Mobile */}
+            {/* LEFT COLUMN: Sidebar on Desktop & Bottom Nav/Drawer on Mobile */}
             <Sidebar />
 
-            {/* CỘT PHẢI: Chứa Header và Nội dung chính */}
+            {/* RIGHT COLUMN: Contains Header and Main Content */}
             <div className="flex-1 flex flex-col min-w-0">
               
               {/* TOP HEADER */}
               <TopHeader />
 
-              {/* Vùng cuộn nội dung: Thêm pb-16 trên mobile để không bị Bottom Bar che */}
+              {/* Content scrolling area: Add pb-16 on mobile to prevent the bottom bar from obscuring it. */}
               <main className="flex-1 overflow-y-auto pb-16 md:pb-0">
                 {children}
               </main>

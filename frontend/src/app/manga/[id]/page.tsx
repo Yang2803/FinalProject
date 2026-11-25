@@ -3,9 +3,8 @@
 import { useState, useEffect, use } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import CommentSection from "@/components/CommentSection"; // Đường dẫn tuỳ vào cấu hình của bạn, hoặc dùng "../../../components/CommentSection"
+import CommentSection from "@/components/CommentSection"; 
 
-// Cấu trúc Type (Giống bên Admin)
 interface Chapter {
   id: string;
   title: string;
@@ -48,20 +47,20 @@ export default function PublicMangaDetails({ params }: { params: Promise<{ id: s
 
   const { data: session } = useSession();
   
-  // Các state quản lý Rating
+  // State for managing user ratings
   const [userRating, setUserRating] = useState<number>(0);
   const [avgRating, setAvgRating] = useState<number>(0);
   const [ratingCount, setRatingCount] = useState<number>(0);
 
-  // State quản lý Reading List
+  // State for Reading List
   const [isInReadingList, setIsInReadingList] = useState<boolean>(false);
   const [isToggling, setIsToggling] = useState<boolean>(false);
 
-  // Gọi hàm lấy Rating ngay khi vào trang hoặc khi session thay đổi
+  // Function to fetch rating info and reading list status when mangaId or session changes
   useEffect(() => {
     const fetchRatingInfo = async () => {
       try {
-        // Truyền kèm userId nếu người dùng đã đăng nhập
+        // If the user is logged in, include their userId in the query to get their specific rating
         const userIdQuery = session?.user?.id ? `?userId=${session.user.id}` : "";
         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/rating/${mangaId}${userIdQuery}`);
         
@@ -70,11 +69,11 @@ export default function PublicMangaDetails({ params }: { params: Promise<{ id: s
           setAvgRating(data.average);
           setRatingCount(data.count);
           if (data.userScore > 0) {
-            setUserRating(data.userScore); // Phục hồi các ngôi sao vàng!
+            setUserRating(data.userScore); // Set the user's rating if they have rated this manga
           }
         }
       } catch (error) {
-        console.error("Lỗi tải rating:", error);
+        console.error("Rating loading error:", error);
       }
     };
 
@@ -87,7 +86,7 @@ export default function PublicMangaDetails({ params }: { params: Promise<{ id: s
           setIsInReadingList(data.isInList);
         }
       } catch (error) {
-        console.error("Lỗi kiểm tra trạng thái danh sách đọc:", error);
+        console.error("Error checking reading list status:", error);
       }
     };
     
@@ -95,12 +94,12 @@ export default function PublicMangaDetails({ params }: { params: Promise<{ id: s
       checkReadingListStatus();
     }
     fetchRatingInfo();
-  }, [mangaId, session?.user?.id]); // Phụ thuộc vào ID user để tự động tải lại nếu họ đăng nhập/đăng xuất
+  }, [mangaId, session?.user?.id]); // It relies on the user ID to automatically reload if they log in/log out.
 
-  // Hàm xử lý khi user click vào Ngôi sao
+  // function to handle user rating submission
   const handleRate = async (score: number) => {
     if (!session) return alert("Please log in to leave a review!");
-    setUserRating(score); // Đổi màu sao ngay lập tức cho mượt
+    setUserRating(score); // Change the UI immediately (star color)
     
     const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/rating`, {
       method: "POST",
@@ -108,7 +107,7 @@ export default function PublicMangaDetails({ params }: { params: Promise<{ id: s
       body: JSON.stringify({ userId: session.user.id, mangaId, score })
     });
 
-    // Nếu gửi đánh giá thành công, tải lại thống kê để cập nhật điểm trung bình mới
+    // If the rating submission is successful, fetch the updated average rating and count
     if (res.ok) {
       const updatedRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/rating/${mangaId}?userId=${session.user.id}`);
       if (updatedRes.ok) {
@@ -119,7 +118,7 @@ export default function PublicMangaDetails({ params }: { params: Promise<{ id: s
     }
   };
 
-  // Hàm xử lý khi user click vào nút Thêm/Xóa khỏi danh sách đọc
+  // function to handle toggling manga in reading list
   const handleToggleReadingList = async () => {
     if (!session) {
       return alert("Please log in to use this feature!");
@@ -138,10 +137,10 @@ export default function PublicMangaDetails({ params }: { params: Promise<{ id: s
 
       if (res.ok) {
         const data = await res.json();
-        setIsInReadingList(data.isInList); // Cập nhật lại giao diện dựa theo kết quả trả về
+        setIsInReadingList(data.isInList); // Update the UI based on the response
       }
     } catch (error) {
-      alert("Lỗi kết nối khi cập nhật danh sách đọc!");
+      alert("Error connecting while updating reading list!");
     } finally {
       setIsToggling(false);
     }
@@ -154,26 +153,26 @@ export default function PublicMangaDetails({ params }: { params: Promise<{ id: s
     <div className="min-h-screen bg-gray-900 text-white py-10 px-4">
       <div className="max-w-5xl mx-auto">
         
-        {/* Breadcrumb quay lại */}
+        {/* Breadcrumb return */}
         <Link href="/manga" className="text-gray-400 hover:text-white mb-6 inline-block">&larr; Return to manga list</Link>
 
-        {/* KHU VỰC THÔNG TIN TRUYỆN */}
+        {/* Manga info area */}
         <div className="bg-gray-800 rounded-xl p-6 md:p-8 flex flex-col md:flex-row gap-8 shadow-2xl mb-10">
-          {/* Ảnh bìa */}
+          {/* cover img */}
           <div className="w-full md:w-1/3 lg:w-1/4 shrink-0">
             <div className="aspect-[2/3] rounded-lg overflow-hidden shadow-lg border border-gray-700 bg-gray-700">
               {manga.coverImage && <img src={manga.coverImage} alt={manga.title} className="w-full h-full object-cover" />}
             </div>
           </div>
 
-          {/* Chi tiết */}
+          {/* details */}
           <div className="flex-1 flex flex-col">
             <h1 className="text-3xl md:text-4xl font-black mb-2 text-blue-400">{manga.title}</h1>
             <p className="text-gray-400 mb-4 font-medium">Author: <span className="text-white">{manga.author || "Updating..."}</span></p>
-            {/* Hệ thống Rating 5 sao có Thống kê */}
+            {/* Rating system with statistics */}
             <div className="flex flex-col gap-2 mb-6 bg-gray-900/40 p-4 rounded-xl border border-gray-700/50 w-fit">
               
-              {/* Phần hiển thị điểm trung bình */}
+              {/* Part displaying average rating */}
               <div className="flex items-end gap-2">
                 <span className="text-3xl font-black text-yellow-400 leading-none">{avgRating > 0 ? avgRating : "-"}</span>
                 <span className="text-gray-400 text-sm font-medium pb-1">
@@ -181,7 +180,7 @@ export default function PublicMangaDetails({ params }: { params: Promise<{ id: s
                 </span>
               </div>
 
-              {/* Phần cho user bấm sao */}
+              {/* Part for user to click stars */}
               <div className="flex items-center gap-1 mt-1">
                 <span className="text-xs text-gray-400 mr-2 uppercase tracking-wider font-bold">Rating:</span>
                 {[1, 2, 3, 4, 5].map((star) => (
@@ -211,7 +210,7 @@ export default function PublicMangaDetails({ params }: { params: Promise<{ id: s
               </p>
             </div>
             
-            {/* Cụm nút bấm hành động */}
+            {/* Action buttons */}
             {manga.chapters.length > 0 && (
               <div className="mt-6 flex flex-wrap gap-4">
                 <Link 
@@ -221,7 +220,7 @@ export default function PublicMangaDetails({ params }: { params: Promise<{ id: s
                   Read From Beginning
                 </Link>
 
-                {/* NÚT THÊM VÀO DANH SÁCH ĐỌC MỚI BỔ SUNG */}
+                {/* Add to Reading List button */}
                 <button
                   onClick={handleToggleReadingList}
                   disabled={isToggling}
@@ -244,7 +243,7 @@ export default function PublicMangaDetails({ params }: { params: Promise<{ id: s
           </div>
         </div>
 
-        {/* KHU VỰC DANH SÁCH CHƯƠNG */}
+        {/* Chapter List Area */}
         <div className="bg-gray-800 rounded-xl p-6 md:p-8 shadow-xl">
           <h2 className="text-2xl font-bold mb-6 border-b border-gray-700 pb-4">Chapter List</h2>
           
@@ -268,7 +267,7 @@ export default function PublicMangaDetails({ params }: { params: Promise<{ id: s
           )}
         </div>
 
-        {/* Gắn Component Comment dành cho MANGA vào đây */}
+        {/* Component comment */}
         <CommentSection targetType="manga" targetId={mangaId} />
 
       </div>

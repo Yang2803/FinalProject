@@ -54,7 +54,7 @@ const getUserColor = (userId: string): string => {
 };
 
 // =====================================================================
-// COMPONENT CHÍNH
+// COMPONENT main
 // =====================================================================
 export default function MangaCoReadingRoom({ 
   params 
@@ -74,7 +74,7 @@ export default function MangaCoReadingRoom({
   const [targetLang, setTargetLang] = useState("Vietnamese");
   const [readMode, setReadMode] = useState<"SINGLE" | "VERTICAL">("SINGLE");
 
-  // State Modal chọn truyện cho Host
+  // State Modal choose manga for cho Host
   const [isSelectMangaOpen, setIsSelectMangaOpen] = useState(false);
   const [mangaList, setMangaList] = useState<MangaOption[]>([]);
   const [selectedMangaId, setSelectedMangaId] = useState("");
@@ -85,7 +85,7 @@ export default function MangaCoReadingRoom({
   const [isLaserPenActive, setIsLaserPenActive] = useState(false);
   const [laserWidth, setLaserWidth] = useState<number>(0.8);
 
-  // Ref container đồng bộ cuộn
+  // Ref container for scrolling and syncing
   const isRemoteSyncing = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -117,7 +117,7 @@ export default function MangaCoReadingRoom({
     roomId,
     user: session?.user ? {
       id: session.user.id,
-      name: session.user.name || "Bạn đọc",
+      name: session.user.name || "reader",
       color: userColor
     } : null,
     isHost,
@@ -147,7 +147,7 @@ export default function MangaCoReadingRoom({
   const [isThemePickerOpen, setIsThemePickerOpen] = useState(false);
   const [customImageUrl, setCustomImageUrl] = useState("");
 
-  // Tải chi tiết chapter
+  // Fetch chapter detail when chapterId changes
   const fetchChapterDetail = async (chapId: string) => {
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/chapter/${chapId}`);
@@ -156,17 +156,17 @@ export default function MangaCoReadingRoom({
         setChapter(data);
       }
     } catch (e) {
-      console.error("Lỗi tải chapter:", e);
+      console.error("Error fetching chapter:", e);
     }
   };
 
-  // 1. Tải thông tin phòng
+  // 1. Fetch room information
   useEffect(() => {
     const initRoom = async () => {
       try {
         setLoading(true);
         const resRoom = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/manga-room/rooms/${roomId}`);
-        if (!resRoom.ok) throw new Error("Không tìm thấy phòng");
+        if (!resRoom.ok) throw new Error("No room found");
         const roomData: RoomData = await resRoom.json();
         setRoom(roomData);
 
@@ -175,7 +175,7 @@ export default function MangaCoReadingRoom({
           await fetchChapterDetail(roomData.chapterId);
         }
       } catch (err) {
-        console.error("Lỗi khởi tạo:", err);
+        console.error("Error initializing room:", err);
       } finally {
         setLoading(false);
       }
@@ -183,7 +183,7 @@ export default function MangaCoReadingRoom({
     if (roomId) initRoom();
   }, [roomId]);
 
-  // 2. Tải danh sách Manga khi Host mở modal chọn truyện
+  // 2. Fetch manga list when Host opens the selection modal
   const openMangaSelector = async () => {
     setIsSelectMangaOpen(true);
     try {
@@ -193,7 +193,7 @@ export default function MangaCoReadingRoom({
         setMangaList(Array.isArray(data) ? data : data.mangas || []);
       }
     } catch (e) {
-      console.error("Lỗi lấy danh sách manga:", e);
+      console.error("Error fetching manga list:", e);
     }
   };
 
@@ -206,7 +206,7 @@ export default function MangaCoReadingRoom({
         setChaptersOfManga(data.chapters || []);
       }
     } catch (e) {
-      console.error("Lỗi tải chapters:", e);
+      console.error("Error fetching chapters:", e);
     }
   };
 
@@ -231,11 +231,11 @@ export default function MangaCoReadingRoom({
         emitPageChange(chapId, 0);
         setIsSelectMangaOpen(false);
       } else {
-        alert("Không thể đổi chương!");
+        alert("Cannot change chapter!");
       }
     } catch (e) {
       console.error(e);
-      alert("Lỗi kết nối khi đổi chương.");
+      alert("Connection error when changing chapter.");
     } finally {
       setIsUpdatingChapter(false);
     }
@@ -243,7 +243,7 @@ export default function MangaCoReadingRoom({
 
   const hasMyStrokes = laserLines.some((line) => line.userId === session?.user?.id);
 
-  // Điều khiển lật trang
+  // Control page navigation
   const handleNextPage = () => {
     if (!chapter || !chapter.images || chapter.images.length === 0) return;
     if (!isHost && isLocked) return;
@@ -266,9 +266,9 @@ export default function MangaCoReadingRoom({
     }
   };
 
-  // Cuộn trang
+  // Scroll event handler 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    // Nếu đang nhận tín hiệu cuộn từ người khác hoặc phòng bị khóa mà mình không phải Host thì bỏ qua
+    // f you are receiving a rollover signal from someone else or the room is locked and you are not the host, ignore it.
     if (isRemoteSyncing.current || (!isHost && isLocked)) return;
 
     const target = e.currentTarget;
@@ -280,24 +280,24 @@ export default function MangaCoReadingRoom({
   };
 
   const handleToggleReadMode = () => {
-    // Nếu phòng bị khóa và không phải Host thì không được đổi mode
+    // If the room is locked and you are not the Host, you are not allowed to change the mode.
     if (!isHost && isLocked) {
       alert("The host has locked the room controls!");
       return;
     }
     const nextMode = readMode === "SINGLE" ? "VERTICAL" : "SINGLE";
     setReadMode(nextMode);
-    emitChangeReadMode(nextMode); // Bắn socket đồng bộ cho tất cả mọi người
+    emitChangeReadMode(nextMode); // Send the change to the socket so that all participants can see it.
   };
 
-  // Xác nhận rời phòng
+  // Confirm to leave the room (for both Host and Members)
   const handleLeaveRoom = () => {
     if (confirm("Are you sure you want to leave the room? You will be redirected to the lobby.")) {
       emitLeaveRoom();
     }
   };
 
-  // Xác nhận giải tán phòng (chỉ Host)
+  // confirm to disband the room (only for Host)
   const handleDisbandRoom = async () => {
     if (confirm("Are you sure you want to disband the room? All members will be redirected to the lobby!")) {
       try {
@@ -323,7 +323,7 @@ export default function MangaCoReadingRoom({
     );
   }
 
-  // MÀN HÌNH CHỜ PHÊ DUYỆT CỦA PHÒNG KÍN
+  // Waiting for approval screen (for members who are not the host)
   if (!isHost && room.isPrivate && approvalStatus === "PENDING") {
     return (
       <div className="min-h-screen bg-[#0f0f11] text-white flex flex-col items-center justify-center p-6 text-center">
@@ -344,7 +344,7 @@ export default function MangaCoReadingRoom({
     );
   }
 
-  // MÀN HÌNH BỊ TỪ CHỐI
+  // Rejected screen (for members who are not the host)
   if (!isHost && approvalStatus === "REJECTED") {
     return (
       <div className="min-h-screen bg-[#0f0f11] text-white flex flex-col items-center justify-center p-6 text-center">
@@ -365,7 +365,7 @@ export default function MangaCoReadingRoom({
     );
   }
 
-  // MÀN HÌNH CHỜ KHI CHƯA CHỌN TRUYỆN
+  // Waiting screen (for members who have not selected a manga)
   if (!chapter) {
     return (
       <div className="min-h-screen bg-[#0f0f11] text-white flex flex-col items-center justify-center p-6 text-center">
@@ -392,7 +392,7 @@ export default function MangaCoReadingRoom({
           </div>
         )}
 
-        {/* MODAL CHỌN TRUYỆN */}
+        {/* MODAL choose manga */}
         {isSelectMangaOpen && (
           <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
             <div className="bg-[#1a1d24] border border-gray-800 rounded-2xl max-w-lg w-full p-6 text-left">
@@ -449,9 +449,9 @@ export default function MangaCoReadingRoom({
 
   return (
   <div className="h-full relative flex flex-col select-none bg-[#090a0f] text-gray-100 overflow-hidden">
-    {/* HEADER PHÒNG */}
+    {/* HEADER room */}
     <header className="min-h-14 py-1.5 border-b border-gray-800 bg-gray-900/95 backdrop-blur px-2.5 md:px-4 flex flex-wrap items-center justify-between z-30 shrink-0 gap-2">
-      {/* CỤM TRÁI: THÔNG TIN PHÒNG & QUYỀN HOST */}
+      {/* Left: ROOM INFORMATION & HOST RIGHTS */}
       <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 shrink">
         <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
         <div className="flex items-center gap-1.5 min-w-0 text-xs md:text-sm font-semibold text-gray-200">
@@ -497,9 +497,9 @@ export default function MangaCoReadingRoom({
         )}
       </div>
 
-      {/* CỤM PHẢI: LASER PEN, XÓA, VOICE CHAT, RỜI/GIẢI TÁN */}
+      {/* Right: LASER PEN, Delete, voice chat, etc., */}
       <div className="flex items-center gap-1 sm:gap-1.5 md:gap-2 shrink-0 ml-auto">
-        {/* 1. Laser Pen + Kích thước nét */}
+        {/* 1. Laser Pen  */}
         <div className="flex items-center bg-gray-800/80 border border-gray-700/80 rounded-lg p-0.5">
           <button
             type="button"
@@ -541,7 +541,7 @@ export default function MangaCoReadingRoom({
           )}
         </div>
 
-        {/* 2. Nút xóa nét của tôi */}
+        {/* 2. Delete laser pen line */}
         {hasMyStrokes && (
           <button
             type="button"
@@ -554,7 +554,7 @@ export default function MangaCoReadingRoom({
           </button>
         )}
 
-        {/* 3. Nút xóa tất cả dành cho Host */}
+        {/* 3. Delete all laser pen lines (for Host only) */}
         {isHost && laserLines.length > 0 && (
           <button
             type="button"
@@ -578,7 +578,7 @@ export default function MangaCoReadingRoom({
           </div>
         )}
 
-        {/* 6. Nút Rời phòng / Giải tán */}
+        {/* 6. Leave room or disband button */}
         <div className="border-l border-gray-800 pl-1.5 md:pl-2 shrink-0">
           {isHost ? (
             <button
@@ -605,7 +605,7 @@ export default function MangaCoReadingRoom({
       </div>
     </header>
 
-    {/* NỘI DUNG TRANG TRUYỆN + CANVAS LASER + LIVE CURSORS */}
+    {/* Manga img + CANVAS LASER + LIVE CURSORS */}
     <div
       ref={containerRef}
       onScroll={handleScroll}
@@ -622,7 +622,7 @@ export default function MangaCoReadingRoom({
       } ${isLaserPenActive ? "cursor-crosshair" : "cursor-default"}`}
     >
       {readMode === "VERTICAL" ? (
-        /* CHẾ ĐỘ CUỘN DỌC: Render danh sách ảnh nối tiếp */
+        /* VERTICAL SCROLL MODE: Render a sequential list of images */
         <div className="w-full flex flex-col items-center gap-2">
           {chapter.images.map((imgUrl, idx) => (
             <MangaPageCanvas
@@ -643,7 +643,7 @@ export default function MangaCoReadingRoom({
           ))}
         </div>
       ) : (
-        /* CHẾ ĐỘ TỪNG TRANG: Render 1 trang hiện tại */
+        /* SINGLE PAGE MODE: Render the current page */
         <div className="w-full flex items-center justify-center">
           <MangaPageCanvas
             key={chapter.images[currentPage] || currentPage}
@@ -664,9 +664,9 @@ export default function MangaCoReadingRoom({
       )}
     </div>
 
-    {/* THANH ĐIỀU KHIỂN TRANG */}
+    {/* PAGE CONTROL BAR */}
     <div className="min-h-14 py-1.5 border-t border-gray-800 bg-gray-900/95 backdrop-blur px-2.5 sm:px-4 flex items-center justify-between gap-2 text-sm z-40 shrink-0">
-      {/* GÓC TRÁI: NÚT ĐỔI NỀN & ĐỔI CHẾ ĐỘ ĐỌC */}
+      {/* LEFT CORNER: BACKGROUND CHANGE BUTTON and READING MODE SWITCH BUTTON */}
       <div className="relative flex items-center gap-1.5 sm:gap-2 md:min-w-[200px]">
         {isHost && (
           <button
@@ -701,7 +701,7 @@ export default function MangaCoReadingRoom({
           </span>
         </button>
 
-        {/* POPUP BẢNG CHỌN NỀN CỦA HOST */}
+        {/* HOST BACKGROUND SELECTION POPUP */}
         {isHost && isThemePickerOpen && (
           <div className="absolute bottom-12 left-0 bg-gray-900 border border-gray-700 p-3.5 rounded-xl shadow-2xl w-64 max-w-[85vw] z-50 flex flex-col gap-3">
             <div className="flex justify-between items-center">
@@ -717,7 +717,7 @@ export default function MangaCoReadingRoom({
               </button>
             </div>
 
-            {/* Các mã màu đọc truyện có sẵn */}
+            {/* Color codes for reading stories are available. */}
             <div className="grid grid-cols-4 gap-2">
               {[
                 { name: "Black", color: "#000000" },
@@ -739,7 +739,7 @@ export default function MangaCoReadingRoom({
               ))}
             </div>
 
-            {/* Tùy chọn dán URL ảnh nền */}
+            {/* URL bg img */}
             <div className="flex flex-col gap-1.5 border-t border-gray-800 pt-2">
               <span className="text-[11px] text-gray-400">
                 Or background image URL:
@@ -773,7 +773,7 @@ export default function MangaCoReadingRoom({
         )}
       </div>
 
-      {/* Ở GIỮA: CỤM CHUYỂN TRANG (Ẩn khi bật cuộn dọc) */}
+      {/* IN THE MIDDLE: PAGE NAVIGATION (Hidden when portrait scrolling is enabled) */}
       {readMode === "SINGLE" ? (
         <div className="flex items-center gap-2 sm:gap-6">
           <button
@@ -809,7 +809,7 @@ export default function MangaCoReadingRoom({
         </div>
       )}
 
-      {/* 🌟 GÓC PHẢI: CẢM XÚC BAY & NHẠC NỀN YOUTUBE */}
+      {/* 🌟 RIGHT CORNER: FLOATING EMOTIONS & YOUTUBE BACKGROUND MUSIC */}
       <div className="flex items-center justify-end gap-1.5 sm:gap-2 md:min-w-[200px]">
         <MangaRoomReactions
           roomId={roomId}
@@ -821,7 +821,7 @@ export default function MangaCoReadingRoom({
       </div>
     </div>
 
-    {/* MODAL ĐỔI TRUYỆN TRONG KHI ĐANG ĐỌC */}
+    {/* MODAL CHANGE MANGA WHILE READING */}
     {isSelectMangaOpen && (
       <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
         <div className="bg-[#1a1d24] border border-gray-800 rounded-2xl max-w-lg w-full p-5 sm:p-6 text-left">
@@ -889,7 +889,7 @@ export default function MangaCoReadingRoom({
       </div>
     )}
 
-    {/* 🌟 MODAL PHÊ DUYỆT THAM GIA PHÒNG (CHỈ HOST MỚI NHÌN THẤY) */}
+    {/* 🌟 MODAL APPROVAL FOR JOINING THE ROOM (ONLY THE HOST CAN SEE IT) */}
     {isHost && joinRequests.length > 0 && (
       <div className="fixed bottom-28 md:bottom-16 right-3 sm:right-6 left-3 sm:left-auto z-50 flex flex-col gap-2 sm:max-w-sm sm:w-full animate-bounce-short">
         {joinRequests.map((req) => (

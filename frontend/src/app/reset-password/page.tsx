@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 
 function ResetPasswordContent() {
   const searchParams = useSearchParams();
-  const token = searchParams.get("token"); // Bóc tách chuỗi ?token=... trên url
+  const token = searchParams.get("token"); // Extract the string ?token=... from the URL
   const router = useRouter();
 
   const [newPassword, setNewPassword] = useState("");
@@ -20,7 +20,7 @@ function ResetPasswordContent() {
     setError("");
 
     if (newPassword !== confirmPassword) {
-      return setError("Mật khẩu xác nhận không khớp!");
+      return setError("Passwords do not match!");
     }
 
     setLoading(true);
@@ -36,13 +36,13 @@ function ResetPasswordContent() {
       if (res.ok) {
         setMessage(data.message);
         setTimeout(() => {
-          router.push("/login"); // Thành công chuyển về trang đăng nhập sau 3 giây
+          router.push("/login"); // Successful, redirect to login page after 3 seconds
         }, 3000);
       } else {
         setError(data.message);
       }
     } catch (err) {
-      setError("Lỗi kết nối server!");
+      setError("Error connecting to the server!");
     } finally {
       setLoading(false);
     }

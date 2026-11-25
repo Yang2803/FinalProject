@@ -14,7 +14,7 @@ import { RoomTheme, THEME_PRESETS } from "@/types/theme";
 import { MangaRoomReactions } from "@/components/manga-room/MangaRoomReactions";
 
 // ==========================================
-// ĐỊNH NGHĨA INTERFACES
+// INTERFACES
 // ==========================================
 interface Member {
   id: string;
@@ -65,7 +65,7 @@ interface EpisodeOption {
 }
 
 let globalSocket: Socket | null = null;
-let globalJoinedRoom: string | null = null; // 🌟 CỜ KHÓA SPAM TIN NHẮN "VỪA THAM GIA"
+let globalJoinedRoom: string | null = null; 
 
 export default function WatchPartyRoomPage({ params }: { params: Promise<{ inviteCode: string }> }) {
   const { data: session } = useSession();
@@ -97,10 +97,10 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
   const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
 
-  // 🌟 THÊM TẠI ĐÂY (LIVEKIT): State lưu token Voice Chat
+  // 🌟 State for managing voice chat token (LiveKit)
   const [voiceToken, setVoiceToken] = useState("");
 
-  // 🌟 THÊM: State quản lý Theme phòng & Modal đổi theme
+  // 🌟 State for theme configuration (LiveKit)
   const [theme, setTheme] = useState<RoomTheme>({
     accent: "#3b82f6",
     glow: "rgba(59,130,246,0.45)",
@@ -108,7 +108,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
   });
   const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
 
-  // BẪY CLICK TOÀN TRANG
+  // PAGE-WIDE CLICK TRAP
   useEffect(() => {
     const unlockAudio = () => {
       setHasInteracted(true);
@@ -125,7 +125,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
     };
   }, []);
 
-  // 🌟 LƯU LỊCH SỬ CHAT VÀO LOCAL STORAGE
+  // 🌟 SAVE CHAT HISTORY TO LOCAL STORAGE
   useEffect(() => {
     if (room && messages.length > 0) {
       localStorage.setItem(`party_chat_${room.id}`, JSON.stringify(messages));
@@ -133,7 +133,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
   }, [messages, room]);
 
   // ==========================================
-  // 1. TẢI DỮ LIỆU PHÒNG & KHỞI TẠO SOCKET
+  // 1. Load room data and connect to socket
   // ==========================================
   useEffect(() => {
     const fetchRoomAndConnectSocket = async () => {
@@ -149,7 +149,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
             setTheme(roomData.themeConfig);
           }
           
-          // 🌟 KHÔI PHỤC LỊCH SỬ CHAT (Chỉ nạp vào nếu chat đang trống)
+          // 🌟 Restore chat history from localStorage if available
           setMessages((prev) => {
             if (prev.length === 0) {
                const savedChat = localStorage.getItem(`party_chat_${roomData.id}`);
@@ -164,7 +164,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
 
           const isMember = roomData.members.find(m => m.user.id === session.user.id);
 
-          // 🌟 ĐÃ SỬA TẠI ĐÂY: Xử lý hiển thị thông báo từ chối và điều hướng (Không load lại trang)
+          // 🌟 Handle the case where the user has been rejected
           if (isMember?.status === "REJECTED") {
             alert("Your request to join the room has been denied. You will be redirected to the lobby.");
             router.push("/party");
@@ -182,7 +182,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
 
             const newMemberStatus = roomData.isPrivate ? "PENDING" : "JOINED";
 
-            // 🌟 ĐÃ SỬA TẠI ĐÂY: Bỏ window.location.reload() đi, cập nhật state thủ công để UI hiện màn chờ duyệt
+            // 🌟 State update to reflect the new member immediately
             setRoom({
               ...roomData,
               members: [...roomData.members, { 
@@ -204,7 +204,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
             globalSocket = io(process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000");
           }
 
-          // 🌟 CHÌA KHÓA CHỐNG SPAM NẰM Ở ĐÂY: Chỉ gửi lệnh tham gia đúng 1 lần
+          // 🌟 Only join the room if not already joined to prevent duplicate joins
           if (globalJoinedRoom !== roomData.id) {
             globalSocket.emit("join_room", roomData.id, session.user.name);
             globalJoinedRoom = roomData.id;
@@ -257,7 +257,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
             window.location.reload(); 
           });
 
-          // 🌟 LẮNG NGHE ĐỔI THEME REALTIME
+          // 🌟 Theme change listener
           globalSocket.on("receive_room_theme", (newTheme: RoomTheme) => {
             setTheme(newTheme);
           });
@@ -265,34 +265,34 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
           globalSocket.off("receive_join_request");   
           globalSocket.off("receive_approve_result"); 
 
-          // 🌟 1. LẮNG NGHE YÊU CẦU XIN VÀO PHÒNG
+          // 🌟 1. Join room and listen for new join requests (for host)
           globalSocket.on("receive_join_request", () => {
-            // Khi có tín hiệu, TẤT CẢ mọi người (bao gồm trưởng phòng) tải lại danh sách để UI cập nhật ngay lập tức
+            // When a new join request is received, fetch the updated room data to reflect the new pending member
             fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/party/rooms/${inviteCode}`)
               .then(res => res.json())
               .then(updatedRoom => setRoom(updatedRoom));
           });
 
-          // 🌟 2. LẮNG NGHE KẾT QUẢ DUYỆT TỪ TRƯỞNG PHÒNG
+          // 🌟 2. Listen for approval/rejection results (for members)
           globalSocket.on("receive_approve_result", (data: { targetUserId: string, action: string }) => {
             if (data.targetUserId === session?.user?.id) {
-              // Nếu TÔI là người bị réo tên
+              // If the current user is the one being approved/rejected, show an alert and redirect if rejected
               if (data.action === "REJECT") {
                 alert("Your request to join the room has been denied. You will be redirected to the lobby.");
                 window.location.href = "/party"; 
               } else if (data.action === "APPROVE") {
                 alert("Your request to join the room has been approved!");
-                window.location.reload(); // Tải lại nhẹ 1 lần để vào giao diện chính
+                window.location.reload(); // Load the room with the updated status
               }
             } else {
-              // Nếu người khác được duyệt/từ chối, cập nhật lại danh sách bên cột chat
+              // If the current user is the host, fetch the updated room data to reflect the new member status
               fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/party/rooms/${inviteCode}`)
                 .then(res => res.json())
                 .then(updatedRoom => setRoom(updatedRoom));
             }
           });
 
-          // 🌟 LẮNG NGHE TÍN HIỆU GIẢI TÁN TỪ TRƯỞNG PHÒNG
+          // 🌟 Listen for room disband event
           globalSocket.on("receive_disband_room", () => {
             localStorage.removeItem(`party_chat_${roomData.id}`);
             alert("The host has disbanded the room! You will be redirected to the lobby.");
@@ -325,7 +325,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
     };
   }, [inviteCode, session?.user?.id, router]);
 
-  // 🌟 THÊM TẠI ĐÂY (LIVEKIT): TỰ ĐỘNG LẤY TOKEN VOICE CHAT KHI ĐÃ ĐƯỢC VÀO PHÒNG
+  // 🌟 Automatically fetch voice token if the user is a joined member and doesn't have a token yet
   useEffect(() => {
     if (!room || !session?.user) return;
     
@@ -340,7 +340,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
             setVoiceToken(data.token);
           }
         } catch (error) {
-          console.error("Lỗi lấy Voice Token", error);
+          console.error("Error retrieving Voice Token", error);
         }
       };
       fetchVoiceToken();
@@ -350,7 +350,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
 
   const isHost = session?.user?.id === room?.hostId;
 
-  // 🌟 TẠO MÀU RIÊNG BIỆT CHO TỪNG USER TRONG PHÒNG WATCH PARTY
+  // 🌟 CREATE A UNIQUE COLOR SCHEME FOR EACH USER IN THE WATCH PARTY ROOM
   const USER_COLORS = [
     "#ef4444", // Đỏ
     "#f97316", // Cam
@@ -376,7 +376,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
   );
 
   // ==========================================
-  // HỆ THỐNG "HEARTBEAT" TỰ ĐỘNG ĐỒNG BỘ 
+  // AUTOMATIC SYNCHRONIZATION "HEARTBEAT" SYSTEM
   // ==========================================
   useEffect(() => {
     if (!isHost || !socket || !room) return;
@@ -445,7 +445,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
           )
         });
         
-        // 🌟 SỬA TẠI ĐÂY: Dùng trực tiếp globalSocket để đảm bảo 100% tín hiệu được bắn đi, không bị kẹt bởi React State
+        // 🌟 Use socket to notify the target user about the approval/rejection result
         if (globalSocket) {
           globalSocket.emit("send_approve_result", { roomId: room.id, targetUserId, action });
         }
@@ -479,7 +479,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
         socket?.emit("change_video", room.id); 
         window.location.reload(); 
       } else {
-        alert("Có lỗi khi đổi phim");
+        alert("There was an error changing the video. Please try again.");
       }
     } catch (error) {
       console.error(error);
@@ -488,7 +488,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
     }
   };
 
-  // 🌟 HÀM GIẢI TÁN PHÒNG (DÀNH CHO TRƯỞNG PHÒNG HOẶC KHI PHÒNG TRỐNG)
+  // 🌟 Function to disband the room (only for host)
   const handleDisbandRoom = async () => {
     if (!room) return;
     
@@ -506,15 +506,15 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
       if (globalSocket) {
         globalSocket.disconnect();
         globalSocket = null;
-        globalJoinedRoom = null; // Mở khóa
+        globalJoinedRoom = null; // open lock
       }
       router.push("/party");
     } catch (error) {
-      console.error("Lỗi xóa phòng:", error);
+      console.error("Disband room error:", error);
     }
   };
 
-  // 🌟 HÀM RỜI PHÒNG THÔNG MINH
+  // 🌟 Function to leave the room (for members)
   const handleLeaveRoom = () => {
     if (!room) return;
     const joinedMembers = room.members.filter(m => m.status === "JOINED");
@@ -528,7 +528,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
       globalSocket.emit("leave_room", room.id, session?.user?.name);
       globalSocket.disconnect();
       globalSocket = null; 
-      globalJoinedRoom = null; // Mở khóa
+      globalJoinedRoom = null; // open lock
     }
     router.push("/party");
   };
@@ -612,7 +612,6 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
     }
     className="min-h-full md:h-[calc(100dvh-80px)] bg-[#0f0f11] bg-cover bg-center bg-no-repeat text-white flex flex-col md:flex-row p-3 sm:p-4 gap-4 md:gap-6 overflow-y-auto md:overflow-hidden relative transition-colors duration-500"
   >
-    {/* 🌟 NHÚNG CSS ẨN THANH CUỘN CỘT TRÁI & LÀM MẢNH THANH CUỘN CHAT */}
     <style>{`
       .no-scrollbar::-webkit-scrollbar {
         display: none;
@@ -636,7 +635,6 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
       }
     `}</style>
 
-    {/* Lớp phủ làm tối nhẹ: hạ độ tối từ black/75 xuống black/40 để nhìn rõ wallpaper */}
     {theme.bgUrl && (
       <div className="fixed md:absolute inset-0 bg-black/40 backdrop-blur-[1px] pointer-events-none z-0" />
     )}
@@ -715,7 +713,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
       </div>
     )}
 
-    {/* 🔴 CỘT TRÁI: VIDEO PLAYER */}
+    {/* 🔴 VIDEO PLAYER */}
     <div className="w-full md:flex-1 flex flex-col md:overflow-y-auto custom-scrollbar md:pr-2 relative z-10 shrink-0 md:shrink">
       <div className="flex items-center justify-between gap-2 mb-3 sm:mb-4 shrink-0">
         <div className="min-w-0">
@@ -884,7 +882,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
               📺 Select Anime/Change Episode
             </button>
 
-            {/* 🌟 NÚT MỞ MODAL ĐỔI THEME */}
+            {/* 🌟 CHange theme button */}
             <button
               onClick={() => setIsThemeModalOpen(true)}
               className="flex-1 sm:flex-none bg-gray-800 hover:bg-gray-700 text-white px-4 sm:px-5 py-2.5 rounded-lg text-xs sm:text-sm font-bold transition border shadow-sm active:scale-95 flex items-center justify-center gap-2"
@@ -896,7 +894,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
               🎨 Customize Theme
             </button>
 
-            {/* 🌟 NÚT GIẢI TÁN PHÒNG */}
+            {/* 🌟 BUTTON TO DISBAND THE ROOM */}
             <button
               onClick={handleDisbandRoom}
               className="w-full sm:w-auto bg-red-600 hover:bg-red-500 text-white px-4 sm:px-5 py-2.5 rounded-lg text-xs sm:text-sm font-bold transition shadow-lg shadow-red-900/20 text-center"
@@ -959,9 +957,9 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
       )}
     </div>
 
-    {/* 🟢 CỘT PHẢI: KHUNG CHAT & DANH SÁCH THÀNH VIÊN */}
+    {/* 🟢 RIGHT COLUMN: CHAT FRAME & MEMBER LIST */}
     <div className="w-full md:w-80 flex flex-col gap-4 md:h-full shrink-0 relative z-10 pb-4 md:pb-0">
-      {/* 🌟 THÊM TẠI ĐÂY (LIVEKIT): GIAO DIỆN VOICE CHAT (Chỉ hiện khi đã có Token) */}
+      {/* 🌟 Voice chat UI */}
       {voiceToken && (
         <LiveKitRoom
           video={false}
@@ -1130,7 +1128,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
           onSubmit={handleSendMessage}
           className="mt-4 pt-4 border-t border-gray-800 flex items-center gap-2 shrink-0"
         >
-          {/* 🌟 NÚT THẢ CẢM XÚC BAY TRONG PHÒNG WATCH PARTY */}
+          {/* 🌟 Fly reaction button in WATCH PARTY */}
           <MangaRoomReactions
             roomId={room.id}
             socket={socket}
@@ -1177,7 +1175,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
             </button>
           </div>
 
-          {/* Danh sách bảng màu sẵn có */}
+          {/* Theme color presets */}
           <div className="mb-4">
             <label className="block text-xs font-bold text-gray-400 mb-2 uppercase">
               Select Neon Color
@@ -1210,7 +1208,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
             </div>
           </div>
 
-          {/* URL Hình nền */}
+          {/* Background Image URL */}
           <div className="mb-6">
             <label className="block text-xs font-bold text-gray-400 mb-2 uppercase">
               Background Image URL (Optional)
@@ -1226,7 +1224,7 @@ export default function WatchPartyRoomPage({ params }: { params: Promise<{ invit
             />
           </div>
 
-          {/* Nút thao tác */}
+          {/* Action Buttons */}
           <div className="flex justify-end gap-2">
             <button
               onClick={() => setIsThemeModalOpen(false)}

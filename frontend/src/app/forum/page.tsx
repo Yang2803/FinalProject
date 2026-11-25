@@ -13,7 +13,6 @@ const getAvatarColor = (name?: string) => {
   return colors[Math.abs(hash) % colors.length];
 };
 
-// 🌟 1. ĐỊNH NGHĨA INTERFACE RÕ RÀNG ĐỂ TRÁNH LỖI `any`
 interface Author {
   id?: string;
   name?: string;
@@ -40,9 +39,9 @@ interface ForumCommentItem {
   id: string;
   content: string;
   createdAt: string;
-  author?: Author; // Tận dụng luôn interface Author đã khai báo ở trên nhé!
-  authorId: string;        // Bổ sung
-  parentId?: string | null; // Bổ sung
+  author?: Author; 
+  authorId: string;        
+  parentId?: string | null; 
   upvoteCount: number;
 }
 
@@ -54,11 +53,11 @@ function ForumFeedContent() {
   const currentTag = searchParams.get("tag"); 
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // 🌟 2. KHAI BÁO TYPE CHUẨN XÁC NÀY
+  // Typescript state for posts and loading status
   const [posts, setPosts] = useState<ForumPostItem[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(true);
 
-  // States cho Form đăng bài...
+  // States for creating/editing a post
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [category, setCategory] = useState<"GENERAL" | "ANIME" | "MANGA">("GENERAL");
@@ -74,7 +73,7 @@ function ForumFeedContent() {
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // States cho tính năng Edit/Delete/Comment
+  // States for editing posts and managing comments
   const [editingPost, setEditingPost] = useState<ForumPostItem | null>(null);
   const [activeCommentPostId, setActiveCommentPostId] = useState<string | null>(null);
   const [comments, setComments] = useState<ForumCommentItem[]>([]);
@@ -85,16 +84,14 @@ function ForumFeedContent() {
   const [editCommentContent, setEditCommentContent] = useState("");
 
 
-  // 🌟 ĐƯA HÀM FETCH VÀO TRỰC TIẾP TRONG USEEFFECT
   useEffect(() => {
-    let isMounted = true; // Cờ đánh dấu component còn hoạt động
+    let isMounted = true; // Flag to check if component is still mounted
     
 
     const loadInitialPosts = async () => {
       try {
 
         if (isMounted) setLoadingPosts(true);
-        // 🌟 BỔ SUNG: { cache: "no-store" } để cấm Next.js/Trình duyệt lưu cache cũ
         const fetchUrl = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/posts?category=${currentCategory}${currentTag ? `&tag=${currentTag}` : ''}`;
         
         const res = await fetch(fetchUrl, {
@@ -106,11 +103,10 @@ function ForumFeedContent() {
           const data: ForumPostItem[] = await res.json();
           if (isMounted) setPosts(data);
         } else {
-          // Bắt lỗi rõ ràng nếu backend trả về HTTP Status lỗi (VD: 500)
-          console.error("Server trả về lỗi:", await res.text());
+          console.error("Server returns error:", await res.text());
         }
       } catch (error) {
-        console.error("Lỗi khi tải danh sách bài viết:", error);
+        console.error("Error loading the list of post:", error);
       } finally {
         if (isMounted) setLoadingPosts(false);
       }
@@ -119,9 +115,9 @@ function ForumFeedContent() {
     loadInitialPosts();
 
     return () => {
-      isMounted = false; // Cleanup function để tránh lỗi bộ nhớ
+      isMounted = false; // Cleanup function to avoid memory errors.
     };
-  }, [currentCategory, currentTag]); // Theo dõi thay đổi của currentCategory
+  }, [currentCategory, currentTag]); // Track changes in currentCategory
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -147,7 +143,7 @@ function ForumFeedContent() {
   };
 
   const handleAIAnalyze = async () => {
-    if (!title || !content) return alert("Nhập nội dung trước khi dùng AI nhé!");
+    if (!title || !content) return alert("Please enter the title and content before using AI!");
     setIsAnalyzing(true);
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/analyze`, {
@@ -161,22 +157,22 @@ function ForumFeedContent() {
       setTags(mergedTags);
       setIsSpoiler(data.isSpoiler);
     } catch (error) {
-      alert("Lỗi AI");
+      alert("Error with AI");
     } finally {
       setIsAnalyzing(false);
     }
   };
 
-  // HÀM RESET FORM (Dùng chung khi đóng popup)
+  // Reset form fields and close modal
   const resetForm = () => {
     setIsModalOpen(false);
-    setEditingPost(null); // Thoát chế độ Edit
+    setEditingPost(null); // exit edit mode
     setTitle(""); setContent(""); setTags([]); 
     setMediaFile(null); setMediaPreview(null);
     setIsSpoiler(false); setCategory("GENERAL");
   };
 
-  // HÀM MỞ POPUP VÀ NẠP DỮ LIỆU CŨ KHI BẤM SỬA
+  // Function to open th popup modal for editing a post, pre-filling the form with existing data
   const handleEditClick = (post: ForumPostItem) => {
     setEditingPost(post);
     setTitle(post.title);
@@ -184,7 +180,7 @@ function ForumFeedContent() {
     setCategory(post.category);
     setTags(post.tags || []);
     setIsSpoiler(post.isSpoiler);
-    setMediaPreview(post.mediaUrl || null); // Hiển thị lại ảnh cũ
+    setMediaPreview(post.mediaUrl || null); // Display existing media if available
     setIsModalOpen(true);
   };
 
@@ -195,16 +191,16 @@ function ForumFeedContent() {
     setIsPosting(true);
 
     try {
-      // 🌟 1. Nếu đang sửa bài, lấy lại link ảnh cũ. Nếu tạo mới thì để null.
+      // 🌟 1. If editing, use the existing media URL; otherwise, initialize as null
       let finalMediaUrl = editingPost ? editingPost.mediaUrl : null;
 
-      // 🌟 2. Nếu có đính kèm file mới thì upload lên Cloudinary để lấy link mới
+      // 🌟 2. If there's a new file attached, upload it to Cloudinary to get the new link
       if (mediaFile) {
         const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
         const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
         
         if (!cloudName || !uploadPreset) {
-          alert("Chưa cấu hình Cloudinary!");
+          alert("Cloudinary is not configured!");
           setIsPosting(false);
           return;
         }
@@ -220,13 +216,13 @@ function ForumFeedContent() {
         });
         
         const cloudData = await cloudRes.json();
-        if (!cloudRes.ok) throw new Error(cloudData.error?.message || "Lỗi upload ảnh");
+        if (!cloudRes.ok) throw new Error(cloudData.error?.message || "Error uploading image");
         finalMediaUrl = cloudData.secure_url;
       }
 
-      // 🌟 3. PHÂN NHÁNH LOGIC: SỬA BÀI HAY TẠO BÀI MỚI?
+      // 🌟 3. Edit or create a new post based on whether we're in edit mode
       if (editingPost) {
-        // 👉 TRƯỜNG HỢP: SỬA BÀI (GỌI API PUT)
+        // 👉 Case 1: Editing an existing post (PUT request)
         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/posts/${editingPost.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -236,20 +232,20 @@ function ForumFeedContent() {
         });
 
         if (res.ok) {
-          // Cập nhật lại UI lập tức: Tìm bài viết cũ trong danh sách và đắp dữ liệu mới vào
+          // Update the UI with the new post data without refetching all posts
           setPosts(posts.map(p => p.id === editingPost.id 
             ? { ...p, title, content, category, tags, isSpoiler, mediaUrl: finalMediaUrl } 
             : p
           ));
-          alert("Đã cập nhật bài viết!");
-          resetForm(); // Gọi hàm reset để đóng form
+          alert("Post is updated!");
+          resetForm(); // Call reset to close the modal and clear the form
         } else {
           const data = await res.json();
           alert(data.error || "Lỗi khi sửa bài!");
         }
 
       } else {
-        // 👉 TRƯỜNG HỢP: TẠO BÀI MỚI (GỌI API POST)
+        // 👉 Case 2: Creating a new post (POST request)
         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/posts`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -260,34 +256,34 @@ function ForumFeedContent() {
 
         if (res.ok) {
           const data = await res.json(); 
-          alert("Đăng bài thành công!");
+          alert("Upload post successfully!");
           
           if (data.post) {
             const newPost = {
               ...data.post,
               author: {
-                name: session?.user?.name || "Người dùng",
+                name: session?.user?.name || "User",
                 image: session?.user?.image || null,
               }
             };
             setPosts(prevPosts => [newPost, ...prevPosts]); 
           }
-          resetForm(); // Gọi hàm reset để đóng form
+          resetForm(); // Call reset to close the modal and clear the form
         } else {
           const data = await res.json();
-          alert(data.error || "Lỗi khi đăng bài từ Server!");
+          alert(data.error || "Error when posting from Server!");
         }
       }
 
     } catch (error) {
       console.error(error);
-      alert("Đã xảy ra lỗi kết nối.");
+      alert("An error occurred while connecting.");
     } finally {
       setIsPosting(false);
     }
   };
 
-  // XỬ LÝ XÓA
+  // Handle deleting a post, with confirmation and UI update
   const handleDeletePost = async (postId: string) => {
     if (!confirm("Are you sure you want to delete this post?")) return;
     try {
@@ -297,10 +293,10 @@ function ForumFeedContent() {
         body: JSON.stringify({ authorId: session?.user?.id })
       });
       if (res.ok) {
-        setPosts(posts.filter(p => p.id !== postId)); // Xóa khỏi giao diện
+        setPosts(posts.filter(p => p.id !== postId)); // Delete the post from the UI without refetching
         alert("The post has been deleted!");
       }
-    } catch (error) { alert("Lỗi khi xóa!"); }
+    } catch (error) { alert("Error when deleting!"); }
   };
 
   const handleVote = async (postId: string, type: 'UP' | 'DOWN') => {
@@ -327,14 +323,14 @@ function ForumFeedContent() {
       );
     }
   } catch (error) {
-    console.error("Lỗi khi gửi vote:", error);
+    console.error("Error when submitting vote:", error);
   }
 };
 
-  // XỬ LÝ BÌNH LUẬN (MỞ/ĐÓNG & FETCH)
+  // Handle toggling the comment section for a specific post, fetching comments if opening
   const toggleComments = async (postId: string) => {
     if (activeCommentPostId === postId) {
-      setActiveCommentPostId(null); // Đóng nếu đang mở
+      setActiveCommentPostId(null); // Close the comment section if it's already open
     } else {
       setActiveCommentPostId(postId);
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/posts/${postId}/comments`);
@@ -342,10 +338,10 @@ function ForumFeedContent() {
     }
   };
 
-  // GỬI BÌNH LUẬN (HOẶC REPLY)
+  // Send a new comment to the server, either as a top-level comment or a reply to another comment
   const handlePostComment = async (postId: string, parentId: string | null = null) => {
     if (!newComment.trim()) return;
-    if (!session?.user?.id) return alert("Đăng nhập để bình luận!");
+    if (!session?.user?.id) return alert("Please log in to comment!");
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/posts/${postId}/comments`, {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -357,10 +353,10 @@ function ForumFeedContent() {
         setNewComment("");
         setReplyingToCommentId(null);
       }
-    } catch (error) { alert("Lỗi gửi bình luận"); }
+    } catch (error) { alert("Error when posting comment"); }
   };
 
-  // SỬA BÌNH LUẬN
+  // edit a comment, sending the updated content to the server and updating the UI
   const submitEditComment = async (commentId: string) => {
     if (!editCommentContent.trim()) return;
     try {
@@ -373,12 +369,12 @@ function ForumFeedContent() {
         setComments(comments.map(c => c.id === commentId ? updated : c));
         setEditingCommentId(null);
       }
-    } catch (error) { alert("Lỗi sửa comment"); }
+    } catch (error) { alert("Error when editing comment"); }
   };
 
-  // XÓA BÌNH LUẬN
+  // Handle deleting a comment, with confirmation and UI update
   const handleDeleteComment = async (commentId: string) => {
-    if (!confirm("Xóa bình luận này?")) return;
+    if (!confirm("Delete this comment?")) return;
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/comments/${commentId}`, {
         method: "DELETE", headers: { "Content-Type": "application/json" },
@@ -387,12 +383,12 @@ function ForumFeedContent() {
       if (res.ok) {
         setComments(comments.filter(c => c.id !== commentId));
       }
-    } catch (error) { alert("Lỗi xóa comment"); }
+    } catch (error) { alert("Error when deleting comment"); }
   };
 
-  // VOTE BÌNH LUẬN
+  // Vote on a comment, updating the upvote count in the UI without refetching all comments
   const handleVoteComment = async (commentId: string, type: 'UP' | 'DOWN') => {
-    if (!session?.user?.id) return alert("Đăng nhập để vote!");
+    if (!session?.user?.id) return alert("Please log in to vote!");
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/forum/comments/${commentId}/vote`, {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -402,23 +398,23 @@ function ForumFeedContent() {
         const data = await res.json();
         setComments(comments.map(c => c.id === commentId ? { ...c, upvoteCount: data.upvoteCount } : c));
       }
-    } catch (error) { console.error("Lỗi vote comment", error); }
+    } catch (error) { console.error("Error when submitting vote", error); }
   };
 
-  // Hàm biến đổi format [Text](URL) thành thẻ Link click được
+  // Function to render content with clickable links, converting markdown-style links into <a> tags
   const renderFormattedContent = (text: string) => {
-    // Regex tìm đúng cấu trúc [Tên hiển thị](Link web)
+    // Regex to match markdown-style links [text](url)
     const linkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
     const parts = [];
     let lastIndex = 0;
     let match;
     
     while ((match = linkRegex.exec(text)) !== null) {
-      // Đẩy phần chữ bình thường phía trước link vào mảng
+      // Push the normal text part before the link into the array
       if (match.index > lastIndex) {
         parts.push(text.substring(lastIndex, match.index));
       }
-      // Đẩy thẻ <a> chứa link vào mảng
+      // Push the <a> tag containing the link into the array
       parts.push(
         <a 
           key={match.index} 
@@ -433,7 +429,7 @@ function ForumFeedContent() {
       lastIndex = linkRegex.lastIndex;
     }
     
-    // Đẩy nốt phần chữ còn lại sau link cuối cùng
+    // Push the remaining text after the last link
     if (lastIndex < text.length) {
       parts.push(text.substring(lastIndex));
     }
@@ -444,10 +440,9 @@ function ForumFeedContent() {
   return (
     <>
       {/* ======================================================== */}
-      {/* 🌟 THANH ĐIỀU HƯỚNG TABS & HIỂN THỊ TAG ĐANG LỌC */}
+      {/* 🌟 Currently tags */}
       {/* ======================================================== */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6 sm:mb-8 border-b border-gray-800/80 pb-3.5 sm:pb-4 relative">
-        {/* Đường line gradient phát sáng chạy dưới đáy */}
         <div className="absolute bottom-[-1px] left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-gray-700 to-transparent"></div>
 
         <div className="flex items-center gap-5 sm:gap-8">
@@ -509,7 +504,7 @@ function ForumFeedContent() {
       </div>
 
       {/* ======================================================== */}
-      {/* 🌟 KHUNG TẠO BÀI VIẾT (TRIGGER) */}
+      {/* 🌟 Create post */}
       {/* ======================================================== */}
       <div className="bg-gradient-to-r from-[#1a1d24] to-gray-900 rounded-2xl border border-gray-700/50 p-3 sm:p-4 mb-6 sm:mb-8 flex items-center gap-2.5 sm:gap-4 shadow-[0_4px_20px_rgba(0,0,0,0.2)] hover:border-blue-500/30 hover:shadow-[0_0_20px_rgba(59,130,246,0.1)] transition-all duration-300 group">
         <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-gradient-to-tr from-blue-600 to-purple-600 p-[2px] shrink-0 shadow-lg">
@@ -557,7 +552,7 @@ function ForumFeedContent() {
       </div>
 
       {/* ======================================================== */}
-      {/* 🌟 HIỂN THỊ DANH SÁCH BÀI VIẾT (FEED) */}
+      {/* 🌟 DISPLAY POST FEED */}
       {/* ======================================================== */}
       <div className="space-y-5 sm:space-y-6">
         {loadingPosts ? (
@@ -579,7 +574,6 @@ function ForumFeedContent() {
           </div>
         ) : (
           posts.map((post) => (
-            // Bọc ngoài bài viết với hiệu ứng nổi 3D và Glow viền khi hover
             <div
               key={post.id}
               className="group relative bg-[#13151a]/80 backdrop-blur-sm rounded-2xl sm:rounded-3xl p-4 sm:p-7 transition-all duration-500 hover:-translate-y-1.5 hover:shadow-[0_15px_40px_-10px_rgba(59,130,246,0.15)] border border-gray-800/60 hover:border-blue-500/30 overflow-hidden z-0"
@@ -611,10 +605,9 @@ function ForumFeedContent() {
               </div>
             )}
 
-              {/* 🌟 Vệt sáng chìm (Glow Orb) ở góc trên phải, sẽ sáng lên khi di chuột */}
               <div className="absolute -top-20 -right-20 w-48 h-48 bg-blue-500/5 blur-[60px] rounded-full pointer-events-none group-hover:bg-blue-500/15 transition-all duration-700 z-[-1]"></div>
 
-              {/* Header bài viết */}
+              {/* Header post */}
               <div className="flex flex-wrap items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
                 <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden flex-shrink-0 ring-2 ring-gray-800/80 group-hover:ring-blue-500/40 transition-all duration-300 shadow-md">
                   {post.author?.image ? (
@@ -689,7 +682,7 @@ function ForumFeedContent() {
                 </span>
               </div>
 
-              {/* 🌟 Nội dung bài viết */}
+              {/* 🌟 Content of the post */}
               <h3 className="text-lg sm:text-xl md:text-2xl font-extrabold text-gray-100 mb-2.5 sm:mb-3 leading-tight group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-blue-400 group-hover:to-purple-400 transition-all duration-300 break-words">
                 {post.title}
               </h3>
@@ -697,7 +690,7 @@ function ForumFeedContent() {
                 {renderFormattedContent(post.content)}
               </p>
 
-              {/* Hình ảnh/Video đính kèm */}
+              {/* Image/video of post */}
               {post.mediaUrl && (
                 <div className="mb-5 sm:mb-6 rounded-2xl overflow-hidden border border-gray-700/40 bg-black/50 relative group/media shadow-lg">
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover/media:opacity-100 transition-opacity pointer-events-none z-10"></div>
@@ -735,10 +728,10 @@ function ForumFeedContent() {
                 ))}
               </div>
 
-              {/* THANH TƯƠNG TÁC */}
+              {/* Interaction Bar */}
               <div className="flex flex-wrap items-center justify-between gap-2 mt-5 sm:mt-7 pt-4 sm:pt-5 border-t border-gray-800/50 text-gray-400">
                 <div className="flex items-center gap-2 sm:gap-5">
-                  {/* Cụm Vote: Tách riêng Upvote và Downvote */}
+                  {/* Vote Cluster: Separate Upvote and Downvote */}
                   <div className="flex items-center bg-gray-800/50 rounded-full border border-gray-700/60 p-1 shadow-sm hover:border-gray-600 transition-all">
                     <button
                       onClick={() => handleVote(post.id, "UP")}
@@ -799,7 +792,7 @@ function ForumFeedContent() {
                     </button>
                   </div>
 
-                  {/* Nút Bình Luận */}
+                  {/* Comment Button */}
                   <button
                     onClick={() => toggleComments(post.id)}
                     className="flex items-center gap-1.5 sm:gap-2 text-gray-400 hover:text-blue-400 hover:bg-blue-900/20 border border-transparent hover:border-blue-800/50 px-3 sm:px-4 py-2 sm:py-2.5 rounded-full transition-all text-xs sm:text-sm font-bold shadow-sm active:scale-95"
@@ -821,7 +814,7 @@ function ForumFeedContent() {
                   </button>
                 </div>
 
-                {/* Nút Edit/Delete */}
+                {/* Edit/Delete Button */}
                 {session?.user?.id === post.authorId && (
                   <div className="flex gap-1.5 ml-auto">
                     <button
@@ -866,10 +859,10 @@ function ForumFeedContent() {
                 )}
               </div>
 
-              {/* KHU VỰC BÌNH LUẬN */}
+              {/* Comment Section */}
               {activeCommentPostId === post.id && (
                 <div className="mt-5 sm:mt-6 pt-5 sm:pt-6 border-t border-gray-800/60 relative">
-                  {/* Ô nhập Comment gốc */}
+                  {/* Comment Input */}
                   <div className="flex gap-2 sm:gap-3 mb-6 sm:mb-8 relative">
                     <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-blue-500 to-purple-500 rounded-full"></div>
                     <input
@@ -890,7 +883,7 @@ function ForumFeedContent() {
                     </button>
                   </div>
 
-                  {/* Danh sách Comment */}
+                  {/* Comment List */}
                   <div className="space-y-4 sm:space-y-5">
                     {comments
                       .filter((c) => !c.parentId)
@@ -1107,7 +1100,7 @@ function ForumFeedContent() {
       </div>
 
       {/* ======================================================== */}
-      {/* 🌟 MODAL (POPUP) ĐĂNG BÀI */}
+      {/* 🌟 MODAL (POPUP) upload post */}
       {/* ======================================================== */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-3 sm:p-4 animate-in fade-in duration-200">
