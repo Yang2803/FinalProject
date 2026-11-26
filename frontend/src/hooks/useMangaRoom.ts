@@ -21,7 +21,7 @@ export interface JoinRequest {
   applicantSocketId: string;
 }
 
-// Con trỏ chuột thời gian thực
+// Real-time mouse cursor
 export interface RemoteCursor {
   userId: string;
   userName: string;
@@ -31,7 +31,7 @@ export interface RemoteCursor {
   yPercent: number;
 }
 
-// Nét vẽ laser khoanh vùng tạm thời
+// Laser-drawn lines for temporary area delineation.
 export interface LaserLine {
   id: string;
   userId: string;
@@ -69,13 +69,13 @@ export function useMangaRoom({
 
   const [theme, setTheme] = useState<MangaTheme>({ type: "color", value: "#000000" });
 
-  // States cơ bản
+  // Basic states
   const [isLocked, setIsLocked] = useState(false);
   const [members, setMembers] = useState<MangaRoomMember[]>([]);
   const [remoteCursors, setRemoteCursors] = useState<Record<string, RemoteCursor>>({});
   const [laserLines, setLaserLines] = useState<LaserLine[]>([]);
 
-  // 🌟 States quản lý phê duyệt phòng kín (Kiểm tra sessionStorage trước để không bị kẹt khi vào lại)
+  // 🌟 States manage closed-door room approvals (Check sessionStorage beforehand to avoid getting stuck when rejoining).
   const [joinRequests, setJoinRequests] = useState<JoinRequest[]>([]);
   const [isApprovedByHost, setIsApprovedByHost] = useState<boolean>(() => {
     if (typeof window !== "undefined") {
@@ -85,7 +85,7 @@ export function useMangaRoom({
   });
   const [isRejectedByHost, setIsRejectedByHost] = useState(false);
 
-  // 🌟 Suy diễn trạng thái duyệt phòng
+  // 🌟 Inferring the room browsing state
   const approvalStatus: "APPROVED" | "PENDING" | "REJECTED" = useMemo(() => {
     if (isHost || !isPrivate) return "APPROVED";
     if (isRejectedByHost) return "REJECTED";
@@ -109,13 +109,13 @@ export function useMangaRoom({
     if (user) {
       socket.emit("manga:join_room", { roomId, user });
 
-      // Nếu là phòng kín và không phải Host -> Gửi yêu cầu xin vào (server sẽ tự kiểm tra đã duyệt chưa)
+      // If it's a private room and not hosted by the server -> Send a request to join (the server will automatically check if it has been approved).
       if (isPrivate && !isHost) {
         socket.emit("manga:request_join", { roomId, user });
       }
     }
 
-    // 🌟 Host: Nhận yêu cầu xin vào phòng kín từ thành viên mới
+    // 🌟 Host: Receive requests to join private rooms from new members.
     socket.on("manga:receive_join_request", (req: JoinRequest) => {
       if (isHost) {
         setJoinRequests((prev) => [
@@ -125,7 +125,7 @@ export function useMangaRoom({
       }
     });
 
-    // 🌟 Khách: Nhận kết quả duyệt (từ Host hoặc server tự cấp nếu đã vào trước đó)
+    // 🌟 Guest: Receives approval results (provided by the Host or server if previously accessed)
     socket.on("manga:join_response", ({ approved }: { approved: boolean }) => {
       if (approved) {
         setIsApprovedByHost(true);
@@ -140,28 +140,28 @@ export function useMangaRoom({
       }
     });
 
-    // 1. Đồng bộ lật trang
+    // 1. Synchronized page flipping
     socket.on("manga:page_synced", (data: { chapterId: string; currentPage: number }) => {
       onRemotePageChange(data.chapterId, data.currentPage);
     });
 
-    // 2. Đồng bộ cuộn dọc (Webtoon)
+    // 2. Vertical scrolling synchronization
     socket.on("manga:scroll_synced", (data: { scrollPercent: number }) => {
       onRemoteScroll(data.scrollPercent);
     });
 
-    // 3. Cập nhật trạng thái khóa của Host
+    // 3. Update the Host lock status.
     socket.on("manga:lock_updated", ({ isHostLocked }: { isHostLocked: boolean }) => {
       setIsLocked(isHostLocked);
     });
 
-    // 4. Nhận vị trí Live Cursor từ thành viên khác
+    // 4. Get the Live Cursor position from another member.
     socket.on("manga:cursor_moved", (cursor: RemoteCursor) => {
       if (cursor.userId === user?.id) return;
       setRemoteCursors((prev) => ({ ...prev, [cursor.userId]: cursor }));
     });
 
-    // 5. Xóa con trỏ khi có người rời phòng
+    // 5. Clear the cursor when someone leaves the room.
     socket.on("manga:member_left", ({ userId }: { userId: string }) => {
       setRemoteCursors((prev) => {
         const next = { ...prev };
@@ -170,12 +170,12 @@ export function useMangaRoom({
       });
     });
 
-    // 6. Nhận nét vẽ Laser khoanh vùng từ thành viên khác
+    // 6. Receive laser-drawn outlines from other members.
     socket.on("manga:laser_draw", (line: LaserLine) => {
       setLaserLines((prev) => [...prev, line]);
     });
 
-    // 7. Lắng nghe sự kiện xóa nét vẽ
+    // 7. Listen to the event of erasing the drawing
     socket.on("manga:laser_cleared", ({ targetUserId }: { targetUserId?: string }) => {
       if (targetUserId) {
         setLaserLines((prev) => prev.filter((line) => line.userId !== targetUserId));
@@ -184,14 +184,14 @@ export function useMangaRoom({
       }
     });
 
-    // 8. Lắng nghe Host đổi chế độ đọc (Từng trang / Cuộn dọc)
+    // 8. Listen as the host changes the reading mode (Page by page / Vertical scrolling).
     socket.on("manga:read_mode_updated", ({ readMode }: { readMode: "SINGLE" | "VERTICAL" }) => {
       if (onRemoteReadModeChange) {
         onRemoteReadModeChange(readMode);
       }
     });
 
-    // 9. Lắng nghe sự kiện phòng bị giải tán
+    // 9. Listen to the event about the room being disbanded.
     socket.on("manga:room_disbanded", () => {
       if (typeof window !== "undefined") {
         sessionStorage.removeItem(`manga_room_approved_${roomId}`);
@@ -200,7 +200,7 @@ export function useMangaRoom({
       router.push("/manga-room");
     });
 
-    // 10. Lắng nghe sự kiện cập nhật theme background Manga Room
+    // 10. Listen to the Manga Room theme background update event.
     socket.on("manga:theme_updated", (newTheme: MangaTheme) => {
       setTheme(newTheme);
     });
@@ -212,12 +212,12 @@ export function useMangaRoom({
     };
   }, [roomId, user?.id, isHost, isPrivate, router]);
 
-  // 🌟 Host duyệt hoặc từ chối thành viên
+  // 🌟 host approve or reject a member
   const respondJoinRequest = useCallback(
     (applicantSocketId: string, applicantId: string, approved: boolean) => {
       if (!socketRef.current || !isHost) return;
 
-      // Gửi cả roomId và applicantId để backend lưu vào Set tự động duyệt các lần sau
+      // Send both roomId and applicantId so the backend can save them to the Set for automatic review in subsequent attempts.
       socketRef.current.emit("manga:respond_join_request", {
         roomId,
         applicantSocketId,
@@ -225,13 +225,13 @@ export function useMangaRoom({
         approved,
       });
 
-      // Xóa khỏi danh sách popup
+      // Remove from popup list
       setJoinRequests((prev) => prev.filter((r) => r.applicant.id !== applicantId));
     },
     [roomId, isHost]
   );
 
-  // Rời phòng của thành viên
+  // Member leave room
   const emitLeaveRoom = useCallback(() => {
     if (socketRef.current && user) {
       socketRef.current.emit("manga:leave_room", { roomId, userId: user.id });
@@ -239,7 +239,7 @@ export function useMangaRoom({
     router.push("/manga-room");
   }, [roomId, user, router]);
 
-  // Giải tán phòng của Host
+  // Host disaband room
   const emitDisbandRoom = useCallback(async () => {
     if (!socketRef.current || !isHost) return;
     if (typeof window !== "undefined") {
@@ -249,7 +249,7 @@ export function useMangaRoom({
     router.push("/manga-room");
   }, [roomId, isHost, router]);
 
-  // Phát tín hiệu lật trang
+  // Signal to flip the page
   const emitPageChange = useCallback(
     (chapterId: string, page: number) => {
       if (!socketRef.current || (!isHost && isLocked)) return;
@@ -262,7 +262,7 @@ export function useMangaRoom({
     [roomId, isHost, isLocked]
   );
 
-  // Phát tín hiệu cuộn trang
+  // Signal to scroll the page
   const emitScroll = useCallback(
     (percent: number) => {
       if (!socketRef.current || (!isHost && isLocked)) return;
@@ -271,7 +271,7 @@ export function useMangaRoom({
     [roomId, isHost, isLocked]
   );
 
-  // Hàm phát sự kiện đổi theme
+  // Theme change event handler function
   const emitChangeTheme = useCallback(
     (newTheme: MangaTheme) => {
       if (!socketRef.current || !isHost) return;
@@ -281,7 +281,7 @@ export function useMangaRoom({
     [roomId, isHost]
   );
 
-  // Phát tọa độ con trỏ chuột thời gian thực (Live Cursor)
+  // Live cursor coordinates
   const emitCursorMove = useCallback(
     (pageIndex: number, xPercent: number, yPercent: number) => {
       if (!socketRef.current || !user) return;
@@ -300,7 +300,7 @@ export function useMangaRoom({
     [roomId, user]
   );
 
-  // Phát nét vẽ khoanh vùng Laser
+  // Laser pen line
   const emitLaserDraw = useCallback(
     (pageIndex: number, points: { x: number; y: number }[], strokeWidth: number = 0.8) => {
       if (!socketRef.current || !user) return;
@@ -319,7 +319,7 @@ export function useMangaRoom({
     [roomId, user]
   );
 
-  // Chỉ xóa nét vẽ của chính mình
+  // Only delete drawing of user's sellf
   const emitClearMyLaser = useCallback(() => {
     if (!socketRef.current || !user) return;
     setLaserLines((prev) => prev.filter((line) => line.userId !== user.id));
@@ -329,7 +329,7 @@ export function useMangaRoom({
     });
   }, [roomId, user]);
 
-  // Trưởng phòng xóa toàn bộ nét vẽ trong phòng
+  // Host delete all drawing line of th whole room
   const emitClearAllLaser = useCallback(() => {
     if (!socketRef.current || !isHost) return;
     setLaserLines([]);
@@ -338,7 +338,7 @@ export function useMangaRoom({
     });
   }, [roomId, isHost]);
 
-  // Hàm phát tín hiệu đổi chế độ đọc
+  // Singnal change reading mode
   const emitChangeReadMode = useCallback(
     (mode: "SINGLE" | "VERTICAL") => {
       if (!socketRef.current || (!isHost && isLocked)) return;
@@ -347,7 +347,7 @@ export function useMangaRoom({
     [roomId, isHost, isLocked]
   );
 
-  // Hàm khóa/mở khóa phòng
+  // Clock/unlock room
   const toggleLock = useCallback(
     (nextLocked: boolean) => {
       if (!socketRef.current || !isHost) return;

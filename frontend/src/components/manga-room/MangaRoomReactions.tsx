@@ -9,7 +9,7 @@ interface MangaRoomReactionsProps {
   socket: Socket | null;
   userName: string;
   userColor: string;
-  popupAlign?: "left" | "right"; // 🌟 Thêm tuỳ chỉnh hướng bung của thanh cảm xúc
+  popupAlign?: "left" | "right"; // 🌟 Add options for the direction the emoji bar open.
 }
 
 interface FloatingReaction {
@@ -36,7 +36,7 @@ export function MangaRoomReactions({
   socket,
   userName,
   userColor,
-  popupAlign = "right", // Mặc định cho phòng Manga
+  popupAlign = "right", // Default settings for Manga room
 }: MangaRoomReactionsProps) {
   const [reactions, setReactions] = useState<FloatingReaction[]>([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -140,7 +140,7 @@ export function MangaRoomReactions({
           document.body
         )}
 
-      {/* 🌟 NÚT BẤM & THANH CHỌN CẢM XÚC */}
+      {/* 🌟 BUTTONS & EMOTION SELECTION BAR */}
       <div className="relative flex items-center shrink-0">
         <button
           type="button"
@@ -150,7 +150,7 @@ export function MangaRoomReactions({
               ? "bg-pink-950/60 border-pink-500/60 text-pink-300"
               : "bg-gray-800 border-gray-700 text-gray-300 hover:text-white"
           }`}
-          title="Thả cảm xúc tương tác"
+          title="Drop an interactive reaction"
         >
           <span>✨ Emotion</span>
         </button>

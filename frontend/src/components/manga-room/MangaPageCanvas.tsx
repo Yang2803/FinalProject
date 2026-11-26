@@ -92,13 +92,13 @@ export function MangaPageCanvas({
         loading="lazy"
       />
 
-      {/* SVG Layer vẽ nét */}
+      {/* SVG Layer drawing line */}
       <svg
         viewBox="0 0 100 100"
         preserveAspectRatio="none"
         className="absolute inset-0 w-full h-full pointer-events-none z-20"
       >
-        {/* Nét đang vẽ của bản thân */}
+        {/* My current drawing style */}
         {currentStroke.length > 1 && (
           <path
             d={currentStroke.reduce(
@@ -115,7 +115,7 @@ export function MangaPageCanvas({
           />
         )}
 
-        {/* Nét vẽ đã lưu thuộc trang này */}
+        {/* The drawing has been saved on this page. */}
         {laserLines
           .filter((line) => line.pageIndex === pageIndex)
           .map((line) => {
@@ -140,7 +140,7 @@ export function MangaPageCanvas({
           })}
       </svg>
 
-      {/* Live Cursors của các thành viên đang trỏ vào trang này */}
+      {/* The Live Cursors of the members are pointing to this page. */}
       {Object.values(remoteCursors)
         .filter((c) => c.pageIndex === pageIndex)
         .map((cursor) => (

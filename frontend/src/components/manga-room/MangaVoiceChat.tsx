@@ -9,7 +9,7 @@ import {
 } from "@livekit/components-react";
 import "@livekit/components-styles";
 
-// Component con: Nút Bật/Tắt Microphone & Trạng thái phát âm
+// Sub-component: Microphone On/Off Button & Sound Status
 function VoiceControls() {
   const { localParticipant } = useLocalParticipant();
   const participants = useParticipants();
@@ -24,7 +24,7 @@ function VoiceControls() {
 
   return (
     <div className="flex items-center gap-3">
-      {/* Nút bấm Mic */}
+      {/* Turn on mic button */}
       <button
         onClick={toggleMic}
         type="button"
@@ -37,7 +37,7 @@ function VoiceControls() {
         <span>{isMicEnabled ? "🎙️ Mic is turning on" : "🔇 Mic is off"}</span>
       </button>
 
-      {/* Danh sách avatar những người đang trong kênh Voice */}
+      {/* List of avatars of people currently in the Voice channel */}
       <div className="flex items-center -space-x-1.5 overflow-hidden">
         {participants.map((p) => {
           const isSpeaking = p.isSpeaking;
@@ -60,7 +60,7 @@ function VoiceControls() {
   );
 }
 
-// Component chính bao bọc LiveKit Room
+// The main component encapsulating LiveKit Room
 export function MangaVoiceChat({
   roomId,
   userId,
@@ -113,7 +113,7 @@ export function MangaVoiceChat({
       video={false}
     >
       <VoiceControls />
-      {/* Tự động phát âm thanh của những người khác */}
+      {/*Automatically play other people's audio */}
       <RoomAudioRenderer />
     </LiveKitRoom>
   );

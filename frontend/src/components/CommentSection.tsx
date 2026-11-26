@@ -10,7 +10,7 @@ interface Comment {
   user: { name: string | null; email: string };
 }
 
-// 1. Đã thêm "anime" và "episode" vào danh sách cho phép của targetType
+// 1. "anime" and "episode" have been added to targetType's allowed list.
 export default function CommentSection({ targetType, targetId }: { targetType: "manga" | "chapter" | "anime" | "episode", targetId: string }) {
   const { data: session } = useSession();
   const [comments, setComments] = useState<Comment[]>([]);
@@ -18,7 +18,7 @@ export default function CommentSection({ targetType, targetId }: { targetType: "
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    // 2. Logic gọi API được tối ưu để tự động sinh ra query (VD: animeId=..., mangaId=...)
+    // 2. API call logic is optimized to automatically generate queries (e.g., animeId=..., mangaId=...)
     const fetchComments = async () => {
       const query = `${targetType}Id=${targetId}`; 
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/comments?${query}`);
@@ -37,7 +37,7 @@ export default function CommentSection({ targetType, targetId }: { targetType: "
 
     setIsSubmitting(true);
     try {
-      // 3. Sử dụng tính năng Dynamic Key của ES6 để tự động gán đúng ID
+      // 3. Use ES6's Dynamic Key feature to automatically assign the correct ID.
       const payload = {
         userId: session.user.id,
         content,
@@ -52,8 +52,8 @@ export default function CommentSection({ targetType, targetId }: { targetType: "
 
       if (res.ok) {
         const newComment = await res.json();
-        setComments([newComment, ...comments]); // Đẩy comment mới lên đầu danh sách
-        setContent(""); // Xóa trắng ô nhập
+        setComments([newComment, ...comments]); // Push the new comment to the top of the list.
+        setContent(""); // Clear the input field.
       } else {
         alert("Error submitting comment!");
       }
@@ -70,7 +70,7 @@ export default function CommentSection({ targetType, targetId }: { targetType: "
         Comments ({comments.length})
       </h3>
 
-      {/* Form đăng bình luận */}
+      {/* Comment upload form */}
       {session ? (
         <form onSubmit={handleSubmit} className="mb-8">
           <textarea
@@ -93,7 +93,7 @@ export default function CommentSection({ targetType, targetId }: { targetType: "
         </div>
       )}
 
-      {/* Danh sách bình luận */}
+      {/* Comment list */}
       <div className="space-y-4">
         {comments.length === 0 ? (
            <p className="text-gray-500 italic text-center py-4">No comments yet. Be the first!</p>
@@ -101,7 +101,7 @@ export default function CommentSection({ targetType, targetId }: { targetType: "
           comments.map((cmt) => (
             <div key={cmt.id} className="flex gap-4 p-4 bg-gray-900/50 rounded-lg">
               <div className="w-10 h-10 bg-blue-600 rounded-full flex justify-center items-center font-bold text-lg shrink-0">
-                {/* Lấy chữ cái đầu của Tên hoặc Email làm Avatar */}
+                {/* Use the first letter of Name or Email address as your Avatar. */}
                 {(cmt.user.name || cmt.user.email).charAt(0).toUpperCase()}
               </div>
               <div>

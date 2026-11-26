@@ -27,7 +27,7 @@ export function MangaRoomBGM({ roomId, isHost, socket }: MangaRoomBGMProps) {
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const videoId = useMemo(() => extractYouTubeId(bgmUrl), [bgmUrl]);
 
-  // Gửi lệnh điều khiển Play/Pause tới Iframe
+  // Send Play/Pause control commands to the iframe.
   const sendIframeCommand = (command: "playVideo" | "pauseVideo") => {
     if (iframeRef.current && iframeRef.current.contentWindow) {
       iframeRef.current.contentWindow.postMessage(
@@ -37,7 +37,7 @@ export function MangaRoomBGM({ roomId, isHost, socket }: MangaRoomBGMProps) {
     }
   };
 
-  // Gửi lệnh tua thời gian tới Iframe
+  // Send a time-lapse command to an iframe.
   const seekIframe = (seconds: number) => {
     if (iframeRef.current && iframeRef.current.contentWindow) {
       iframeRef.current.contentWindow.postMessage(
@@ -54,7 +54,7 @@ export function MangaRoomBGM({ roomId, isHost, socket }: MangaRoomBGMProps) {
   useEffect(() => {
     if (!socket) return;
 
-    // 1. Đồng bộ bài hát & trạng thái phát
+    // 1. Synchronize songs and playback status
     const handleSync = (data: { url: string; isPlaying: boolean }) => {
       setBgmUrl(data.url);
       setIsPlaying(data.isPlaying);
@@ -65,7 +65,7 @@ export function MangaRoomBGM({ roomId, isHost, socket }: MangaRoomBGMProps) {
       }
     };
 
-    // 2. Đồng bộ thời gian tua từ Trưởng phòng
+    // 2. Synchronize times from the Department Head.
     const handleSeek = (data: { currentTime: number }) => {
       setCurrentSeconds(data.currentTime);
       seekIframe(data.currentTime);
@@ -81,13 +81,13 @@ export function MangaRoomBGM({ roomId, isHost, socket }: MangaRoomBGMProps) {
     };
   }, [socket]);
 
-  // Bắn socket đồng bộ bài hát
+  // Send the socket to synchronize songs.
   const emitBgmSync = (url: string, playing: boolean) => {
     if (!socket || !isHost) return;
     socket.emit("manga:sync_bgm", { roomId, url, isPlaying: playing });
   };
 
-  // Bắn socket đồng bộ tua thời gian
+  // Send the socket to synchronize the time.
   const emitSeekSync = (targetSeconds: number) => {
     if (!socket || !isHost) return;
     socket.emit("manga:seek_bgm", { roomId, currentTime: targetSeconds });
@@ -116,7 +116,7 @@ export function MangaRoomBGM({ roomId, isHost, socket }: MangaRoomBGMProps) {
     emitBgmSync(bgmUrl, nextState);
   };
 
-  // Trưởng phòng tua +/- giây
+  // Host change time +/- second
   const handleSeekOffset = (offset: number) => {
     const nextTime = Math.max(0, currentSeconds + offset);
     setCurrentSeconds(nextTime);
@@ -198,7 +198,7 @@ export function MangaRoomBGM({ roomId, isHost, socket }: MangaRoomBGMProps) {
             </div>
           ) : null}
 
-          {/* CỤM ĐIỀU KHIỂN & TUA DÀNH CHO TRƯỞNG PHÒNG */}
+          {/* CONTROL & SEEK TIME FOR HOST */}
           {videoId && isHost && (
             <div className="flex flex-col gap-2 pt-1 border-t border-gray-800">
               <div className="flex items-center justify-between text-xs">
@@ -216,7 +216,7 @@ export function MangaRoomBGM({ roomId, isHost, socket }: MangaRoomBGMProps) {
                 </button>
               </div>
 
-              {/* Cụm nút tua đồng bộ */}
+              {/* Synchronized seek time button cluster */}
               <div className="flex items-center justify-between bg-gray-900/80 p-1.5 rounded-lg border border-gray-800">
                 <span className="text-[11px] text-gray-400">Synchronize:</span>
                 <div className="flex gap-1.5">
@@ -224,7 +224,7 @@ export function MangaRoomBGM({ roomId, isHost, socket }: MangaRoomBGMProps) {
                     type="button"
                     onClick={() => handleSeekOffset(-10)}
                     className="px-2 py-0.5 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded text-xs font-semibold cursor-pointer border border-gray-700"
-                    title="Lùi 10 giây"
+                    title="Back 10s"
                   >
                     ⏪ -10s
                   </button>
@@ -232,7 +232,7 @@ export function MangaRoomBGM({ roomId, isHost, socket }: MangaRoomBGMProps) {
                     type="button"
                     onClick={() => handleSeekOffset(10)}
                     className="px-2 py-0.5 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded text-xs font-semibold cursor-pointer border border-gray-700"
-                    title="Tiến 10 giây"
+                    title="Forward 10s"
                   >
                     +10s ⏩
                   </button>

@@ -24,7 +24,7 @@ export default function Sidebar() {
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // Ẩn thanh Sidebar hoàn toàn nếu người dùng đang ở trang login hoặc register
+  // Hide the sidebar completely if the user is on the login or register page.
   if (pathname === "/login" || pathname === "/register") {
     return null;
   }
@@ -96,10 +96,9 @@ export default function Sidebar() {
     setIsMobileMenuOpen(false);
   };
 
-  // Nội dung dùng chung cho cả Desktop Sidebar và Mobile Drawer
+  // Content shared between Desktop Sidebar and Mobile Drawer
   const renderSidebarContent = (isMobile = false) => (
     <>
-      {/* Hiệu ứng ánh sáng Ambient mờ phía sau Sidebar */}
       <div className="absolute -top-24 -left-24 w-56 h-56 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-10 -right-24 w-56 h-56 bg-purple-600/10 rounded-full blur-3xl pointer-events-none" />
 
@@ -121,7 +120,7 @@ export default function Sidebar() {
             </div>
           </Link>
 
-          {/* Nút đóng Drawer trên điện thoại */}
+          {/* Close Drawer button on phone */}
           {isMobile && (
             <button
               onClick={handleCloseMobile}
@@ -200,7 +199,7 @@ export default function Sidebar() {
         </nav>
       </div>
 
-      {/* PHẦN DƯỚI: THẺ TÀI KHOẢN NGƯỜI DÙNG */}
+      {/* BOTTOM SECTION: USER ACCOUNT */}
       <div className="relative z-10 p-3.5 border-t border-white/[0.07] bg-[#08090c]/80 backdrop-blur-md">
         {status === "loading" ? (
           <div className="flex justify-center py-4">
@@ -271,12 +270,12 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* 1. DESKTOP SIDEBAR: Chỉ hiện từ màn hình md (768px) trở lên */}
+      {/* 1. DESKTOP SIDEBAR: Only visible on md (768px) screens and above*/}
       <aside className="hidden md:flex w-64 h-screen bg-[#0b0c10] text-white flex-col justify-between border-r border-white/[0.07] sticky top-0 left-0 select-none relative overflow-hidden shrink-0">
         {renderSidebarContent(false)}
       </aside>
 
-      {/* 2. MOBILE BOTTOM NAVIGATION BAR: Chỉ hiện trên màn hình điện thoại (< 768px) */}
+      {/* 2. MOBILE BOTTOM NAVIGATION BAR: Only visible on mobile phone screens (< 768px) */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#0b0c10]/95 backdrop-blur-lg border-t border-white/[0.08] px-2 py-1.5 flex items-center justify-around select-none">
         {mobileBottomItems.map((item) => {
           const isActive = checkActive(item.href);
@@ -295,7 +294,7 @@ export default function Sidebar() {
           );
         })}
 
-        {/* Nút Menu mở rộng (Chứa Watch Party, Co-reading, Forum & Profile) */}
+        {/*Expanded Menu Button (Contains Watch Party, Co-reading, Forum & Profile) */}
         <button
           onClick={() => setIsMobileMenuOpen(true)}
           className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all ${
@@ -307,16 +306,16 @@ export default function Sidebar() {
         </button>
       </nav>
 
-      {/* 3. MOBILE SLIDE-OUT DRAWER: Hiện ra khi bấm nút "Menu" trên điện thoại */}
+      {/* 3. MOBILE SLIDE-OUT DRAWER: Appears when you press the "Menu" button on your phone. */}
       {isMobileMenuOpen && (
         <div className="md:hidden fixed inset-0 z-50 flex">
-          {/* Lớp nền mờ (Backdrop) */}
+          {/* Backdrop */}
           <div
             className="fixed inset-0 bg-black/70 backdrop-blur-sm transition-opacity"
             onClick={handleCloseMobile}
           />
 
-          {/* Ngăn kéo chứa toàn bộ danh mục & Profile */}
+          {/* TThe complete catalog and profile. */}
           <aside className="relative w-72 max-w-[80vw] h-full bg-[#0b0c10] text-white flex flex-col justify-between border-r border-white/[0.08] z-10 overflow-hidden shadow-2xl">
             {renderSidebarContent(true)}
           </aside>

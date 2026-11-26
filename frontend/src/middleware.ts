@@ -6,15 +6,15 @@ export default withAuth(
     const token = req.nextauth.token;
     const path = req.nextUrl.pathname;
 
-    // Nếu người dùng cố vào trang admin nhưng quyền không phải ADMIN
+    // If a user attempts to access the admin page but does not have ADMIN privileges.
     if (path.startsWith("/admin") && token?.role !== "ADMIN") {
-      // Đá về trang chủ
+      // Navigate to the hompage
       return NextResponse.redirect(new URL("/", req.url));
     }
   },
   {
     callbacks: {
-      // Bắt buộc phải có token (đã đăng nhập) mới qua được chốt chặn này
+      // A token (from a logged-in account) is required to pass this checkpoint.
       authorized: ({ token }) => !!token,
     },
     pages: {
@@ -29,6 +29,6 @@ export const config = {
     "/history",          
     "/favorites",        
     "/timeline/submit",
-    "/admin/:path*" // Bảo vệ TOÀN BỘ các route con nằm trong thư mục /admin
+    "/admin/:path*" // Protect ALL child routes located in the /admin directory.
   ],
 };

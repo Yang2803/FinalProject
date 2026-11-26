@@ -1,7 +1,7 @@
 // frontend/src/constants/languages.ts
 
 export const SUPPORTED_LANGUAGES = [
-  // Châu Á
+  // Asia
   { code: "Vietnamese", label: "Vietnamese" },
   { code: "Japanese", label: "Japanese" },
   { code: "Korean", label: "Korean" },
@@ -13,7 +13,7 @@ export const SUPPORTED_LANGUAGES = [
   { code: "Malay", label: "Malay" },
   { code: "Lao", label: "Lao" },
   
-  // Châu Âu & Châu Mỹ
+  // Europe & America
   { code: "English", label: "English" },
   { code: "French", label: "French" },
   { code: "Spanish", label: "Spanish" },

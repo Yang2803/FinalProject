@@ -151,11 +151,11 @@ export default function Home() {
   // 🌟 State for Continue Watching/Reading List (max 6 items)
   const [continueList, setContinueList] = useState<ContinueItem[]>([]);
 
-  // 🌟 State cho mục Phòng Xem & Đọc Chung Đang Mở (Tối đa 4 phòng mỗi loại)
+  // 🌟 State for Live Party Rooms and Live Manga Rooms
   const [livePartyRooms, setLivePartyRooms] = useState<LivePartyRoom[]>([]);
   const [liveMangaRooms, setLiveMangaRooms] = useState<LiveMangaRoom[]>([]);
 
-  // States cho bảng xếp hạng
+  // States for Top Anime & Top Manga
   const [topAnimePeriod, setTopAnimePeriod] = useState<"day" | "week" | "month">("day");
   const [topMangaPeriod, setTopMangaPeriod] = useState<"day" | "week" | "month">("day");
   const [topAnimes, setTopAnimes] = useState<Anime[]>([]);
@@ -163,7 +163,7 @@ export default function Home() {
   const [loadingTopAnime, setLoadingTopAnime] = useState(false);
   const [loadingTopManga, setLoadingTopManga] = useState(false);
 
-  // 1. Fetch dữ liệu mới cập nhật & danh sách phòng Live
+  // 1. Fetch data for recently updated Manga & Anime, Live Party Rooms, and Live Manga Rooms
   useEffect(() => {
     const fetchHomepageData = async () => {
       try {
@@ -175,7 +175,7 @@ export default function Home() {
         if (mangaRes.ok) setRecentMangas((await mangaRes.json()).slice(0, 12));
         if (animeRes.ok) setRecentAnimes((await animeRes.json()).slice(0, 12));
 
-        // Fetch danh sách phòng Watch Party đang mở (lấy tối đa 4 phòng)
+        // Fetch wwatch party rooms currently open (max 4 rooms)
         try {
           const partyRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/party/rooms`);
           if (partyRes.ok) {
@@ -184,10 +184,10 @@ export default function Home() {
             setLivePartyRooms(roomsArray.slice(0, 4));
           }
         } catch {
-          // Bỏ qua nếu endpoint khác tên
+          // Skip if endpoint has a different name.
         }
 
-        // Fetch danh sách phòng Đọc Manga đang mở (thử cả 2 đường dẫn phổ biến, lấy tối đa 4 phòng)
+        // Fetch rooms for live manga reading (max 4 rooms)
         try {
           let mangaRoomRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/manga-room/rooms`);
           if (!mangaRoomRes.ok) {
@@ -201,10 +201,10 @@ export default function Home() {
             setLiveMangaRooms(mRoomsArray.slice(0, 4));
           }
         } catch {
-          // Bỏ qua nếu endpoint chưa bật
+          // Skip if endpoint is not enabled
         }
       } catch (err) {
-        console.error("Lỗi khi tải dữ liệu trang chủ:", err);
+        console.error("Error loading homepage data:", err);
       } finally {
         setLoading(false);
       }
@@ -212,7 +212,7 @@ export default function Home() {
     fetchHomepageData();
   }, []);
 
-  // 🌟 2. Fetch Lịch sử Xem & Đọc Tiếp khi người dùng đã đăng nhập
+  // 🌟 2. Fetch Continue Watching & Reading History when user is logged in
   useEffect(() => {
     const fetchContinueHistory = async () => {
       if (!session?.user?.id) {
@@ -224,14 +224,14 @@ export default function Home() {
       const items: ContinueItem[] = [];
 
       try {
-        // Thử lấy từ endpoint tổng hợp /api/history/:userId hoặc từng phần
+        // Try retrieving the /api/history/:userId aggregate endpoint or individual parts.
         const [generalRes, animeHistRes, mangaHistRes] = await Promise.allSettled([
           fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/history/${userId}`),
           fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/history/anime/${userId}`),
           fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/history/manga/${userId}`),
         ]);
 
-        // Hàm chuẩn hóa 1 bản ghi lịch sử bất kỳ thành ContinueItem
+        // Function to parse a single record and add to items array
         const parseRecord = (rec: Record<string, unknown>) => {
           if (!rec || typeof rec !== "object") return;
           const r = rec as {
@@ -301,7 +301,7 @@ export default function Home() {
           if (Array.isArray(data)) data.forEach(parseRecord);
         }
 
-        // Lọc trùng theo id bộ phim/truyện và lấy tối đa 6 bộ gần nhất
+        // Filter out duplicates by id and sort by updatedAt descending, then take top 6
         const uniqueMap = new Map<string, ContinueItem>();
         for (const item of items) {
           if (!uniqueMap.has(item.id)) {
@@ -322,7 +322,7 @@ export default function Home() {
     fetchContinueHistory();
   }, [session?.user?.id]);
 
-  // 3. Fetch Top Anime mỗi khi đổi Tab thời gian
+  // 3. Fetch Top Anime and Top Manga whenever the period tab changes
   useEffect(() => {
     const fetchTopAnime = async () => {
       setLoadingTopAnime(true);
@@ -330,7 +330,7 @@ export default function Home() {
         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/anime/top?period=${topAnimePeriod}`);
         if (res.ok) setTopAnimes(await res.json());
       } catch (error) {
-        console.error("Lỗi Top Anime:", error);
+        console.error("Top Anime Error:", error);
       } finally {
         setLoadingTopAnime(false);
       }
@@ -338,7 +338,7 @@ export default function Home() {
     fetchTopAnime();
   }, [topAnimePeriod]);
 
-  // 4. Fetch Top Manga mỗi khi đổi Tab thời gian
+  // 4. Fetch Top Manga every time the time period tab changes
   useEffect(() => {
     const fetchTopManga = async () => {
       setLoadingTopManga(true);
@@ -346,7 +346,7 @@ export default function Home() {
         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/manga/top?period=${topMangaPeriod}`);
         if (res.ok) setTopMangas(await res.json());
       } catch (error) {
-        console.error("Lỗi Top Manga:", error);
+        console.error("Top Manga Error:", error);
       } finally {
         setLoadingTopManga(false);
       }
@@ -354,7 +354,7 @@ export default function Home() {
     fetchTopManga();
   }, [topMangaPeriod]);
 
-  // Tạo danh sách 5 tác phẩm nổi bật cho Hero Spotlight Slider
+  // Create a list of 5 outstanding works for Hero Spotlight Slider.
   const spotlightItems: SpotlightItem[] = [
     ...recentAnimes.slice(0, 3).map((a) => ({
       id: a.id,
@@ -382,7 +382,7 @@ export default function Home() {
     })),
   ];
 
-  // Tự động chuyển slide mỗi 5 giây
+  // Auto change the spotlight slider every 5 seconds if there are multiple items
   useEffect(() => {
     if (spotlightItems.length <= 1) return;
     const timer = setInterval(() => {
@@ -415,7 +415,6 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-[#0f0f11] text-white p-4 md:p-8">
-      {/* Ẩn thanh cuộn ngang cho dải nút Thể loại */}
       <style>{`
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -424,7 +423,7 @@ export default function Home() {
       <div className="max-w-[1400px] mx-auto space-y-8">
         
         {/* ===================================================================== */}
-        {/* 🌟 1. HERO SPOTLIGHT SLIDER (TRÊN CÙNG) */}
+        {/* 🌟 1. HERO SPOTLIGHT SLIDER (TOP) */}
         {/* ===================================================================== */}
         {activeSpotlight ? (
           <div className="relative rounded-3xl overflow-hidden border border-gray-800 shadow-2xl min-h-[360px] md:min-h-[420px] flex items-center bg-gray-900 group">
@@ -564,7 +563,7 @@ export default function Home() {
         )}
 
         {/* ===================================================================== */}
-        {/* 🌟 2. DẢI KHÁM PHÁ NHANH BẰNG AI & THỂ LOẠI */}
+        {/* 🌟 2. AI & GENRE FAST EXPLORATION */}
         {/* ===================================================================== */}
         <div className="bg-[#16181f] border border-gray-800/90 rounded-2xl p-4 md:p-5 shadow-xl space-y-4">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-4 border-b border-gray-800/80">
@@ -643,7 +642,7 @@ export default function Home() {
         </div>
 
         {/* ===================================================================== */}
-        {/* 🌟 3. [DẢI NGANG - NẾU ĐÃ ĐĂNG NHẬP] ⏱️ XEM & ĐỌC TIẾP */}
+        {/* 🌟 3. [HORIZONTAL BAR - IF LOGGED IN] ⏱️ VIEW and READ Continue */}
         {/* ===================================================================== */}
         {session?.user && continueList.length > 0 && (
           <section className="bg-[#16181f]/90 border border-gray-800/80 rounded-2xl p-5 shadow-xl">
@@ -714,14 +713,14 @@ export default function Home() {
         )}
 
         {/* ===================================================================== */}
-        {/* 🌟 4. LAYOUT GRID: TRÁI (UPDATES) - PHẢI (TOP RANKINGS) */}
+        {/* 🌟 4. LAYOUT GRID: Left (UPDATES) - Right (TOP RANKINGS) */}
         {/* ===================================================================== */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
-          {/* CỘT TRÁI (Chiếm 8 phần): NỘI DUNG MỚI CẬP NHẬT */}
+          {/*LEFT COLUMN: NEWLY UPDATED CONTENT*/}
           <div className="lg:col-span-8 space-y-12">
             
-            {/* ANIME MỚI */}
+            {/* New ANIME  */}
             <section>
               <div className="flex justify-between items-end mb-6">
                 <div className="flex items-center gap-3">
@@ -754,7 +753,7 @@ export default function Home() {
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-gray-600">
-                            Trống
+                            Empty
                           </div>
                         )}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
@@ -773,7 +772,7 @@ export default function Home() {
               </div>
             </section>
 
-            {/* MANGA MỚI */}
+            {/* New MANGA */}
             <section>
               <div className="flex justify-between items-end mb-6">
                 <div className="flex items-center gap-3">
@@ -806,7 +805,7 @@ export default function Home() {
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-gray-600">
-                            Trống
+                            Empty
                           </div>
                         )}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
@@ -827,7 +826,7 @@ export default function Home() {
 
           </div>
 
-          {/* CỘT PHẢI (Chiếm 4 phần): BẢNG XẾP HẠNG SIDEBAR */}
+          {/* Right column: SIDEBAR RANKING */}
           <div className="lg:col-span-4 space-y-8">
             
             {/* TOP ANIME WIDGET */}
@@ -992,7 +991,7 @@ export default function Home() {
         </div>
 
         {/* ===================================================================== */}
-        {/* 🌟 5. [CUỐI TRANG] 🔴 PHÒNG XEM & ĐỌC CHUNG ĐANG MỞ (TỐI ĐA 4 PHÒNG MỖI LOẠI) */}
+        {/* 🌟 5. [BOTTOM] 🔴 SHARED VIEWING & READING ROOMS ARE OPEN (MAXIMUM 4 ROOMS PER TYPE) */}
         {/* ===================================================================== */}
         <section className="pt-4 border-t border-gray-800/80 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -1024,7 +1023,7 @@ export default function Home() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             
-            {/* KHỐI 1: TỐI ĐA 4 PHÒNG XEM PHIM (WATCH PARTY) */}
+            {/* 1: MAXIMUM 4 WATCH PARTY ROOMS */}
             <div className="bg-[#16181f] border border-gray-800 rounded-2xl p-5 flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-800">
@@ -1095,7 +1094,7 @@ export default function Home() {
               </div>
             </div>
 
-            {/* KHỐI 2: TỐI ĐA 4 PHÒNG ĐỌC TRUYỆN (CO-READING ROOM) */}
+            {/* 2: Maximum 4 CO-READING ROOMs */}
             <div className="bg-[#16181f] border border-gray-800 rounded-2xl p-5 flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-800">

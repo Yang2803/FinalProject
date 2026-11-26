@@ -3,9 +3,9 @@
 // ==========================================
 
 export interface RoomTheme {
-  accent: string;       // Mã màu HEX chính (#3b82f6)
-  glow: string;         // Mã màu RGBA cho hiệu ứng phát sáng
-  bgUrl?: string;       // Link ảnh nền tùy chọn
+  accent: string;       // Main HEX color code (#3b82f6)
+  glow: string;         // RGBA color coding for glow effects
+  bgUrl?: string;       // Optional bg img link
 }
 
 export const THEME_PRESETS = [
