@@ -225,10 +225,10 @@ export default function Home() {
 
       try {
         // Try retrieving the /api/history/:userId aggregate endpoint or individual parts.
-        const [generalRes, animeHistRes, mangaHistRes] = await Promise.allSettled([
+        const [generalRes] = await Promise.allSettled([
           fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/history/${userId}`),
-          fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/history/anime/${userId}`),
-          fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/history/manga/${userId}`),
+          //fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/history/anime/${userId}`),
+          //fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/history/manga/${userId}`),
         ]);
 
         // Function to parse a single record and add to items array
@@ -252,26 +252,26 @@ export default function Home() {
           if (r.anime && (r.episode || r.episodeId)) {
             const epId = r.episode?.id || r.episodeId || "";
             const epLabel = r.episode?.episodeNumber
-              ? `Tập ${r.episode.episodeNumber}`
-              : r.episode?.title || "Xem tiếp";
+              ? `Episode ${r.episode.episodeNumber}`
+              : r.episode?.title || "Continue";
             items.push({
               id: `anime_${r.anime.id}`,
               type: "ANIME",
               title: r.anime.title,
               coverImage: r.anime.coverImage || null,
-              progressText: `Đang xem: ${epLabel}`,
+              progressText: `Watching: ${epLabel}`,
               targetUrl: epId ? `/anime/${r.anime.id}/watch/${epId}` : `/anime/${r.anime.id}`,
               updatedAt: r.updatedAt || r.viewedAt || r.createdAt || "",
             });
           } else if (r.manga && (r.chapter || r.chapterId)) {
             const chapId = r.chapter?.id || r.chapterId || "";
-            const chapLabel = r.chapter?.title || "Đọc tiếp";
+            const chapLabel = r.chapter?.title || "Continue";
             items.push({
               id: `manga_${r.manga.id}`,
               type: "MANGA",
               title: r.manga.title,
               coverImage: r.manga.coverImage || null,
-              progressText: `Đang đọc: ${chapLabel}`,
+              progressText: `Reading: ${chapLabel}`,
               targetUrl: chapId
                 ? `/manga/${r.manga.id}/chapter/${chapId}`
                 : `/manga/${r.manga.id}`,
@@ -287,19 +287,19 @@ export default function Home() {
           } else if (data && typeof data === "object") {
             if (Array.isArray(data.animeHistory)) data.animeHistory.forEach(parseRecord);
             if (Array.isArray(data.mangaHistory)) data.mangaHistory.forEach(parseRecord);
-            if (Array.isArray(data.history)) data.history.forEach(parseRecord);
+            //if (Array.isArray(data.history)) data.history.forEach(parseRecord);
           }
         }
 
-        if (animeHistRes.status === "fulfilled" && animeHistRes.value.ok) {
-          const data = await animeHistRes.value.json();
-          if (Array.isArray(data)) data.forEach(parseRecord);
-        }
+        // if (animeHistRes.status === "fulfilled" && animeHistRes.value.ok) {
+        //   const data = await animeHistRes.value.json();
+        //   if (Array.isArray(data)) data.forEach(parseRecord);
+        // }
 
-        if (mangaHistRes.status === "fulfilled" && mangaHistRes.value.ok) {
-          const data = await mangaHistRes.value.json();
-          if (Array.isArray(data)) data.forEach(parseRecord);
-        }
+        // if (mangaHistRes.status === "fulfilled" && mangaHistRes.value.ok) {
+        //   const data = await mangaHistRes.value.json();
+        //   if (Array.isArray(data)) data.forEach(parseRecord);
+        // }
 
         // Filter out duplicates by id and sort by updatedAt descending, then take top 6
         const uniqueMap = new Map<string, ContinueItem>();
@@ -1080,7 +1080,7 @@ export default function Home() {
 
                           <div className="flex items-center justify-between pt-2 border-t border-gray-800/80 text-[11px]">
                             <span className="text-gray-500">
-                              Mã: <strong className="text-gray-300">{room.inviteCode}</strong>
+                              Code: <strong className="text-gray-300">{room.inviteCode}</strong>
                             </span>
                             <span className="font-bold text-blue-400 group-hover:translate-x-0.5 transition-transform">
                               Join &rarr;
